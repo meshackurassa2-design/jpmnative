@@ -27,10 +27,18 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Set up Swap Space
+        run: |
+          sudo fallocate -l 8G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
       - name: Build Android AAB with EAS Local
         run: eas build -p android --profile production --local --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g"
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
