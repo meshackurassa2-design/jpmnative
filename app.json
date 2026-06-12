@@ -2,7 +2,7 @@
   "expo": {
     "name": "JPM",
     "slug": "jpm-socialmarket",
-    "version": "2.3.1",
+    "version": "2.3.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
