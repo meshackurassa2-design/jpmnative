@@ -1,0 +1,2089 @@
+            "minSdkVersion": 24
+          }
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-8166782428171770~2422181294",
+          "iosAppId": "ca-app-pub-8166782428171770~2422181294"
+        }
+      ]
+    ],
+    "experiments": {
+import { ThemeProvider } from '../lib/theme'
+import * as Updates from 'expo-updates'
+import Constants from 'expo-constants'
+
+import { initializeAdMob } from '../lib/admob'
+
+// Initialize Google Mobile Ads SDK
+initializeAdMob()
+
+// Configure how notifications appear when the app is in the foreground
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+import { createClient } from '../lib/supabase'
+import { useAuth } from '../lib/auth'
+import { useTheme } from '../lib/theme'
+import { TextWalletAd } from '../components/InFeedAd'
+import Constants from 'expo-constants'
+
+import { RewardedAd, RewardedAdEventType, TestIds } from '../lib/admob-rewarded';
+
+const isExpoGo = Constants.appOwnership === 'expo';
+
+const WITHDRAW_THRESHOLD = 65000;
+  const [balance, setBalance] = useState<number>(0)
+  const [loading, setLoading] = useState(true)
+  const [watchingAd, setWatchingAd] = useState(false)
+  const [adLoaded, setAdLoaded] = useState(false)
+  
+  const [withdrawEmail, setWithdrawEmail] = useState('')
+  const [showWithdraw, setShowWithdraw] = useState(false)
+    setLoading(false)
+  }
+
+  const adInstanceRef = useRef<any>(null);
+  const userIdRef = useRef(user?.id);
+
+  useEffect(() => {
+  }, [user?.id]);
+
+  // Pre-load AdMob Rewarded Ad
+  useEffect(() => {
+    if (isExpoGo || !RewardedAd || !TestIds) return;
+
+    try {
+      if (!adInstanceRef.current) {
+        adInstanceRef.current = RewardedAd.createForAdRequest(TestIds.REWARDED, {
+          requestNonPersonalizedAdsOnly: true,
+        });
+      }
+
+      const instance = adInstanceRef.current;
+
+      const unsubscribeLoaded = instance.addAdEventListener(RewardedAdEventType.LOADED, () => {
+        setAdLoaded(true);
+      });
+
+      const unsubscribeEarned = instance.addAdEventListener(
+        RewardedAdEventType.EARNED_REWARD,
+        async (reward: any) => {
+          // Grant reward securely via RPC
+          const { data: dbReward, error } = await supabase.rpc('grant_ad_reward', { p_user_id: userIdRef.c
+})
+        setWatchingAd(false)
+        if (!error && reward) {
+          Alert.alert('Reward Granted!', `You earned ${reward} coins!`)
+          fetchWallet()
+        }
+      }, 3000)
+      return
+    }
+
+    if (!adLoaded || !adInstanceRef.current) {
+      Alert.alert('Please Wait', 'Ad is still loading. Try again in a few seconds.');
+      adInstanceRef.current?.load();
+      return;
+    }
+
+    setWatchingAd(true)
+    try {
+      adInstanceRef.current.show();
+    } catch (e) {
+      setWatchingAd(false);
+      Alert.alert('Error', 'Failed to show ad. Please try again.');
+    }
+  }
+
+  const handleWithdraw = async () => {
+          </TouchableOpacity>
+        </View>
+
+        {/* AdMob Banner Ad */}
+        <TextWalletAd />
+
+        {/* Coin Store Section */}
+        <View style={{ marginBottom: 10, marginTop: 10 }}>
+import { StoryViewer } from '../../components/StoryViewer'
+import { StoryCreator } from '../../components/StoryCreator'
+import { Skeleton } from '../../components/Skeleton'
+import { InFeedAd } from '../../components/InFeedAd'
+import { JobCard } from '../../components/JobCard'
+import { PostItem } from '../../components/PostItem'
+import { useTheme } from '../../lib/theme';
+        data.push({ ...directAds[directAdIndex % directAds.length], isDirectAd: true })
+        directAdIndex++
+      } 
+      // Inject Google AdMob every 4 posts
+      else if ((i + 1) % 4 === 0 && i !== posts.length - 1) {
+        data.push({ id: `admob-${i}`, isAdMob: true })
+      }
+    })
+    return data
+  }, [posts, directAds, loading])
+
+  const renderItem = ({ item }: { item: any }) => {
+    if (item.isVerseCard) return <DailyVerseCard />
+    if (item.isAdMob) return <InFeedAd />
+    if (item.isDirectAd) return <DirectAdCard ad={item} isAdmin={myProfile?.is_admin} onDelete={() => handleDeleteDirectAd(item.id)} />
+    if (item.settings?.is_job) return <JobCard post={item} isAdmin={myProfile?.is_admin} onDelete={() => handleDeleteJob(item.id)} />
+
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        keyExtractor={(item, index) => item.isAdMob ? `admob-${index}` : item.isDirectAd ? `directad-${item.id}-${index}` : item.id}
+        renderItem={renderItem}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={ListEmpty}
+} from 'react-native'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+
+const KeyboardAvoidingView = Platform.OS === 'web'
+  ? require('react-native').KeyboardAvoidingView
+  : require('react-native-keyboard-controller').KeyboardAvoidingView
+import { useLocalSearchParams, router, useFocusEffect } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import { createClient } from '../lib/supabase'
+
+import { Platform } from 'react-native'
+
+const KeyboardProvider = Platform.OS !== 'web' 
+  ? require('react-native-keyboard-controller').KeyboardProvider 
+  : ({ children }: any) => <>{children}</>
+
+export default function RootLayout() {
+  return (
+  return (
+    <View style={styles.adContainer}>
+      <View style={styles.adHeader}>
+        <View style={[styles.adIcon, { backgroundColor: '#fef08a', justifyContent: 'center', alignItems: 'center' }]}>
+          <Ionicons name="megaphone" size={20} color="#ca8a04" />
+        </View>
+        <View style={styles.adHeaderText}>
+          <Text style={styles.adAdvertiser}>{ad.title}</Text>
+        </View>
+        {isAdmin && onDelete && (
+          <TouchableOpacity onPress={onDelete} style={{ padding: 4 }}>
+            <Ionicons name="trash-outline" size={20} color="#dc2626" />
+          </TouchableOpacity>
+        )}
+      </View>
+  adContainer: {
+    backgroundColor: colors.background, marginBottom: 8,
+    borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: '#e5e5e5',
+  },
+  adHeader: { flexDirection: 'row', alignItems: 'center', padding: 12 },
+  adIcon: { width: 40, height: 40, borderRadius: 20, marginRight: 10, backgroundColor: colors.border },
+  adHeaderText: { flex: 1, justifyContent: 'center' },
+  adAdvertiser: { fontSize: 14, fontWeight: '600', color: '#262626', marginBottom: 2 },
+  adSponsored: { fontSize: 11, color: '#737373' },
+  adMediaContainer: { width: '100%', aspectRatio: 1, backgroundColor: '#fafafa' },
+  adMedia: { flex: 1, width: '100%', height: '100%' },
+  adFooter: { padding: 12 },
+  adHeadline: { fontSize: 14, fontWeight: '600', color: '#262626', marginBottom: 4 },
+  adBody: { fontSize: 14, color: '#262626', marginBottom: 12, lineHeight: 18 },
+  adCta: {
+    backgroundColor: '#3b82f6', borderRadius: 6,
+    paddingVertical: 10, alignItems: 'center', justifyContent: 'center', marginTop: 4,
+  },
+  adCtaText: { color: colors.background, fontSize: 14, fontWeight: '600' },
+
+  // ── Empty states ──
+  empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32, gap: 12 },
+                  <Stack.Screen name="checkout" options={{ presentation: 'fullScreenModal', headerShown: false, contentStyle: { backgroundColor: '#000000' } }} />
+                  <Stack.Screen name="register-shop" options={{ presentation: 'modal', headerShown: false }} />
+                  <Stack.Screen name="shop/[id]" options={{ headerShown: false }} />
+                </Stack>
+                <SplashScreen />
+              </WebLayoutWrapper>
+import { createClient } from '../../lib/supabase'
+import { Skeleton } from '../../components/Skeleton'
+import { BackButton } from '../../components/BackButton'
+
+
+
+  const CARD = (feedWidth - 48) / 2;
+
+  const { colors, isDark } = useTheme();
+  // We force a dark/black theme palette for this premium shop design
+  const premiumColors = {
+    background: '#000000',
+              {shop.description ? (
+                <Text style={styles.shopDesc}>{shop.description}</Text>
+              ) : null}
+            </View>
+
+            <View style={styles.divider} />
+  divider: { height: 1, backgroundColor: '#222222', marginHorizontal: 24, marginBottom: 20, marginTop: 10 },
+  sectionLabel: { fontSize: 22, fontWeight: '800', color: colors.text, paddingHorizontal: 24, marginBottom: 16 },
+
+  listContent: { paddingBottom: 60 },
+  columnWrapper: { justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 16 },
+
+
+- [x] Research existing code structure
+- [/] Create SQL migration for `shop_inventory` table
+- [ ] Create `app/inventory/_layout.tsx`
+- [ ] Create `app/inventory/index.tsx` (main inventory screen)
+- [ ] Create `app/inventory/add.tsx` (add/edit product screen)
+- [ ] Register inventory screens in `app/_layout.tsx`
+- [ ] Add "Manage Inventory" button in `app/shop/[id].tsx`
+
+                  <Stack.Screen name="shop/[id]" options={{ headerShown: false }} />
+                  <Stack.Screen name="inventory" options={{ headerShown: false }} />
+                  <Stack.Screen name="inventory/add" options={{ presentation: 'modal', headerShown: false }} />
+                </Stack>
+                <SplashScreen />
+              </WebLayoutWrapper>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={s.headerTitle}>Inventory</Text>
+        <TouchableOpacity
+          style={s.addHeaderBtn}
+          onPress={() => router.push({ pathname: '/inventory/add', params: { shopId: shopId! } })}
+        >
+          <Ionicons name="add" size={22} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Dashboard Summary Cards */}
+  },
+  backBtn: { width: 40, alignItems: 'flex-start' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+  addHeaderBtn: { width: 40, alignItems: 'flex-end' },
+
+  // Stats
+  statsRow: {
+# AI Invoice Scanning - Tasks
+
+- [ ] Register `inventory/ai-scan` screen in `app/_layout.tsx`
+- [ ] Add "Scan Receipt (AI)" button to `app/inventory/index.tsx`
+- [ ] Create `app/inventory/ai-scan.tsx`
+  - [ ] UI for taking/picking a photo
+  - [ ] Integration with Gemini 1.5 Flash Vision API
+  - [ ] Review UI for extracted items
+  - [ ] Bulk insert logic to Supabase `shop_inventory`
+- [ ] Test the flow (Optional)
+
+SUPABASE_URL=https://tgfuufsgkelgjjktbugg.supabase.co
+SUPABASE_ANON_KEY=sb_publishable_BfvqG2R0d19EpcX8Xeu9nQ_93liMI2h
+GIPHY_API_KEY=qSdDjrUvi9NPjpmGgUrymB8qdcr2sLXn
+
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <View style={styles.statsContainer}>
+              <TouchableOpacity 
+                style={styles.editShopBtn} 
+                activeOpacity={0.8}
+                onPress={() => router.push('/(settings)/edit-shop')}
+              >
+                <Ionicons name="storefront" size={20} color="#fff" />
+                <Text style={styles.editShopBtnText}>Edit Shop Profile & Images</Text>
+              </TouchableOpacity>
+
+              <View style={[styles.statCard, { backgroundColor: colors.text }]}>
+                <Ionicons name="cash-outline" size={24} color="#a1a1aa" />
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  listContent: { padding: 16, paddingBottom: 40 },
+  
+  editShopBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#2563eb', paddingVertical: 14, borderRadius: 16,
+    marginBottom: 20,
+  },
+  editShopBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+  statsContainer: { marginBottom: 24 },
+  statCard: {
+    const expired = items.filter(i => {
+      const d = daysUntilExpiry(i.expiry_date)
+      return d !== null && d < 0
+    }).length
+    return { total: items.length, lowStock, expiringSoon, expired }
+  }, [items])
+
+  const fetchShop = useCallback(async () => {
+        </View>
+      </View>
+
+      {/* Search */}
+      <View style={s.searchRow}>
+        <View style={s.searchBox}>
+  statNum: { fontSize: 20, fontWeight: '800', color: colors.text },
+  statLabel: { fontSize: 10, fontWeight: '600', color: colors.textDim, marginTop: 2 },
+
+  // Search
+  searchRow: { paddingHorizontal: 16, paddingBottom: 10 },
+  searchBox: {
+    const expired = items.filter(i => {
+      const d = daysUntilExpiry(i.expiry_date)
+      return d !== null && d < 0
+    const totalCost = items.reduce((sum, item) => sum + (item.quantity * (item.cost_price || 0)), 0)
+    const potentialRevenue = items.reduce((sum, item) => sum + (item.quantity * (item.selling_price || 0)), 0)
+    const projectedProfit = potentialRevenue - totalCost
+            style={[s.filterBtn, filter === f && s.filterBtnActive]}
+            onPress={() => setFilter(f)}
+          >
+            <Text style={[s.filterText, filter === f && s.filterTextActive]}>
+              {f === 'all' ? 'All' : f === 'low_stock' ? '🔴 Low Stock' : '🟡 Expiring'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+    paddingHorizontal: 16, paddingBottom: 8,
+  },
+  filterBtn: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 20, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.card,
+
+          {/* Product Name */}
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>📦 Product Info</Text>
+            <View style={s.inputGroup}>
+              <Text style={s.label}>Product Name *</Text>
+              <TextInput
+
+          {/* Stock */}
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>📊 Stock Levels</Text>
+            <View style={s.row}>
+              <View style={[s.inputGroup, { flex: 2 }]}>
+                <Text style={s.label}>Current Quantity *</Text>
+
+          {/* Pricing */}
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>💰 Pricing</Text>
+            <View style={s.row}>
+              <View style={[s.inputGroup, { flex: 1 }]}>
+                <Text style={s.label}>Cost Price (TZS)</Text>
+
+          {/* Expiry */}
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>📅 Expiry Date</Text>
+            <View style={s.inputGroup}>
+              <Text style={s.label}>Expiry Date (optional)</Text>
+              <TouchableOpacity
+
+          {/* Barcode */}
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>🔍 Barcode</Text>
+            <View style={s.inputGroup}>
+              <Text style={s.label}>Barcode (optional)</Text>
+              <View style={s.barcodeRow}>
+
+          {/* Notes */}
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>📝 Notes</Text>
+            <View style={s.inputGroup}>
+              <TextInput
+                style={[s.input, s.textarea]}
+    borderColor: colors.border,
+    padding: 16,
+  },
+  sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.textDim, marginBottom: 14, letterSpacing: 0.5 },
+  inputGroup: { marginBottom: 14 },
+  label: { fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 7 },
+  input: {
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
+  backBtn: { width: 44 },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
+  saveBtn: { width: 44, alignItems: 'flex-end' },
+  saveBtnText: { color: colors.primary, fontSize: 16, fontWeight: '700' },
+
+  scroll: { padding: 20 },
+# Advanced E-Commerce Features
+
+- `[/]` 1. Database Updates
+  - `[ ]` Create `shop_promos` table
+  - `[ ]` Alter `orders` for tracking and promo details
+- `[ ]` 2. Dependencies
+  - `[ ]` Install `react-native-maps`, `react-native-chart-kit`, `expo-location`
+- `[ ]` 3. Promo Codes
+  - `[ ]` Build Promo Management screen (`promos.tsx`)
+  - `[ ]` Implement Promo validation and logic in `checkout.tsx`
+- `[ ]` 4. Analytics
+  - `[ ]` Integrate `react-native-chart-kit` into `store-dashboard.tsx`
+      activeOpacity={0.7}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <Ionicons name="chevron-back" size={20} color={color || '#000'} style={{ paddingRight: 2 }} />
+    </TouchableOpacity>
+  )
+}
+const getStyles = (colors: any) => StyleSheet.create({
+  btn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(244,244,245,0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+          title: '',
+          headerLeft: () => (
+            <View style={{ paddingLeft: 16, paddingRight: 16 }}>
+              <Pressable onPress={() => router.navigate('/(tabs)/profile')} hitSlop={15}>
+                <Ionicons name="arrow-back" size={24} color={colors.text} />
+              </Pressable>
+            </View>
+          )
+        }} 
+      activeOpacity={0.7}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <Ionicons name="arrow-back" size={24} color={color || colors.text} />
+    </TouchableOpacity>
+  )
+}
+      <Stack.Screen name="monetization" options={{ title: 'Monetization' }} />
+      <Stack.Screen name="purchases" options={{ title: 'Purchases' }} />
+      <Stack.Screen name="store-dashboard" options={{ title: 'Store Dashboard' }} />
+      
+      {/* New Screens */}
+      <Stack.Screen name="appearance" options={{ title: 'Appearance' }} />
+      style={[styles.btn, style]}
+      onPress={onPress || (() => router.back())}
+      activeOpacity={0.7}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <Ionicons name="arrow-back" size={24} color={color || colors.text} style={{ marginLeft: 2 }} />
+    </TouchableOpacity>
+  )
+}
+const getStyles = (colors: any) => StyleSheet.create({
+  btn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.isDark ? '#18181b' : '#f4f4f5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+})
+
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <View style={styles.statsContainer}>
+              <View style={styles.actionButtonsRow}>
+                <TouchableOpacity 
+                  style={[styles.dashboardBtn, { backgroundColor: '#2563eb' }]} 
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="storefront" size={20} color="#fff" />
+                  <Text style={styles.dashboardBtnText}>Edit Shop</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  <Ionicons name="albums-outline" size={20} color="#fff" />
+                  <Text style={styles.dashboardBtnText}>Inventory</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.statCard, { backgroundColor: colors.text }]}>
+  
+  actionButtonsRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+  dashboardBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 14, borderRadius: 16,
+  },
+  dashboardBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+  statsContainer: { marginBottom: 24 },
+  statCard: {
+  const [city, setCity] = useState('')
+  const [showCityPicker, setShowCityPicker] = useState(false)
+  const [provider, setProvider] = useState('Mpesa')
+
+  const deliveryFee = React.useMemo(() => {
+    let fee = 0;
+    return fee;
+  }, [items, city]);
+
+  const finalTotal = cartTotal + deliveryFee;
+ </View>
+        </View>
+
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Subtotal</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Delivery</Text>
+            <Text style={styles.summaryValue}>
+  - `[x]` Alter `orders` for tracking and promo details
+- `[x]` 2. Dependencies
+  - `[x]` Install `react-native-maps`, `react-native-chart-kit`, `expo-location`
+- `[/]` 3. Promo Codes
+  - `[/]` Build Promo Management screen (`promos.tsx`)
+  - `[ ]` Implement Promo validation and logic in `checkout.tsx`
+- `[ ]` 4. Analytics
+  - `[ ]` Integrate `react-native-chart-kit` into `store-dashboard.tsx`
+- `[ ]` 5. Delivery Tracking
+  - `[ ]` Build map view screen `tracking/[id].tsx`
+import { useTheme } from '../../lib/theme';
+import React, { useEffect, useState } from 'react'
+import { View, Text, StyleSheet, FlatList, TouchableOpacity,
+  ActivityIndicator, Alert
+} from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import { createClient } from '../../lib/supabase'
+import { useAuth } from '../../lib/auth'
+  const totalCommission = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.commission_rate)), 0)
+  const netEarnings = totalSales - totalCommission
+
+  const renderItem = ({ item }: { item: OrderItem }) => {
+    const isProcessing = item.status === 'PROCESSING' || !item.status
+    const isShipped = item.status === 'SHIPPED'
+                  <Text style={styles.statLabel}>Platform Fees</Text>
+                </View>
+              </View>
+              <Text style={styles.sectionTitle}>Recent Orders</Text>
+            </View>
+          }
+- `[x]` 3. Promo Codes
+  - `[x]` Build Promo Management screen (`promos.tsx`)
+  - `[x]` Implement Promo validation and logic in `checkout.tsx`
+- `[/]` 4. Analytics
+  - `[ ]` Integrate `react-native-chart-kit` into `store-dashboard.tsx`
+- `[ ]` 5. Delivery Tracking
+  - `[ ]` Build map view screen `tracking/[id].tsx`
+  - `[ ]` Add "Track Order" button to buyer order history
+
+import { Ionicons } from '@expo/vector-icons'
+import { createClient } from '../../lib/supabase'
+import { useAuth } from '../../lib/auth'
+
+type OrderItem = {
+  id: string
+  price: number
+  shop_id: string
+}
+
+type Order = {
+          <View style={styles.productIcon}>
+            <Ionicons name="cube-outline" size={16} color="#71717a" />
+          </View>
+          <Text style={styles.productName} numberOfLines={1}>{product.product_name}</Text>
+          <Text style={styles.productPrice}>TZS {product.price.toLocaleString()}</Text>
+        </View>
+      ))}
+
+  emptyState: { alignItems: 'center', paddingTop: 100 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginTop: 16, marginBottom: 6 },
+  emptyDesc: { fontSize: 14, color: colors.textDim },
+})
+
+  - `[x]` Implement Promo validation and logic in `checkout.tsx`
+- `[x]` 4. Analytics
+  - `[x]` Integrate `react-native-chart-kit` into `store-dashboard.tsx`
+- `[/]` 5. Delivery Tracking
+  - `[ ]` Build map view screen `tracking/[id].tsx`
+  - `[ ]` Add "Track Order" button to buyer order history
+
+# Premium Features Implementation Checklist
+
+- `[ ]` 1. Database SQL
+  - `[ ]` Write `supabase/premium_features.sql` (wallets, payouts, wishlists)
+- `[ ]` 2. Seller Wallet & Payouts
+  - `[ ]` Build `app/(settings)/wallet.tsx` UI
+# Premium Features Implementation Checklist
+
+- `[/]` 1. Database SQL
+  - `[ ]` Write `supabase/premium_features.sql` (wallets, payouts, wishlists)
+- `[ ]` 2. Seller Wallet & Payouts
+  - `[ ]` Build `app/(settings)/wallet.tsx` UI
+  - `[ ]` Link Wallet in `store-dashboard.tsx`
+- `[ ]` 3. Product Reviews
+                  <Text style={styles.dashboardBtnText}>Inventory</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.dashboardBtn, { backgroundColor: '#f59e0b' }]} 
+                  activeOpacity={0.8}
+                  onPress={() => router.push('/(settings)/promos')}
+                >
+                  <Ionicons name="pricetag" size={20} color="#fff" />
+                  <Text style={styles.dashboardBtnText}>Promos</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.statCard, { backgroundColor: colors.text }]}>
+                  <Text style={styles.dashboardBtnText}>Inventory</Text>
+                </TouchableOpacity>
+                
+                  <Ionicons name="pricetag" size={20} color="#fff" />
+                  <Text style={styles.dashboardBtnText}>Promos</Text>
+                </TouchableOpacity>
+
+- `[x]` 1. Database SQL
+  - `[x]` Write `supabase/premium_features.sql` (wallets, payouts, wishlists)
+- `[/]` 2. Seller Wallet & Payouts
+  - `[ ]` Build `app/(settings)/wallet.tsx` UI
+  - `[ ]` Link Wallet in `store-dashboard.tsx`
+- `[ ]` 3. Product Reviews
+  - `[ ]` Add "Leave Review" button to `purchases.tsx`
+  - `[ ]` Handle `?review=true` to auto-open modal in `product/[id].tsx`
+- `[ ]` 4. Chat Integration
+          </View>
+          
+          {(product.status === 'SHIPPED' || product.status === 'DELIVERED') && (
+            <TouchableOpacity 
+              style={styles.trackBtn}
+              onPress={() => router.push(`/tracking/${product.id}`)}
+            >
+              <Ionicons name="map-outline" size={14} color="#2563eb" style={{ marginRight: 4 }} />
+              <Text style={styles.trackBtnText}>Track</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ))}
+  const feedWidth = Platform.OS === 'web' && width >= 768 ? Math.min(width, 600) : width;
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => getStyles(colors), [colors]);
+  const { id, shopId } = useLocalSearchParams()
+  const insets = useSafeAreaInsets()
+  const supabase = createClient()
+  const { items, addToCart } = useCart()
+  const [isReviewing, setIsReviewing] = useState(false)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+
+  const isOwner = user?.id === product?.owner_id
+
+          
+          const { data: revData } = await supabase.from('product_reviews').select('*').eq('product_id', id).order('created_at', { ascending: false })
+          if (revData) setReviews(revData)
+        }
+      }
+      setLoading(false)
+    fetchProduct()
+  }, [id, shopId])
+
+  const submitReview = async () => {
+    if (!user) return Alert.alert('Error', 'You must be logged in to review.')
+
+  const handleMessageSeller = () => {
+    if (!product) return
+    Alert.alert('Message Seller', `This will open a DM with the owner of ${product.shopName}. (Chat coming soon!)`)
+  }
+
+  const handleAddToCart = () => {
+
+      {/* Floating Bottom Bar */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity style={styles.messageBtn} onPress={handleMessageSeller}>
+          <Ionicons name="chatbubble-ellipses-outline" size={24} color="#18181b" />
+        </TouchableOpacity>
+- `[x]` 2. Seller Wallet & Payouts
+  - `[x]` Build `app/(settings)/wallet.tsx` UI
+  - `[x]` Link Wallet in `store-dashboard.tsx`
+- `[/]` 3. Product Reviews
+  - `[ ]` Add "Leave Review" button to `purchases.tsx`
+  - `[ ]` Handle `?review=true` to auto-open modal in `product/[id].tsx`
+- `[ ]` 4. Chat Integration
+  - `[ ]` Route "Message Seller" to `/chat?id=...` in `product/[id].tsx`
+- `[ ]` 5. Wishlists
+  - `[ ]` Add Heart toggle to `product/[id].tsx`
+  - `[ ]` Build `app/(settings)/wishlist.tsx`
+  - `[ ]` Add Wishlist link to `app/(settings)/index.tsx`
+
+          <SettingsItem icon="person-outline" title="Edit Profile" onPress={() => router.push('/(settings)/edit-profile')} />
+          <SettingsItem icon="lock-closed-outline" title="Privacy Policy" onPress={() => router.push('/(settings)/privacy')} />
+          <SettingsItem icon="document-text-outline" title="Terms of Service" onPress={() => router.push('/(settings)/terms')} />
+          <SettingsItem icon="bookmark-outline" title="Saved Posts" onPress={() => router.push('/(settings)/bookmarks')} />
+          <SettingsItem icon="shield-checkmark-outline" title="Security" onPress={() => router.push('/(settings)/security')} />
+        </View>
+  - `[x]` Handle `?review=true` to auto-open modal in `product/[id].tsx`
+- `[x]` 4. Chat Integration
+  - `[x]` Route "Message Seller" to `/chat?id=...` in `product/[id].tsx`
+- `[/]` 5. Wishlists
+  - `[x]` Add Heart toggle to `product/[id].tsx`
+  - `[ ]` Build `app/(settings)/wishlist.tsx`
+  - `[ ]` Add Wishlist link to `app/(settings)/index.tsx`
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    )
+  }
+# Shop Messages Implementation Checklist
+
+- `[ ]` 1. Database Setup
+  - `[ ]` Write `supabase/shop_messages.sql`
+- `[ ]` 2. Tagging Shop Messages
+  - `[ ]` Update `app/product/[id].tsx` to pass `?is_shop=true`
+  - `[ ]` Update `app/chat.tsx` to read `is_shop` and insert `is_shop_chat: true`
+- `[ ]` 3. The Shop Tab UI
+
+  const handleMessageSeller = () => {
+    if (!product) return
+    router.push(`/chat?id=${product.owner_id}`)
+  }
+
+  const handleWishlistToggle = async () => {
+  receiver_id: string
+  created_at: string
+  is_read: boolean
+}
+
+// ── Swipe to reply wrapper ────────────────────────────────────────────────────
+export default function () {
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => getStyles(colors), [colors]);
+  const { id } = useLocalSearchParams<{ id: string }>()
+  const { user } = useAuth()
+  const supabase = createClient()
+  const insets = useSafeAreaInsets()
+  const [requestStatus, setRequestStatus] = useState<string | null>('allowed')
+  const [checkingRequest, setCheckingRequest] = useState(true)
+
+  // Feature states
+  const [showGiphy, setShowGiphy] = useState(false)
+  const [showEmoji, setShowEmoji] = useState(false)
+      sender_id: user.id,
+      receiver_id: id,
+      content: encrypted,
+    } as any)
+
+    if (error) {
+        sender_id: user.id,
+        receiver_id: id,
+        content: encrypted,
+      } as any)
+
+      sendPushNotification('voice')
+      sender_id: user.id,
+      receiver_id: id,
+      content: encrypted,
+    } as any)
+    if (!error) {
+      sendPushNotification('gif')
+
+- `[x]` 1. Database Setup
+  - `[x]` Write `supabase/shop_messages.sql`
+- `[/]` 2. Tagging Shop Messages
+  - `[ ]` Update `app/product/[id].tsx` to pass `?is_shop=true`
+  - `[ ]` Update `app/chat.tsx` to read `is_shop` and insert `is_shop_chat: true`
+- `[ ]` 3. The Shop Tab UI
+  - `[ ]` Update `app/(tabs)/messages.tsx` to fetch `is_shop_chat`
+  - `[ ]` Add the "Shop" tab and filter conversations
+
+  const [inboundRequests, setInboundRequests] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [activeTab, setActiveTab] = useState<'Inbox' | 'Requests'>('Inbox')
+  const [activeFilter, setActiveFilter] = useState<'All' | 'Unread' | 'Unanswered' | 'Verified'>('All')
+  const [showFilterMenu, setShowFilterMenu] = useState(false)
+
+    // Get all unique people this user has messaged
+    const { data: sent, error: err1 } = await supabase
+      .from('messages')
+      .select('receiver_id, created_at, content')
+      .eq('sender_id', user.id)
+      .order('created_at', { ascending: false })
+      
+
+    const { data: received, error: err2 } = await supabase
+      .from('messages')
+      .select('sender_id, created_at, content, is_read')
+      .eq('receiver_id', user.id)
+      .order('created_at', { ascending: false })
+
+    allMessages.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    
+    const latestMsgMap = new Map<string, any>()
+    for (const msg of allMessages) {
+      if (!latestMsgMap.has(msg.partner_id)) {
+        latestMsgMap.set(msg.partner_id, msg)
+    }
+
+    console.log('Latest messages computed
+    (c.profile.username?.toLowerCase() || '').includes(search.toLowerCase())
+  )
+          <TouchableOpacity style={[styles.tab, activeTab === 'Inbox' && styles.tabActive]} onPress={() => setActiveTab('Inbox')}>
+            <Text style={[styles.tabText, activeTab === 'Inbox' && styles.tabTextActive]}>Inbox</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tab, activeTab === 'Requests' && styles.tabActive]} onPress={() => setActiveTab('Requests')}>
+            <Text style={[styles.tabText, activeTab === 'Requests' && styles.tabTextActive]}>Requests {inboundRequests.length > 0 ? `(${inboundRequests.length})` : ''}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {activeTab === 'Inbox' && (
+        <View style={styles.searchBox}>
+          <Ionicons name="search" size={18} color="#a1a1aa" style={{ marginRight: 8 }} />
+          <TextInput
+
+
+
+      {activeTab === 'Inbox' ? (
+        <FlatList
+          data={filtered}
+          keyExtractor={item => item.profile.id}
+- `[x]` 2. Tagging Shop Messages
+  - `[x]` Update `app/product/[id].tsx` to pass `?is_shop=true`
+  - `[x]` Update `app/chat.tsx` to read `is_shop` and insert `is_shop_chat: true`
+- `[/]` 3. The Shop Tab UI
+  - `[ ]` Update `app/(tabs)/messages.tsx` to fetch `is_shop_chat`
+  - `[ ]` Add the "Shop" tab and filter conversations
+
+* If a seller has marked any of your items as `DELIVERED`, a yellow **"Review"** button will appear next to the item!
+* Tapping it automatically routes you to the product page and instantly pops open the Review Modal, allowing you to easily leave a 1-5 star rating and comment.
+
+## 3. Real-Time Chat Integration 💬
+* When viewing any product, the "Message Seller" bubble button in the bottom floating bar is now fully hooked up.
+* Tapping it automatically routes you to the end-to-end encrypted messaging screen and drops you into a direct chat with the shop owner!
+
+## 4. Wishlists ❤️
+* While browsing products, you will notice a new **Heart icon** in the bottom floating bar.
+      {/* Floating Bottom Bar */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity style={styles.messageBtn} onPress={handleWishlistToggle}>
+          <Ionicons name={isWishlisted ? "heart" : "heart-outline"} size={24} color={isWishlisted ? "#ef4444" : "#18181b"} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.messageBtn} onPress={handleMessageSeller}>
+          <Ionicons name="chatbubble-ellipses-outline" size={24} color="#18181b" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.addCartBtn} onPress={handleAddToCart}>
+          <Text style={styles.addCartText}>Add to Cart</Text>
+# Onboarding Flow Checklist
+
+- `[ ]` 1. Create the Onboarding Screen
+  - `[ ]` Build `app/onboarding.tsx`
+- `[ ]` 2. App Entry Logic
+  - `[ ]` Update `app/index.tsx` to check `@has_seen_onboarding`
+- `[ ]` 3. Settings integration
+  - `[ ]` Add link to replay onboarding in `app/(settings)/help.tsx`
+import { Redirect } from 'expo-router'
+import { View, ActivityIndicator } from 'react-native'
+import { useAuth } from '../lib/auth'
+
+export default function Index() {
+  const { colors } = useTheme();
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    )
+  }
+  return <Redirect href={user ? '/(tabs)' : '/(auth)/login'} />
+}
+
+
+- `[x]` 1. Create the Onboarding Screen
+  - `[x]` Build `app/onboarding.tsx`
+- `[/]` 2. App Entry Logic
+  - `[ ]` Update `app/index.tsx` to check `@has_seen_onboarding`
+- `[ ]` 3. Settings integration
+  - `[ ]` Add link to replay onboarding in `app/(settings)/help.tsx`
+
+      {/* Extra links */}
+      <View style={styles.linksCard}>
+        {[
+          { label: 'Terms of Service', icon: 'document-text-outline', onPress: () => router.push('/(settings)/terms') },
+          { label: 'Privacy Policy',   icon: 'lock-closed-outline',   onPress: () => router.push('/(settings)/privacy') },
+        ].map((item, i) => (
+  - `[x]` Build `app/onboarding.tsx`
+- `[x]` 2. App Entry Logic
+  - `[x]` Update `app/index.tsx` to check `@has_seen_onboarding`
+- `[/]` 3. Settings integration
+  - `[ ]` Add link to replay onboarding in `app/(settings)/help.tsx`
+
+
+Once you've done that, the backend will be ready for the following features:
+
+## 1. Seller Wallet & Payout System 💰
+* If you go to **Settings > Store Dashboard**, you will now see a new purple **Wallet** button next to Promos.
+* Tapping it opens your Wallet, displaying your Available Balance and your **Payout History**.
+* You can tap "Request Payout" to withdraw funds to M-PESA, Tigo Pesa, or Airtel Money! It will deduct your balance and add a pending request to your history.
+* After swiping through, users can tap "Get Started" to dive in.
+* *Need a refresher?* We also added a **"View App Guide"** button in **Settings → Help & Support** so you can replay the onboarding flow anytime.
+
+## 2. Dynamic Premium Layouts 🎨System 💰
+* If you go to **Settings > Store Dashboard**, you will now see a new purple **Wallet** button next to Promos.
+* Tapping it opens your Wallet, displaying your Available Balance and your **Payout History**.
+* You can tap "Request Payout" to withdraw funds to M-PESA, Tigo Pesa, or Airtel Money! It will deduct your balance and add a pending request to your history.
+
+const KeyboardProvider = ({ children }: any) => <>{children}</>
+
+            <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="create-post" options={{ presentation: 'modal', headerShown: false }} />
+                  <Stack.Screen name="user-profile" options={{ headerShown: false }} />
+                  <Stack.Screen name="chat" options={{ headerShown: false }} />
+                  <Stack.Screen name="post/[id]" options={{ headerShown: false }} />
+                  <Stack.Screen name="notifications" options={{ headerShown: false }} />
+                  <Stack.Screen name="product/[id]" options={{ presentation: 'fullScreenModal', headerShown: false }} />
+                  <Stack.Screen name="cart" options={{ presentation: 'modal', headerShown: false }} />
+                  <Stack.Screen name="checkout" options={{ presentation: 'fullScreenModal', headerShown: false, contentStyle: { backgroundColor: '#000000' } }} />
+                  <Stack.Screen name="register-shop" options={{ presentation: 'modal', headerShown: false }} />
+                  <Stack.Screen name="shop/[id]" options={{ headerShown: false }} />
+                  <Stack.Screen name="inventory" options={{ headerShown: false }} />
+                  <Stack.Screen name="inventory/add" options={{ presentation: 'modal', headerShown: false }} />
+                  <Stack.Screen name="inventory/ai-scan" options={{ presentation: 'fullScreenModal', headerShown: false }} />
+                </Stack>
+                <SplashScreen />
+              </WebLayoutWrapper>
+              </UIProvider>
+# Seller Onboarding & Navigation Fix Checklist
+
+- `[ ]` 1. Fix White Screen Flash
+  - `[ ]` Update `app/_layout.tsx` to wrap `Stack` and set background color.
+- `[ ]` 2. Seller Onboarding Screen
+  - `[ ]` Create `app/seller-onboarding.tsx`
+- `[ ]` 3. Update Register Shop Flow
+  - `[ ]` Modify `app/register-shop.tsx` to route to Seller Onboarding on success.
+
+- `[x]` 1. Fix White Screen Flash
+  - `[x]` Update `app/_layout.tsx` to wrap `Stack` and set background color.
+- `[/]` 2. Seller Onboarding Screen
+  - `[ ]` Create `app/seller-onboarding.tsx`
+- `[ ]` 3. Update Register Shop Flow
+  - `[ ]` Modify `app/register-shop.tsx` to route to Seller Onboarding on success.
+
+        <Text style={styles.successText}>
+          Your shop "{shopName}" has been submitted for review.
+        </Text>
+        <TouchableOpacity style={styles.primaryBtn} onPress={() => router.back()}>
+          <Text style={styles.primaryBtnText}>Back to Marketplace</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    )
+  - `[x]` Update `app/_layout.tsx` to wrap `Stack` and set background color.
+- `[x]` 2. Seller Onboarding Screen
+  - `[x]` Create `app/seller-onboarding.tsx`
+- `[/]` 3. Update Register Shop Flow
+  - `[ ]` Modify `app/register-shop.tsx` to route to Seller Onboarding on success.
+
+* After swiping through, users can tap "Get Started" to dive in.
+* *Need a refresher?* We also added a **"View App Guide"** button in **Settings → Help & Support** so you can replay the onboarding flow anytime.
+
+## 2. Seller Wallet & Payout System 💰
+* If you go to **Settings > Store Dashboard**, you will now see a new purple **Wallet** button next to Promos.
+* Tapping it opens your Wallet, displaying your Available Balance and your **Payout History**.
+* You can tap "Request Payout" to withdraw funds to M-PESA, Tigo Pesa, or Airtel Money! It will deduct your balance and add a pending request to your history.
+import { Redirect } from 'expo-router'
+import { View, ActivityIndicator } from 'react-native'
+import { useAuth } from '../lib/auth'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useEffect, useState } from 'react'
+
+export default function Index() {
+  const { colors } = useTheme();
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    AsyncStorage.getItem('@has_seen_onboarding').then(val => {
+      setHasSeenOnboarding(val === 'true')
+    })
+  }, [])
+
+  if (loading || hasSeenOnboarding === null) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.text} />
+    )
+  }
+
+  if (!hasSeenOnboarding) {
+    return <Redirect href="/onboarding" />
+  }
+
+  return <Redirect href={user ? '/(tabs)' : '/(auth)/login'} />
+}
+
+            full_name: `${firstName.trim()} ${lastName.trim()}`
+          }).eq('id', newUser.id)
+      }
+      router.replace('/(tabs)')
+    } catch (e: any) {
+      Alert.alert('Signup Failed', e.message)
+    } finally {
+const SLIDES = [
+  {
+    id: '1',
+    title: 'Welcome to JPM',
+    description: 'Discover endless amazing products. Swipe through beautiful feeds, search for anything, and find exactly what you need.',
+    icon: 'compass-outline',
+    color: '#3b82f6'
+  },
+      slidesRef.current?.scrollToIndex({ index: currentIndex + 1 });
+    } else {
+      await AsyncStorage.setItem('@has_seen_onboarding', 'true');
+      router.replace('/');
+    }
+  };
+
+          activeOpacity={0.8}
+        >
+          <Text style={styles.buttonText}>
+            {currentIndex === SLIDES.length - 1 ? 'Get Started' : 'Next'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Support */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Support</Text>
+        <View style={styles.sectionCard}>
+          <SettingsItem icon="help-circle-outline" title="Help & Support" onPress={() => router.push('/(settings)/help')} />
+          <SettingsItem icon="information-circle-outline" title="About App" onPress={() => router.push('/(settings)/about')} />
+        </View>
+import { SplashScreen } from '../components/SplashScreen'
+import { WebLayoutWrapper } from '../components/WebLayoutWrapper'
+import { UIProvider } from '../lib/ui'
+import { ThemeProvider } from '../lib/theme'
+import * as Updates from 'expo-updates'
+import Constants from 'expo-constants'
+// Configure how notifications appear when the app is in the foreground
+
+interface CartContextType {
+  items: CartItem[]
+  addToCart: (item: CartItem) => void
+  removeFromCart: (id: string) => void
+  clearCart: () => void
+  cartTotal: number
+    AsyncStorage.setItem('@cart', JSON.stringify(items))
+  }, [items])
+
+  const addToCart = (item: CartItem) => {
+    setItems(prev => {
+      // Don't add duplicates
+      if (prev.some(i => i.id === item.id)) return prev
+      return [...prev, item]
+    })
+  }
+  const [loading, setLoading] = useState(true)
+  const [activeImageIndex, setActiveImageIndex] = useState(0)
+
+  const [isReviewing, setIsReviewing] = useState(false)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+    router.push(`/chat?id=${product.owner_id}&is_shop=true`)
+  }
+
+  const handleWishlistToggle = async () => {
+    if (!user) return Alert.alert('Error', 'Please login to save items.')
+    if (!product) return
+        <TouchableOpacity style={styles.messageBtn} onPress={handleMessageSeller}>
+          <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.addCartBtn} onPress={handleAddToCart}>
+          <Text style={styles.addCartText}>Add to Cart</
+      {/* Review Modal */}
+      <Modal visible={isReviewing} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setIsReviewing(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+  created_at: string
+  is_read: boolean
+  is_shop_chat?: boolean
+}
+
+// ── Swipe to reply wrapper ────────────────────────────────────────────────────
+export default function () {
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => getStyles(colors), [colors]);
+  const { id, is_shop } = useLocalSearchParams<{ id: string, is_shop?: string }>()
+  const { user } = useAuth()
+  const supabase = createClient()
+  const insets = useSafeAreaInsets()
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+
+  const sharedSecret = user && id ? getSharedSecret(user.id, id) : ''
+    return (
+      <View style={[styles.msgRow, mine ? styles.msgRowMine : styles.msgRowTheirs, { marginTop: sameAsOlder ? 2 : 10 }]}>
+        {!mine && !sameAsNewer && partner?.avatar_url ? (
+# Premium Features Task List
+
+## 1. "Make an Offer" (Haggle System)
+- `[ ]` Create `supabase/offers.sql` migration for message columns.
+- `[ ]` Update `lib/cart.tsx` to handle custom prices.
+- `[ ]` Add "Make Offer" UI to `app/product/[id].tsx`
+- `[ ]` Update `app/chat.tsx` to render Offer Cards and handle accept/decline.
+
+## 2. Animated Order Tracking
+- `[ ]` Update `app/tracking/[id].tsx` with the animated FedEx-style visual timeline.
+
+import React, { useEffect, useState } from 'react'
+import {
+  View, Text, StyleSheet, FlatList,
+  ActivityIndicator
+} from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import { createClient } from '../../lib/supabase'
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [requestStatus, setRequestStatus] = useState<string | null>('allowed')
+  const [checkingRequest, setCheckingRequest] = useState(true)
+
+  const isShopChat = is_shop === 'true' || messages.some(m => m.is_shop_chat)
+
+  // Feature states
+  const [showGiphy, setShowGiphy] = useState(false)
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    )
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    )
+  }
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={styles.title}>My Wishlist</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <FlatList
+  container: { flex: 1, backgroundColor: colors.background },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: colors.border
+  },
+  backBtn: { width: 40, height: 40, justifyContent: 'center' },
+  title: { fontSize: 18, fontWeight: '800', color: colors.text },
+  
+  listContent: { padding: 16, paddingBottom: 60 },
+  const isShopChat = is_shop === 'true' || !!make_offer || messages.some(m => m.is_shop_chat)
+
+  // For shop chats skip the follow/request gate — always allow
+  const [requestStatus, setRequestStatus] = useState<string | null>(isShopChat ? 'allowed' : null)
+  const [checkingRequest, setCheckingRequest] = useState(!isShopChat)
+
+  // Feature states
+  const [showGiphy, setShowGiphy] = useState(false)
+
+  const checkRequestStatus = useCallback(async () => {
+    if (!user || !id) return
+    setCheckingRequest(true)
+
+    const { count } = await supabase
+
+function AppStack() {
+  const { colors } = useTheme()
+  return (
+    <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }}>
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="create-post" options={{ presentation: 'modal', headerShown: false }} />
+      <Stack.Screen name="user-profile" options={{ headerShown: false }} />
+      <Stack.Screen name="chat" options={{ headerShown: false }} />
+      <Stack.Screen name="post/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="product/[id]" options={{ presentation: 'fullScreenModal', headerShown: false }} />
+      <Stack.Screen name="cart" options={{ presentation: 'modal', headerShown: false }} />
+      <Stack.Screen name="checkout" options={{ presentation: 'fullScreenModal', headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="register-shop" options={{ presentation: 'modal', headerShown: false }} />
+      <Stack.Screen name="shop/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="inventory" options={{ headerShown: false }} />
+      <Stack.Screen name="inventory/add" options={{ presentation: 'modal', headerShown: false }} />
+      <Stack.Screen name="inventory/ai-scan" options={{ presentation: 'fullScreenModal', headerShown: false }} />
+      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+      <Stack.Screen name="seller-onboarding" options={{ headerShown: false }} />
+    </Stack>
+  )
+}
+        <TouchableOpacity style={styles.messageBtn} onPress={handleMessageSeller}>
+          <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.messageBtn, { paddingHorizontal: 12 }]} onPress={() => setIsMakingOffer(true)}>
+          <Text style={{ color: colors.text, fontWeight: '700' }}>Offer</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.addCartBtn} onPress={handleAddToCart}>
+          <Text style={styles.addCartText}>Add to Cart</Text>
+    backgroundColor: colors.border,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  addCartBtn: {
+    flex: 1, height: 56,
+    borderRadius: 28,
+    const { data: sent, error: err1 } = await supabase
+      .from('messages')
+      .select('receiver_id, created_at, content, is_shop_chat')
+      .eq('sender_id', user.id)
+      .order('created_at', { ascending: false })
+      
+    console.log('Sent messages fetched, count:', sent?.length, err1)
+
+      .from('messages')
+      .select('sender_id, created_at, content, is_read, is_shop_chat')
+      .eq('receiver_id', user.id)
+      .order('created_at', { ascending: false })
+
+    console.log('Received messages fetched, count:', received?.length, err2)
+
+    console.log('Fetching conversations for user:', user.id)
+    // Get all unique people this user has messaged
+    const { data: sent, error: err1 } = await supabase
+      .from('messages')
+      .select('receiver_id, created_at, content, is_shop_chat')
+      .order('created_at', { ascending: false })
+      .limit(200)
+      
+
+    const { data: received, error: err2 } = await supabase
+      .from('messages')
+      .select('sender_id, created_at, content, is_read, is_shop_chat')
+      .order('created_at', { ascending: false })
+      .limit(200)
+
+    console.log('Fetching conversations for user:', user.id)
+    // Get all unique people this user has messaged
+    const { data: sent, error: err1 } = await supabase
+      .eq('sender_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(200)
+    console.log('Sent messages fetched, count:', sent?.length, err1)
+
+    const { data: received, error: err2 } = await supabase
+      .eq('receiver_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(200)
+          setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, text: fullResponse } : m))
+        }
+      } else if (mode === 'image') {
+        setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, text: `Generating ${aspectRatio} Image with Imagen 4 Fast... ⚡` } : m))
+        
+        // Call the official Google Gemini 2.5 Flash Image API (Extremely Cheap)
+        try {
+          
+          const imageUrl = `data:${imagePart.inlineData.mimeType || 'image/jpeg'};base64,${imagePart.inlineData.data}`;
+          
+          setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, text: `Here is your ${aspectRatio} image!`, mediaType: 'image', aspectRatio, mediaUrl: imageUrl } : m));
+        } catch (err: any) {
+          console.error('Gemini API Error:', err.message);
+          setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, text: `⚠️ Gemini API Error: ${err.message}` } : m));
+# Premium Features Implementation Plan
+
+You've selected the two most exciting features! Here is exactly how I will implement the Haggle System and the Animated Order Tracking to make the app feel incredibly premium.
+
+## Proposed Changes
+
+### 1. "Make an Offer" (Haggle System)
+We will build a negotiation engine directly inside the new Shop Messages system.
+
+#### [NEW] `supabase/offers.sql` (Migration)
+- Add new columns to the existing `messages` table to handle offers natively: `is_offer`, `offer_amount`, `offer_status` (pending, accepted, declined), and `offer_product_id`.
+
+#### [MODIFY] `app/product/[id].tsx`
+- Add a new **"Make Offer"** button right next to the "Add to Cart" button.
+- Tapping it will open a sleek modal where the buyer can enter their desired price.
+- Submitting will automatically send an "Offer Message" directly to the seller's Shop In
+
+## Verification Plan
+1. I will write the SQL migration and update the application code.
+2. I will provide you with the SQL file to run in your Supabase dashboard.
+3. You can verify the offer system by viewing a product, making an offer, and checking the Shop Inbox.
+4. You can verify the tracking UI by going to Settings > Purchases and tapping "Track" on an existing order.
+
+- `[ ]` **Database Migrations**
+  - `[ ]` Create `supabase/analytics.sql` (add `views` to `shops` table)
+- `[ ]` **Store Analytics Dashboard**
+  - `[ ]` Modify `app/shop/[id].tsx` to increment `views` on visit (if not owner)
+  - `[ ]` Modify `app/shop/[id].tsx` to add "Analytics" button for owner
+- `[/]` **Database Migrations**
+  - `[/]` Create `supabase/analytics.sql` (add `views` to `shops` table)
+- `[ ]` **Store Analytics Dashboard**
+  - `[ ]` Modify `app/shop/[id].tsx` to increment `views` on visit (if not owner)
+  - `[ ]` Modify `app/shop/[id].tsx` to add "Analytics" button for owner
+  - `[ ]` Create `app/inventory/analytics.tsx` with metrics and charts
+- `[ ]` **Gamified Shopping (Swipe to Discover)**
+      .eq('id', id)
+      .single()
+      .then(({ data, error }) => {
+        if (data && !error) setShop(data)
+        setLoading(false)
+      })
+  }, [id])
+      <View style={[styles.floatingHeader, { paddingTop: insets.top + 10 }]}>
+        <BackButton />
+        <Text style={styles.headerTitle} numberOfLines={1}>{shop.name}</Text>
+        <TouchableOpacity
+          style={styles.messageBtn}
+          onPress={() => shop.owner_id && router.push(`/chat?id=${shop.owner_id}`)}
+        >
+          <Ionicons name="chatbubble-ellipses-outline" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+- `[x]` **Database Migrations**
+  - `[x]` Create `supabase/analytics.sql` (add `views` to `shops` table)
+- `[/]` **Store Analytics Dashboard**
+  - `[/]` Modify `app/shop/[id].tsx` to increment `views` on visit (if not owner)
+  - `[ ]` Modify `app/shop/[id].tsx` to add "Analytics" button for owner
+  - `[ ]` Create `app/inventory/analytics.tsx` with metrics and charts
+- `[ ]` **Gamified Shopping (Swipe to Discover)**
+  - `[ ]` Create `app/discover.tsx` with Swipeable Card Deck (Tinder style)
+- `[/]` **Store Analytics Dashboard**
+  - `[x]` Modify `app/shop/[id].tsx` to increment `views` on visit (if not owner)
+  - `[x]` Modify `app/shop/[id].tsx` to add "Analytics" button for owner
+  - `[ ]` Create `app/inventory/analytics.tsx` with metrics and charts
+- `[ ]` **Gamified Shopping (Swipe to Discover)**
+  - `[ ]` Create `app/discover.tsx` with Swipeable Card Deck (Tinder style)
+  - `[ ]` Update `app/(tabs)/marketplace.tsx` with "Enter Discovery Mode" banner
+        </View>
+      </Modal>
+
+      {loading ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10, paddingTop: 8 }}>
+          {[1, 2, 3, 4, 5, 6].map(i => (
+    backgroundColor: '#3b82f6',
+    borderWidth: 1.5, borderColor: colors.text,
+  },
+  // Modal
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', padding: 20
+  - `[x]` Modify `app/shop/[id].tsx` to increment `views` on visit (if not owner)
+  - `[x]` Modify `app/shop/[id].tsx` to add "Analytics" button for owner
+  - `[x]` Create `app/inventory/analytics.tsx` with metrics and charts
+- `[ ]` **Gamified Shopping (Swipe to Discover)**
+  - `[ ]` Create `app/discover.tsx` with Swipeable Card Deck (Tinder style)
+  - `[ ]` Update `app/(tabs)/marketplace.tsx` with "Enter Discovery Mode" banner
+- `[ ]` **Flash Sales & Mystery Boxes**
+  - `[ ]` Update `app/inventory/add.tsx` to include toggles for Flash Sale and Mystery Box
+  - `[ ]` Update `app/product/[id].tsx` (Edit Mode) with the same toggles
+- `[x]` **Gamified Shopping (Swipe to Discover)**
+  - `[x]` Create `app/discover.tsx` with Swipeable Card Deck (Tinder style)
+  - `[x]` Update `app/(tabs)/marketplace.tsx` with "Enter Discovery Mode" banner
+- `[ ]` **Flash Sales & Mystery Boxes**
+  - `[ ]` Update `app/inventory/add.tsx` to include toggles for Flash Sale and Mystery Box
+  - `[ ]` Update `app/product/[id].tsx` (Edit Mode) with the same toggles
+  - `[ ]` Update `app/product/[id].tsx` (View Mode) to render Flash Sale countdown timer
+  - `[ ]` Update `app/product/[id].tsx` (View Mode) to render Mystery Box UI and reveal animation
+import {
+  View, Text, StyleSheet, TextInput, TouchableOpacity,
+  ScrollView, ActivityIndicator, Alert, Modal, FlatList,
+  Platform, KeyboardAvoidingView
+} from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
+  const [expiryDate, setExpiryDate] = useState<Date | null>(
+    existingItem?.expiry_date ? new Date(existingItem.expiry_date) : null
+  )
+
+  const [loading, setLoading] = useState(false)
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false)
+      expiry_date: expiryDate ? expiryDate.toISOString().split('T')[0] : null,
+      barcode: barcode.trim() || null,
+      notes: notes.trim() || null,
+    }
+
+    try {
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+            </View>
+          </View>
+
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+              />
+            </View>
+          </View>
+
+  const [editLocalFee, setEditLocalFee] = useState('5000')
+  const [editMikoaniFee, setEditMikoaniFee] = useState('15000')
+  const [editImages, setEditImages] = useState<string[]>([])
+  const [isSaving, setIsSaving] = useState(false)
+
+  const openEditModal = () => {
+    setEditLocalFee(product.settings?.delivery_fee_local?.toString() || '5000')
+    setEditMikoaniFee(product.settings?.delivery_fee_mikoani?.toString() || '15000')
+    setEditImages([...(product.image_urls || [])])
+    setIsEditing(true)
+  }
+
+            price: editPrice,
+            description: editDesc,
+            image_urls: editImages,
+            settings: {
+              ...p.settings,
+              free_delivery: editFreeDelivery,
+        price: editPrice,
+        description: editDesc,
+        image_urls: editImages,
+        settings: {
+          ...prev.settings,
+          free_delivery: editFreeDelivery,
+          <Text style={styles.price}>{product.price}</Text>
+          <Text style={styles.name}>{product.name}</Text>
+          
+ </View>
+          <View style={styles.tagsRow}>
+            {product.category && (
+              <View style={styles.tag}>
+            </View>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.sectionLabel}>Images</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', paddingTop: 8 }}>
+                {editImages.map((img, idx) => (
+- `[x]` **Gamified Shopping (Swipe to Discover)**
+  - `[x]` Create `app/discover.tsx` with Swipeable Card Deck (Tinder style)
+  - `[x]` Update `app/(tabs)/marketplace.tsx` with "Enter Discovery Mode" banner
+- `[/]` **Flash Sales & Mystery Boxes**
+  - `[/]` Update `app/inventory/add.tsx` to include toggles for Flash Sale and Mystery Box
+  - `[ ]` Update `app/product/[id].tsx` (Edit Mode) with the same toggles
+  - `[ ]` Update `app/product/[id].tsx` (View Mode) to render Flash Sale countdown timer
+  - `[ ]` Update `app/product/[id].tsx` (View Mode) to render Mystery Box UI and reveal animation
+
+      // Trigger chart animations
+      Animated.stagger(100, anims.map(anim => 
+        Animated.spring(anim, {
+          toValue: Math.random() * 100 + 20, // Random height for mock chart
+          useNativeDriver: false,
+          bounciness: 12
+        })
+      )).start()
+    }
+                  <Animated.View 
+                    style={[
+                      styles.barFill, 
+                      { height: anims[i].interpolate({ inputRange: [0, 150], outputRange: ['0%', '100%'] }) }
+                    ]} 
+                  />
+                </View>
+    gap: 12
+  },
+  barBackground: {
+    width: 12,
+    height: 120,
+    backgroundColor: '#222',
+    borderRadius: 6,
+    justifyContent: 'flex-end',
+    overflow: 'hidden'
+  },
+    width: '100%',
+    backgroundColor: '#6366f1',
+    borderRadius: 6
+  },
+  dayLabel: {
+    fontSize: 12,
+  headerTitle: { fontSize: 17, fontWeight: '700', color: colors.text, flex: 1, textAlign: 'center', marginHorizontal: 8 },
+  messageBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-end' },
+
+  coverContainer: { position: 'relative', width: '100%', height: 320, marginBottom: 50 },
+  coverImage: { width: '100%', height: '100%' },
+  coverPlaceholder: { backgroundColor: '#0a0a0a', justifyContent: 'center', alignItems: 'center' },
+  coverGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 160 },
+  avatarWrap: {
+    position: 'absolute', bottom: -40, left: 24,
+    width: 96, height: 96, borderRadius: 48,
+    borderWidth: 4, borderColor: colors.background,
+    backgroundColor: colors.card,
+  avatarPlaceholder: { justifyContent: 'center', alignItems: 'center', backgroundColor: '#18181b' },
+  avatarInitial: { fontSize: 36, fontWeight: '900', color: colors.text },
+
+  shopInfoBlock: { paddingHorizontal: 24, paddingTop: 10, paddingBottom: 12 },
+  shopName: { fontSize: 32, fontWeight: '900', color: colors.text, marginBottom: 16, letterSpacing: -0.5 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  statBadge: { 
+    flexDirection: 'row', alignItems: 'center', 
+    backgroundColor: '#111111', 
+    borderWidth: 1, borderColor: '#222222',
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, gap: 6 
+  },
+  statText: { fontSize: 14, fontWeight: '700', color: colors.text },
+  shopDesc: { fontSize: 16, color: colors.textDim, lineHeight: 24, fontWeight: '400', marginBottom: 8 },
+
+  divider: { height: 1, backgroundColor: '#222222', marginHorizontal: 24, marginBottom: 20, marginTop: 10 },
+  sectionLabel: { fontSize: 22, fontWeight: '800', color: colors.text, paddingHorizontal: 24, marginBottom: 16 },
+  },
+
+  chartContainer: {
+    backgroundColor: '#111',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#222'
+  },
+  chartHeader: {
+    flexDirection: 'row',
+  barBackground: {
+    width: 24,
+    height: 120,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    justifyContent: 'flex-end',
+    overflow: 'hidden'
+        <Text style={styles.headerTitle} numberOfLines={1}>{shop.name}</Text>
+        {user?.id === shop.owner_id ? (
+          <TouchableOpacity
+            style={[styles.messageBtn, { backgroundColor: '#3f3f46' }]}
+            onPress={() => router.push(`/inventory/analytics?shopId=${shop.id}`)}
+          >
+            <Ionicons name="bar-chart-outline" size={20} color="#fff" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+
+            {/* Shop Info Block */}
+            <View style={styles.shopInfoBlock}>
+              <Text style={styles.shopName}>{shop.name}</Text>
+              
+              <View style={styles.statsRow}>
+                <View style={styles.statBadge}>
+import React, { useEffect, useState } from 'react'
+import {
+  View, Text, StyleSheet, Image, FlatList,
+  TouchableOpacity, Dimensions, Platform, useWindowDimensions
+} from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useLocalSearchParams, router } from 'expo-router'
+  avatar_image?: string
+  owner_id: string
+  products: any[]
+}
+
+export default function ShopDetailScreen() {
+  const insets = useSafeAreaInsets()
+  const supabase = createClient()
+  const [shop, setShop] = useState<Shop | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!id) return
+        }
+        setLoading(false)
+      })
+  }, [id])
+
+  const shopRating = React.useMemo(() => {
+    const productsWithRatings = (shop?.products || []).filter((p:any) => p.rating && p.rating > 0)
+    if(productsWithRatings.length === 0) return 0
+    const sum = productsWithRatings.reduce((acc: number, p: any) => acc + p.rating, 0)
+    return sum / productsWithRatings.length
+  }, [shop])
+    </View>
+  )
+}
+- `[/]` **Database Migrations**
+  - `[ ]` Create `supabase/shop_reviews.sql` for the `shop_reviews` table and `shops` rating columns
+  - `[ ]` Add trigger to update shop rating in real-time
+- `[ ]` **Shop Profile Updates (`app/shop/[id].tsx`)**
+  - `[ ]` Add "Write a Review" button and modal
+  - `[ ]` Add logic to fetch and display shop reviews
+  - `[ ]` Display real-time shop aggregated rating from DB
+- `[ ]` **Marketplace & Search (`app/(tabs)/marketplace.tsx`)**
+  - `[ ]` Add `minPrice` and `maxPrice` state and UI filter inputs
+  - `[ ]` Add logic to parse string prices and filter by budget
+  shopId: string
+  shopName: string
+  shopCity: string
+}
+
+export default function () {
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [showFilter, setShowFilter] = useState(false)
+  const [showRules, setShowRules] = useState(false)
+
+  const CATEGORIES = ['Clothing', 'Electronics', 'Food & Restaurants', 'Beauty', 'Books', 'Home', 'Sports', 'Toys', 'Other']
+  const hasActiveFilter = !!selectedCity || !!selectedCategory
+
+  useEffect(() => {
+    const checkRules = async () => {
+            shopId: shop.id,
+            shopName: shop.name,
+            shopCity: shop.location_city,
+          }))
+        )
+        setProducts(allProds)
+        (p.shopName && p.shopName.toLowerCase().includes(searchLower))
+      const matchesCity = !selectedCity || p.shopCity === selectedCity
+      const matchesCategory = !selectedCategory || (p as any).category === selectedCategory
+      return matchesSearch && matchesCity && matchesCategory
+    })
+
+    return filtered.sort((a: any, b: any) => {
+      const ratingA = a.rating || 0
+      const ratingB = b.rating || 0
+      if (ratingA !== ratingB) return ratingB - ratingA
+      const countA = a.review_count || 0
+      const countB = b.review_count || 0
+      return countB - countA
+    })
+  }, [products, search, selectedCity, selectedCategory])
+
+  const renderProduct = ({ item }: { item: Product }) => {
+    const hasImage = item.image_urls && item.image_urls.length > 0;
+          <View style={styles.modalHandle} />
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Filter</Text>
+            <TouchableOpacity onPress={() => { setSelectedCategory(null); setSelectedCity(null) }}>
+              <Text style={styles.clearText}>Clear all</Text>
+            </TouchableOpacity>
+          </View>
+            </>
+          )}
+
+          <TouchableOpacity style={styles.applyBtn} onPress={() => setShowFilter(false)}>
+            <Text style={styles.applyBtnText}>Show Results</Text>
+          </TouchableOpacity>
+  - `[x]` Add "Write a Review" button and modal
+  - `[x]` Add logic to fetch and display shop reviews
+  - `[x]` Display real-time shop aggregated rating from DB
+- `[ ]` **Marketplace & Search (`app/(tabs)/marketplace.tsx`)**
+  - `[ ]` Add `minPrice` and `maxPrice` state and UI filter inputs
+  - `[ ]` Add logic to parse string prices and filter by budget
+  - `[ ]` Update sorting algorithm to boost high-rated shops and products
+
+    }
+    sendOffer()
+  }, [make_offer, user, id])
+  useFocusEffect(
+    useCallback(() => {
+      if (!didFocus.current) {
+        didFocus.current = true
+        const t = setTimeout(() => { inputRef.current?.focus() }, 400)
+        return () => clearTimeout(t)
+      }
+    }, [])
+  )
+
+  // Load partner profile (with cache)
+  useEffect(() => {
+    if (!id) return
+                    placeholderTextColor="#a1a1aa"
+                    value={input}
+                    onChangeText={handleTextChange}
+                  multiline
+                  maxLength={1000}
+                />
+import Constants from 'expo-constants';
+
+// The base Supabase URL that we want to replace
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+// The new Cloudflare CDN domain
+const CDN_URL = 'https://cdn.jpmtz.online';
+
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true
+  },
+  "include": [
+    "**/*.ts",
+  
+  return originalUrl;
+}
+
+  if (!SUPABASE_URL) return originalUrl;
+
+  // Only proxy Supabase storage URLs
+  if (originalUrl.startsWith(SUPABASE_URL)) {
+    return originalUrl.replace(SUPABASE_URL, CDN_URL);
+  }
+  
+  return originalUrl;
+}
+
+  if (!SUPABASE_URL) return originalUrl;
+
+  // Only proxy Supabase storage URLs
+  // Temporarily bypassing CDN proxy due to Cloudflare 403 error
+  return originalUrl;
+}
+
+          title: '',
+          headerLeft: () => (
+            <View style={{ paddingLeft: 16, paddingRight: 16 }}>
+              <BackButton onPress={() => router.navigate('/(tabs)/profile')} />
+            </View>
+          )
+        }} 
+  const [balance, setBalance] = useState<number>(0)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [isPremium, setIsPremium] = useState<boolean>(false)
+  const [inputText, setInputText] = useState('')
+  const [attachedImage, setAttachedImage] = useState<string | null>(null)
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false)
+  const startWelcomeAnimation = () => {
+    if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+    
+    let welcomeText = "Karibu! I am Dapaz, your personal Business Mentor. How can I help you succeed today?";
+    if (mode === 'image') welcomeText = "I am Dapaz Studio. Describe an image or flyer you would like me to generate for your business!";
+    if (mode === 'translate') welcomeText = "Send me any English text and I will instantly translate it to professional Swahili for you.";
+
+    setMessages([{ id: 'welcome', role: 'model', text: '' }]);
+    
+  }, [])
+
+  const fetchBalance = async () => {
+    const { data, error } = await supabase.from('profiles').select('wallet_balance, avatar_url, is_premium').eq('id', user?.id).single()
+    if (data) {
+      setBalance(data.wallet_balance || 0)
+      setAvatarUrl(data.avatar_url || null)
+    } else if (error) {
+      const { data: fallbackData } = await supabase.from('profiles').select('wallet_balance, avatar_url').eq('id', user?.id).single()
+      if (fallbackData) {
+        setBalance(fallbackData.wallet_balance || 0)
+        setAvatarUrl(fallbackData.avatar_url || null)
+      }
+    }
+  }
+import { WebLayoutWrapper } from '../components/WebLayoutWrapper'
+import { UIProvider } from '../lib/ui'
+import { ThemeProvider, useTheme } from '../lib/theme'
+import * as Updates from 'expo-updates'
+import Constants from 'expo-constants'
+// Configure how notifications appear when the app is in the foreground
+    animation: 'slide_from_bottom' as const,
+    animationDuration: 250,
+  }
+  return (
+    <Stack screenOptions={screenOpts}>
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="create-post" options={{ ...modalOpts }} />
+      <Stack.Screen name="user-profile" options={{ headerShown: false }} />
+      <Stack.Screen name="inventory/ai-scan" options={{ ...modalOpts }} />
+      <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' as const, contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="seller-onboarding" options={{ headerShown: false, animation: 'fade' as const, contentStyle: { backgroundColor: colors.background } }} />
+    </Stack>
+  )
+}
+
+import { WebLayoutWrapper } from '../components/WebLayoutWrapper'
+import { UIProvider } from '../lib/ui'
+import { ThemeProvider, useTheme } from '../lib/theme'
+import { ThemeProvider as NavThemeProvider } from '@react-navigation/native'
+import * as Updates from 'expo-updates'
+import Constants from 'expo-constants'
+// Configure how notifications appear when the app is in the foreground
+    animation: 'slide_from_bottom' as const,
+    animationDuration: 250,
+  }
+  const navTheme = {
+    dark: colors.background === '#000000',
+    colors: {
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.background,
+
+export default function RootLayout() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <KeyboardProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <CartProvider>
+              <UIProvider>
+                <PushNotificationSetup />
+                <AutoUpdateSetup />
+                <StatusBar style="auto" />
+              <WebLayoutWrapper>
+                <AppStack />
+                <SplashScreen />
+              </WebLayoutWrapper>
+              </UIProvider>
+            </CartProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </KeyboardProvider>
+    </GestureHandlerRootView>
+  )
+    return () => clearTimeout(timeout);
+  }, [messages, currentConvId, mode]);
+
+  const startWelcomeAnimation = () => {
+    if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+    
+    const hour = new Date().getHours();
+    if (hour < 12) timeGreeting = 'Good morning';
+    else if (hour < 17) timeGreeting = 'Good afternoon';
+    
+    const nameStr = userName || user?.user_metadata?.full_name?.split(' ')[0] || 'friend';
+    
+    let welcomeText = `${timeGreeting} ${nameStr}! I am Dapaz, your personal Business Mentor. How can I help you today?`;
+    if (mode === 'image') welcomeText = `I am Dapaz Studio. Describe an image or flyer you would like me to generate for your business!`;
+      setBalance(data.wallet_balance || 0)
+      setAvatarUrl(data.avatar_url || null)
+      setIsPremium(data.is_premium || false)
+      setUserName(data.full_name?.split(' ')[0] || '')
+    } else if (error) {
+      const { data: fallbackData } = await supabase.from('profiles').select('full_name, wallet_balance, avatar_url').eq('id', user?.id).single()
+      if (fallbackData) {
+        setAvatarUrl(fallbackData.avatar_url || null)
+        setUserName(fallbackData.full_name?.split(' ')[0] || '')
+      }
+    }
+  }
+  const [followersCount, setFollowersCount] = useState(0)
+  const [followingCount, setFollowingCount] = useState(0)
+  const [monthlyViews, setMonthlyViews] = useState(0)
+  const [activeTab, setActiveTab] = useState<'posts' | 'replies' | 'media' | 'reposts' | 'likes' | 'jobs' | 'archive'>('posts')
+
+  useFocusEffect(
+    React.useCallback(() => {
+            .then(({ data }) => {
+              if (isActive) {
+                const sum = data?.reduce((acc, curr) => acc + (curr.view_count || 0), 0) || 0
+                setMonthlyViews(sum)
+              }
+            })
+        })
+        .subscribe()
+
+      return () => {
+        isActive = false
+        supabase.removeChannel(channel)
+        supabase.removeChannel(postsChannel)
+      }
+    }, [user])
+  )
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.headerRow}>
+          <Skeleton width={120} height={20} />
+          <Skeleton width={28} height={28} borderRadius={14} />
+        </View>
+        <View style={styles.infoArea}>
+          <View style={styles.infoLeft}>
+            <Skeleton width="60%" height={24} style={{ marginBottom: 4 }} />
+            <Skeleton width="40%" height={16} style={{ marginBottom: 16 }} />
+            <Skeleton width="80%" height={14} style={{ marginBottom: 4 }} />
+            <Skeleton width="70%" height={14} />
+          </View>
+          <View style={styles.avatarWrap}
+                <View style={{ marginLeft: 12, gap: 6 }}>
+                  <Skeleton width={120} height={16} />
+                  <Skeleton width={80} height={12} />
+                </View>
+              </View>
+              <Skeleton width="100%" height={14} style={{ marginBottom: 8 }} />
+              <Skeleton width="60%" height={14} />
+            </View>
+          ))}
+        </View>
+      </SafeAreaView>
+    )
+  }
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        {/* Header row */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => router.push('/wallet')} style={[styles.iconBtn, { marginRight: 8 }]}>
+              <Ionicons name="wallet-outline" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(settings)')} style={styles.iconBtn}>
+              <Ionicons name="menu-outline" size={28} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Main Info Area */}
+        <View style={styles.infoArea}>
+          {/* Left: Name, Username, Bio */}
+          <View style={styles.infoLeft}>
+            <View style={styles.nameRow}>
+        })
+        .subscribe()
+
+      // Realtime subscription for post view counts (analytics)
+      const postsChannel = supabase.channel(`public:posts:analytics:${user.id}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts', filter: `creator_id=eq.${user.id}` }, () => {
+          const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+          supabase.from('posts').select('view_count').eq('creator_id', user.id).gte('created_at', startDate)
+            .then(({ data }) => {
+              if (isActive) {
+                const sum = data?.reduce((acc, curr) => acc + (curr.view_count || 0), 0) || 0
+          {/* Left: Name, Username, Bio */}
+          <View style={styles.infoLeft}>
+            <View style={styles.nameRow}>
+              <Text style={styles.fullName}>{profile?.full_name}</Text>
+              {profile?.is_verified && (
+                <Ionicons name="checkmark-circle" size={18} color="#2563eb" />
+              )}
+            </View>
+      const channel = supabase.channel(`public:follows:${user.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'follows', filter: `following_id=eq.${user.id}` }, () => {
+          supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id)
+            .then(({ count }) => isActive && setFollowersCount(count || 0))
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'follows', filter: `follower_id=eq.${user.id}` }, () => {
+          supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', user.id)
+            .then(({ count }) => isActive && setFollowingCount(count || 0))
+        })
+        .subscribe()
+
+                <Ionicons name="checkmark-circle" size={18} color="#2563eb" />
+              )}
+            </View>
+            <Text style={styles.username}>@{profile?.username || 'user'}</Text>
+            {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
+          </View>
+
+          {/* Right: Avatar */}
+          <View style={styles.avatarWrap}>
+            {profile?.avatar_url ? (
+              <Image source={{ uri: getCdnUrl(profile.avatar_url) }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarFallback]}>
+                <Text style={styles.avatarInitial}>{profile?.full_name?.[0] || '?'}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Insights Link */}
+        {monthlyViews !== null && monthlyViews > 0 && (
+          <TouchableOpacity 
+            style={styles.insightsLink} 
+            on
+              if (activeTab === 'media') return !post.is_repost && !post.is_liked_tab && !post.is_bookmarked_tab && (post.image_urls && post.image_urls.length > 0)
+              if (activeTab === 'replies') return !post.is_repost && !post.is_liked_tab && !post.is_bookmarked_tab && post.parent_id
+              
+              return !post.is_repost && !post.is_liked_tab && !post.is_bookmarked_tab
+            })
+
+            if (displayPosts.length === 0) {
+              return (
+                <View style={{ padding: 40, alignItems: 'center' }}>
+                  <Text style={{ color: colors.textDim }}>No {activeTab === 'posts' ? 'threads' : activeTab} found.</Text>
+                </View>
+              )
+            }
+            return displayPosts.map(post => (
+              <PostItem key={`${post.id}-${post.is_repost}-${post.is_liked_tab}`} post={post as PostType} />
+            ))
+          })()}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  )
+}
+
+const getStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+  headerRow: {
+    flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center',
+    paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4,
+  },
+import { getCdnUrl } from '../../lib/cdn';
+import { useTheme } from '../../lib/theme';
+import React from 'react'
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native'
+import { router } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import { useAuth } from '../../lib/auth'
+        <View style={styles.sectionCard}>
+          <SettingsItem icon="compass-outline" title="App Features Tour" onPress={() => router.push('/onboarding')} />
+          <SettingsItem icon="storefront-outline" title="Seller Features Tour" onPress={() => router.push('/seller-onboarding')} />
+          <SettingsItem icon="help-circle-outline" title="Help & Support" onPress={() => router.push('/(settings)/help')} />
+          <SettingsItem icon="information-circle-outline" title="About App" onPress={() => router.push('/(settings)/about')} />
+        </View>
+import { getCdnUrl } from '../lib/cdn';
+// app/chat.tsx — Full E2E encrypted chat with voice, emoji, and GIF support
+import { useTheme } from '../lib/theme';
+import React, { useEffect, useState, useRef, useCallback } from 'react'
+import {
+  View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet,
+  Platform, Image, ActivityIndicator, Alert,
+  Dimensions, Animated, InteractionManager, Keyboard
+} from 'react-native'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+
+const KeyboardAvoidingView = require('react-native').KeyboardAvoidingView
+import { useLocalSearchParams, router, useFocusEffect } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import { createClient } from '../lib/supabase'
+import { useAuth } from '../lib/auth'
+import { BackButton } from '../components/BackButton'
+import { encryptMessage, decryptMessage, getSharedSecret } from '../lib/crypto'
+import { Audio } from 'expo-av'
+import { GiphyPicker } from '../components/GiphyPicker'
+import { Skeleton } from '../components/Skeleton'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { PanResponder } from 'react-native'
+
+type Message = {
+  id: string
+  content: string
+  sender_id: string
+  receiver_id: string
+  created_at: string
+  is_read: boolean
+  is_shop_chat?: boolean
+  is_offer?: boolean
+  offer_amount?: number
+  offer_status?: string // 'pending', 'accepted', 'declined'
+  offer_product_id?: string
+}
+
+// ── Swipe to reply wrapper ────────────────────────────────────────────────────
+
+
+  // GIF in message
+  gifMessage: { width: SCREEN_WIDTH * 0.55, height: SCREEN_WIDTH * 0.4, borderRadius: 16 },
+
+  // Voice note
+  voiceNote: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    minWidth: 160, paddingHorizontal: 4, paddingVertical: 4,
+  },
+  voiceWaveform: {
+    flex: 1, height: 6, backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 3, overflow: 'hidden',
+  },
+  voiceProgress: { height: '100%', backgroundColor: colors.background, borderRadius: 3 },
+  voiceProgressMine: { backgroundColor: colors.background },
+  voiceTime: { fontSize: 12, color: colors.textDim, fontVariant: ['tabular-nums'] },
+  voiceTimeMine: { color: 'rgba(255,255,255,0.8)' },
+
+  // Emoji picker
+  emojiPicker: {
+    backgroundColor: colors.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  emojiGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center',
+  },
+  emojiBtn: { padding: 6 },
+  emojiText: { fontSize: 24 },
+
+  // Input bar
+  inputBar: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  inputRow: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.border, borderRadius: 24,
+    paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+    minHeight: 44,

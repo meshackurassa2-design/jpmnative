@@ -1,0 +1,195 @@
+} from 'react-native'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+
+const KeyboardAvoidingView = Platform.OS === 'web'
+  ? require('react-native').KeyboardAvoidingView
+  : require('react-native-keyboard-controller').KeyboardAvoidingView
+import { useLocalSearchParams, router, useFocusEffect } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import { createClient } from '../lib/supabase'
+  receiver_id: string
+  created_at: string
+  is_read: boolean
+}
+
+// ── Swipe to reply wrapper ────────────────────────────────────────────────────
+export default function () {
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => getStyles(colors), [colors]);
+  const { id } = useLocalSearchParams<{ id: string }>()
+  const { user } = useAuth()
+  const supabase = createClient()
+  const insets = useSafeAreaInsets()
+  const [requestStatus, setRequestStatus] = useState<string | null>('allowed')
+  const [checkingRequest, setCheckingRequest] = useState(true)
+
+  // Feature states
+  const [showGiphy, setShowGiphy] = useState(false)
+  const [showEmoji, setShowEmoji] = useState(false)
+      sender_id: user.id,
+      receiver_id: id,
+      content: encrypted,
+    } as any)
+
+    if (error) {
+        sender_id: user.id,
+        receiver_id: id,
+        content: encrypted,
+      } as any)
+
+      sendPushNotification('voice')
+      sender_id: user.id,
+      receiver_id: id,
+      content: encrypted,
+    } as any)
+    if (!error) {
+      sendPushNotification('gif')
+  created_at: string
+  is_read: boolean
+  is_shop_chat?: boolean
+}
+
+// ── Swipe to reply wrapper ────────────────────────────────────────────────────
+export default function () {
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => getStyles(colors), [colors]);
+  const { id, is_shop } = useLocalSearchParams<{ id: string, is_shop?: string }>()
+  const { user } = useAuth()
+  const supabase = createClient()
+  const insets = useSafeAreaInsets()
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+
+  const sharedSecret = user && id ? getSharedSecret(user.id, id) : ''
+    return (
+      <View style={[styles.msgRow, mine ? styles.msgRowMine : styles.msgRowTheirs, { marginTop: sameAsOlder ? 2 : 10 }]}>
+        {!mine && !sameAsNewer && partner?.avatar_url ? (
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [requestStatus, setRequestStatus] = useState<string | null>('allowed')
+  const [checkingRequest, setCheckingRequest] = useState(true)
+
+  const isShopChat = is_shop === 'true' || messages.some(m => m.is_shop_chat)
+
+  // Feature states
+  const [showGiphy, setShowGiphy] = useState(false)
+  const isShopChat = is_shop === 'true' || !!make_offer || messages.some(m => m.is_shop_chat)
+
+  // For shop chats skip the follow/request gate — always allow
+  const [requestStatus, setRequestStatus] = useState<string | null>(isShopChat ? 'allowed' : null)
+  const [checkingRequest, setCheckingRequest] = useState(!isShopChat)
+
+  // Feature states
+  const [showGiphy, setShowGiphy] = useState(false)
+
+  const checkRequestStatus = useCallback(async () => {
+    if (!user || !id) return
+    setCheckingRequest(true)
+
+    const { count } = await supabase
+    }
+    sendOffer()
+  }, [make_offer, user, id])
+  useFocusEffect(
+    useCallback(() => {
+      if (!didFocus.current) {
+        didFocus.current = true
+        const t = setTimeout(() => { inputRef.current?.focus() }, 400)
+        return () => clearTimeout(t)
+      }
+    }, [])
+  )
+
+  // Load partner profile (with cache)
+  useEffect(() => {
+    if (!id) return
+                    placeholderTextColor="#a1a1aa"
+                    value={input}
+                    onChangeText={handleTextChange}
+                  multiline
+                  maxLength={1000}
+                />
+import { getCdnUrl } from '../lib/cdn';
+// app/chat.tsx — Full E2E encrypted chat with voice, emoji, and GIF support
+import { useTheme } from '../lib/theme';
+import React, { useEffect, useState, useRef, useCallback } from 'react'
+import {
+  View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet,
+  Platform, Image, ActivityIndicator, Alert,
+  Dimensions, Animated, InteractionManager, Keyboard
+} from 'react-native'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+
+const KeyboardAvoidingView = require('react-native').KeyboardAvoidingView
+import { useLocalSearchParams, router, useFocusEffect } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import { createClient } from '../lib/supabase'
+import { useAuth } from '../lib/auth'
+import { BackButton } from '../components/BackButton'
+import { encryptMessage, decryptMessage, getSharedSecret } from '../lib/crypto'
+import { Audio } from 'expo-av'
+import { GiphyPicker } from '../components/GiphyPicker'
+import { Skeleton } from '../components/Skeleton'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { PanResponder } from 'react-native'
+
+type Message = {
+  id: string
+  content: string
+  sender_id: string
+  receiver_id: string
+  created_at: string
+  is_read: boolean
+  is_shop_chat?: boolean
+  is_offer?: boolean
+  offer_amount?: number
+  offer_status?: string // 'pending', 'accepted', 'declined'
+  offer_product_id?: string
+}
+
+// ── Swipe to reply wrapper ────────────────────────────────────────────────────
+
+
+  // GIF in message
+  gifMessage: { width: SCREEN_WIDTH * 0.55, height: SCREEN_WIDTH * 0.4, borderRadius: 16 },
+
+  // Voice note
+  voiceNote: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    minWidth: 160, paddingHorizontal: 4, paddingVertical: 4,
+  },
+  voiceWaveform: {
+    flex: 1, height: 6, backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 3, overflow: 'hidden',
+  },
+  voiceProgress: { height: '100%', backgroundColor: colors.background, borderRadius: 3 },
+  voiceProgressMine: { backgroundColor: colors.background },
+  voiceTime: { fontSize: 12, color: colors.textDim, fontVariant: ['tabular-nums'] },
+  voiceTimeMine: { color: 'rgba(255,255,255,0.8)' },
+
+  // Emoji picker
+  emojiPicker: {
+    backgroundColor: colors.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  emojiGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center',
+  },
+  emojiBtn: { padding: 6 },
+  emojiText: { fontSize: 24 },
+
+  // Input bar
+  inputBar: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  inputRow: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.border, borderRadius: 24,
+    paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+    minHeight: 44,
