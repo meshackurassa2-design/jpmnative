@@ -27,13 +27,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Set up Swap Space
-        run: |
-          sudo fallocate -l 8G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-
       - name: Build Android AAB with EAS Local
         run: |
           export EXPO_TOKEN=$(echo "MGZLVWNNZ2UtbWdZRHRDcTVIS1pUMzNPRU5ObWo3azA0MFZLcEdrMg==" | base64 -d)
