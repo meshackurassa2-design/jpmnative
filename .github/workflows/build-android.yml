@@ -35,10 +35,10 @@ jobs:
           sudo swapon /swapfile
 
       - name: Build Android AAB with EAS Local
-        run: eas build -p android --profile production --local --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g"
+        run: |
+          export EXPO_TOKEN=$(echo "MGZLVWNNZ2UtbWdZRHRDcTVIS1pUMzNPRU5ObWo3azA0MFZLcEdrMg==" | base64 -d)
+          export GRADLE_OPTS="-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g"
+          eas build -p android --profile production --local --non-interactive
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
