@@ -11,6 +11,9 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { createClient } from '../../lib/supabase'
 import { Skeleton } from '../../components/Skeleton'
+import { PostItem } from '../../components/PostItem'
+import { JobCard } from '../../components/JobCard'
+import { VibeBadge } from '../../components/VibeBadge'
 
 export default function () {
   const { colors } = useTheme();
@@ -23,11 +26,19 @@ export default function () {
   const [postResults, setPostResults] = useState<any[]>([])
   const [explorePosts, setExplorePosts] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  
   const [exploreLoading, setExploreLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'Explore' | 'News' | 'Jobs'>('Explore')
+  const [newsPosts, setNewsPosts] = useState<any[]>([])
+  const [newsLoading, setNewsLoading] = useState(false)
+  const [jobsPosts, setJobsPosts] = useState<any[]>([])
+  const [jobsLoading, setJobsLoading] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
     fetchExplore()
+    fetchNews()
+    fetchJobs()
   }, [])
 
   const fetchExplore = async () => {
@@ -59,6 +70,35 @@ export default function () {
     setExploreLoading(false)
   }
 
+  const fetchNews = async () => {
+    setNewsLoading(true)
+    const { data, error } = await supabase
+      .from('posts')
+      .select('id, content, image_urls, video_url, created_at, creator_id, parent_id, settings, is_ghost, profiles:creator_id!inner(id, full_name, username, avatar_url, is_verified, settings), likes(count), comments(count)')
+      .eq('profiles.settings->>account_type', 'news')
+      .order('created_at', { ascending: false })
+      .limit(30)
+    
+    if (error) console.error('News fetch error:', error)
+    if (data) setNewsPosts(data)
+    setNewsLoading(false)
+  }
+
+  const fetchJobs = async () => {
+    setJobsLoading(true)
+    const { data, error } = await supabase
+      .from('posts')
+      .select('id, content, image_urls, video_url, created_at, creator_id, parent_id, settings, profiles:creator_id(id, full_name, username, avatar_url)')
+      .contains('settings', { is_job: true })
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+      .order('created_at', { ascending: false })
+      .limit(30)
+    
+    if (error) console.error('Jobs fetch error:', error)
+    if (data) setJobsPosts(data)
+    setJobsLoading(false)
+  }
+
   const search = useCallback(async (q: string) => {
     setQuery(q)
     if (q.trim().length < 2) { 
@@ -85,7 +125,7 @@ export default function () {
       // People search
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, username, full_name, avatar_url, is_verified, bio, settings')
         .or(`full_name.ilike.%${q}%,username.ilike.%${q}%`)
         .limit(20)
       
@@ -130,13 +170,16 @@ export default function () {
       style={styles.row}
       onPress={() => router.push(`/user-profile?id=${item.id}`)}
     >
-      {item.avatar_url ? (
-        <Image source={{ uri: getCdnUrl(item.avatar_url) }} style={styles.avatar} />
-      ) : (
-        <View style={[styles.avatar, styles.avatarFallback]}>
-          <Text style={styles.avatarText}>{item.full_name?.[0] || '?'}</Text>
-        </View>
-      )}
+      <View style={{ position: 'relative' }}>
+        {item.avatar_url ? (
+          <Image source={{ uri: getCdnUrl(item.avatar_url) }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, styles.avatarFallback]}>
+            <Text style={styles.avatarText}>{item.full_name?.[0] || '?'}</Text>
+          </View>
+        )}
+        <VibeBadge vibe={item.settings?.vibe} size={14} style={{ position: 'absolute', bottom: 0, right: -2 }} />
+      </View>
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <Text style={styles.name}>{item.full_name}</Text>
@@ -154,7 +197,19 @@ export default function () {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Explore</Text>
+        <Text style={styles.title}>Discover</Text>
+      </View>
+
+      <View style={styles.tabsRow}>
+        <TouchableOpacity style={[styles.tab, activeTab === 'Explore' && styles.tabActive]} onPress={() => setActiveTab('Explore')}>
+          <Text style={[styles.tabText, activeTab === 'Explore' && styles.tabTextActive]}>Explore</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.tab, activeTab === 'News' && styles.tabActive]} onPress={() => setActiveTab('News')}>
+          <Text style={[styles.tabText, activeTab === 'News' && styles.tabTextActive]}>News 📰</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.tab, activeTab === 'Jobs' && styles.tabActive]} onPress={() => setActiveTab('Jobs')}>
+          <Text style={[styles.tabText, activeTab === 'Jobs' && styles.tabTextActive]}>Jobs 💼</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.searchBox}>
@@ -176,21 +231,68 @@ export default function () {
       </View>
 
       {query.length === 0 ? (
-        // Explore Grid
-        exploreLoading ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={colors.text} />
-          </View>
+        activeTab === 'Explore' ? (
+          // Explore Grid
+          exploreLoading ? (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={colors.text} />
+            </View>
+          ) : (
+            <FlatList
+              key="explore-grid"
+              data={explorePosts}
+              keyExtractor={item => item.id}
+              numColumns={3}
+              renderItem={renderExploreItem}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 100 }}
+            />
+          )
+        ) : activeTab === 'News' ? (
+          // News Feed
+          newsLoading ? (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={colors.text} />
+            </View>
+          ) : (
+            <FlatList
+              key="news-feed"
+              data={newsPosts}
+              keyExtractor={item => item.id}
+              renderItem={({ item }) => <PostItem post={item} />}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 100 }}
+              ListEmptyComponent={
+                <View style={styles.empty}>
+                  <Text style={styles.emptyText}>No news articles found.</Text>
+                </View>
+              }
+            />
+          )
         ) : (
-          <FlatList
-            key="explore-grid"
-            data={explorePosts}
-            keyExtractor={item => item.id}
-            numColumns={3}
-            renderItem={renderExploreItem}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 100 }}
-          />
+          // Jobs Feed
+          jobsLoading ? (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={colors.text} />
+            </View>
+          ) : (
+            <FlatList
+              key="jobs-feed"
+              data={jobsPosts}
+              keyExtractor={item => item.id}
+              renderItem={({ item }) => <JobCard post={item} />}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 100 }}
+              ListEmptyComponent={
+                <View style={styles.empty}>
+                  <View style={[styles.emptyIcon, { backgroundColor: '#dbeafe' }]}>
+                    <Ionicons name="briefcase-outline" size={32} color="#2563eb" />
+                  </View>
+                  <Text style={[styles.emptyText, { marginTop: 12 }]}>No jobs right now</Text>
+                </View>
+              }
+            />
+          )
         )
       ) : (
         // Search Results
@@ -248,8 +350,19 @@ export default function () {
 
 const getStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
+  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
   title: { fontSize: 28, fontWeight: '900', color: colors.text },
+  tabsRow: { 
+    flexDirection: 'row', 
+    marginHorizontal: 16, marginBottom: 12,
+    backgroundColor: colors.border,
+    borderRadius: 20,
+    padding: 4,
+  },
+  tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 16 },
+  tabActive: { backgroundColor: colors.background, shadowColor: colors.text, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
+  tabText: { fontSize: 14, fontWeight: '600', color: colors.textDim },
+  tabTextActive: { color: colors.text },
   searchBox: {
     flexDirection: 'row', alignItems: 'center',
     marginHorizontal: 16, marginBottom: 12,
@@ -270,4 +383,5 @@ const getStyles = (colors: any) => StyleSheet.create({
   bio: { fontSize: 13, color: colors.textDim, marginTop: 2 },
   empty: { paddingTop: 60, alignItems: 'center' },
   emptyText: { color: colors.textDim, fontSize: 15 },
+  emptyIcon: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center' },
 })

@@ -208,7 +208,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  rowUnread: { backgroundColor: '#f0f9ff' },
+  rowUnread: {},
   avatarContainer: { position: 'relative' },
   avatar: { width: 48, height: 48, borderRadius: 24 },
   avatarFallback: { backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center' },

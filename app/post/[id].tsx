@@ -35,7 +35,7 @@ export default function PostDetail() {
     if (!postId) return
     const { data: postData } = await supabase
       .from('posts')
-      .select(`*, profiles:creator_id(id, full_name, username, avatar_url, is_verified)`)
+      .select(`*, profiles:creator_id(id, full_name, username, avatar_url, is_verified, settings)`)
       .eq('id', postId)
       .single()
     
@@ -57,7 +57,7 @@ export default function PostDetail() {
 
     const { data: commentsData } = await supabase
       .from('comments')
-      .select('*, profiles(id, full_name, username, avatar_url, is_verified)')
+      .select('*, profiles(id, full_name, username, avatar_url, is_verified, settings)')
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
 
@@ -155,7 +155,7 @@ export default function PostDetail() {
     
     const { data, error } = await supabase.from('comments').insert({
       post_id: post.id, user_id: user.id, content: newComment.trim()
-    }).select('*, profiles(id, full_name, username, avatar_url, is_verified)').single()
+    }).select('*, profiles(id, full_name, username, avatar_url, is_verified, settings)').single()
 
     if (error) {
       Alert.alert('Error', error.message)
@@ -190,7 +190,11 @@ export default function PostDetail() {
             {post.profiles?.username}
             {post.is_ghost && <Text style={{ color: '#f59e0b', fontWeight: '400' }}>  👻 24h</Text>}
           </Text>
-          {post.profiles?.is_verified && <Ionicons name="checkmark-circle" size={14} color="#3b82f6" />}
+          {post.profiles?.settings?.account_type === 'news' ? (
+            <Ionicons name="newspaper" size={14} color="#eab308" />
+          ) : post.profiles?.is_verified ? (
+            <Ionicons name="checkmark-circle" size={14} color="#3b82f6" />
+          ) : null}
         </View>
       </View>
       {user?.id !== post.creator_id && (
@@ -306,7 +310,11 @@ export default function PostDetail() {
       <View style={styles.commentContent}>
         <Text style={styles.commentText}>
           <Text style={styles.commentName}>{item.profiles?.username}</Text>
-          {item.profiles?.is_verified ? <Text> <Ionicons name="checkmark-circle" size={13} color="#3b82f6" /></Text> : null}
+          {item.profiles?.settings?.account_type === 'news' ? (
+            <Text> <Ionicons name="newspaper" size={13} color="#eab308" /></Text>
+          ) : item.profiles?.is_verified ? (
+            <Text> <Ionicons name="checkmark-circle" size={13} color="#3b82f6" /></Text>
+          ) : null}
           <Text>  {item.content}</Text>
         </Text>
         <View style={styles.commentFooter}>

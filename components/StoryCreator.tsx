@@ -1,7 +1,7 @@
 import { getCdnUrl } from '../lib/cdn';
 // components/StoryCreator.tsx — Native story creation screen
 import { useTheme } from '../lib/theme';
-import React, { useState, useRef } from 'react'
+import React, { useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Modal, Image, ActivityIndicator, Alert, Platform,
@@ -110,11 +110,11 @@ export function StoryCreator({ onClose, onCreated }: Props) {
   return (
     <Modal visible animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: mode === 'image' ? '#000000' : bgColor }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={[styles.container, { backgroundColor: mode === 'image' ? '#000000' : bgColor }]}>
+          <View style={styles.container}>
             {/* Background image preview */}
             {mode === 'image' && imageUri ? (
               <Image source={{ uri: getCdnUrl(imageUri) }} style={styles.bgImage} resizeMode="cover" />

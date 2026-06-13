@@ -21,12 +21,13 @@ import { StoryCreator } from '../../components/StoryCreator'
 import { Skeleton } from '../../components/Skeleton'
 import { JobCard } from '../../components/JobCard'
 import { PostItem } from '../../components/PostItem'
+import { VibeBadge } from '../../components/VibeBadge'
 import { useTheme } from '../../lib/theme';
 import { useUI } from '../../lib/ui'
 import { BlurView } from 'expo-blur'
 import * as StoreReview from 'expo-store-review'
 
-type Tab = 'for_you' | 'following' | 'jobs'
+type Tab = 'for_you' | 'following' | 'tea'
 
 type StoryGroup = { profile: any; stories: any[]; hasUnseen: boolean }
 
@@ -50,6 +51,7 @@ type Post = {
     username: string
     avatar_url?: string
     is_verified?: boolean
+    settings?: any
   }
   isAd?: boolean
 }
@@ -83,12 +85,27 @@ function StoriesBar({
   const [groups, setGroups] = useState<StoryGroup[]>([])
 
   const fetchStories = useCallback(async () => {
-    const { data } = await supabase
+    let query = supabase
       .from('stories')
-      .select('id, creator_id, image_url, bg_color, text_content, expires_at, created_at, view_count, profiles:creator_id(id, full_name, username, avatar_url)')
+      .select('id, creator_id, image_url, bg_color, text_content, expires_at, created_at, view_count, profiles:creator_id(id, full_name, username, avatar_url, settings)')
       .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false })
-      .limit(60)
+
+    if (user) {
+      // Get list of people the user follows
+      const { data: follows } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', user.id)
+      
+      const followingIds = follows ? follows.map(f => f.following_id) : []
+      followingIds.push(user.id) // Always include user's own stories
+      
+      if (followingIds.length > 0) {
+        query = query.in('creator_id', followingIds)
+      }
+    }
+
+    const { data } = await query.order('created_at', { ascending: false }).limit(60)
 
     if (!data) return
 
@@ -117,74 +134,89 @@ function StoriesBar({
   if (groups.length === 0 && !user) return null
 
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.storiesBar}
-      contentContainerStyle={styles.storiesContent}
-    >
-      {/* My story / Add story */}
-      {user && (
-        <TouchableOpacity
-          style={styles.storyItem}
-          activeOpacity={0.8}
-          onPress={() => onOpenCreator()}
-        >
-          <View style={styles.myStoryRing}>
-            {myProfile?.avatar_url ? (
-              <Image source={{ uri: getCdnUrl(myProfile.avatar_url) }} style={styles.storyAvatar} />
-            ) : (
-              <View style={[styles.storyAvatar, styles.storyAvatarFallback]}>
-                <Text style={styles.storyAvatarText}>{myProfile?.full_name?.[0] || '+'}</Text>
-              </View>
-            )}
-            <View style={styles.storyAddBadge}>
-              <Ionicons name="add" size={10} color="#fff" />
-            </View>
-          </View>
-          <Text style={styles.storyName} numberOfLines={1}>Your story</Text>
-        </TouchableOpacity>
-      )}
+    <View style={styles.storiesBar}>
+      <FlatList
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.storiesContent}
+        data={user ? [{ isMyStory: true }, ...groups.filter(g => g.profile?.id !== user.id)] : groups}
+        keyExtractor={(item, idx) => item.isMyStory ? 'my-story' : (item.profile?.id || idx.toString())}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={5}
+        renderItem={({ item, index }) => {
+          if (item.isMyStory) {
+            const myGroup = groups.find(g => g.profile?.id === user?.id);
+            const hasMyStory = myGroup && myGroup.stories.length > 0;
 
-      {/* Other users */}
-      {groups
-        .filter(g => !user || g.profile?.id !== user.id)
-        .map((group, i) => {
-          const realIndex = user ? i + 1 : i
-          return (
-          <TouchableOpacity
-            key={group.profile?.id}
-            style={styles.storyItem}
-            activeOpacity={0.8}
-            onPress={() => onOpenViewer(groups, realIndex)}
-          >
-            <View style={[
-              styles.storyRing,
-              group.hasUnseen ? styles.storyRingUnseen : styles.storyRingSeen
-            ]}>
-              {group.profile?.avatar_url ? (
-                <Image
-                  source={{ uri: getCdnUrl(group.profile.avatar_url) }}
-                  style={[styles.storyAvatar, !group.hasUnseen && { opacity: 0.6 }]}
-                />
-              ) : (
-                <View style={[styles.storyAvatar, styles.storyAvatarFallback]}>
-                  <Text style={styles.storyAvatarText}>{group.profile?.full_name?.[0] || '?'}</Text>
+            return (
+              <TouchableOpacity
+                style={styles.storyItem}
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (hasMyStory) {
+                    onOpenViewer(groups, 0); // User group is always at index 0
+                  } else {
+                    onOpenCreator();
+                  }
+                }}
+              >
+                <View style={hasMyStory ? [styles.storyRing, myGroup.hasUnseen ? styles.storyRingUnseen : styles.storyRingSeen] : styles.myStoryRing}>
+                  {myProfile?.avatar_url ? (
+                    <Image source={{ uri: getCdnUrl(myProfile.avatar_url) }} style={[styles.storyAvatar, hasMyStory && !myGroup.hasUnseen && { opacity: 0.6 }]} />
+                  ) : (
+                    <View style={[styles.storyAvatar, styles.storyAvatarFallback]}>
+                      <Text style={styles.storyAvatarText}>{myProfile?.full_name?.[0] || '+'}</Text>
+                    </View>
+                  )}
+                  {!hasMyStory && (
+                    <View style={styles.storyAddBadge}>
+                      <Ionicons name="add" size={10} color="#fff" />
+                    </View>
+                  )}
+                  <VibeBadge vibe={myProfile?.settings?.vibe} size={14} style={{ position: 'absolute', bottom: -2, right: -2 }} />
                 </View>
-              )}
-            </View>
-            <Text style={styles.storyName} numberOfLines={1}>
-              {group.profile?.full_name?.split(' ')[0] || group.profile?.username}
-            </Text>
-          </TouchableOpacity>
-          )
-        })
-      }
+                <Text style={styles.storyName} numberOfLines={1}>Your story</Text>
+              </TouchableOpacity>
+            )
+          }
 
-      {groups.length === 0 && user && (
-        <Text style={{ fontSize: 12, color: colors.textDim, paddingVertical: 8 }}>No stories yet. Be first!</Text>
-      )}
-    </ScrollView>
+          const group = item;
+          return (
+            <TouchableOpacity
+              style={styles.storyItem}
+              activeOpacity={0.8}
+              onPress={() => onOpenViewer(groups, index)}
+            >
+              <View style={[
+                styles.storyRing,
+                group.hasUnseen ? styles.storyRingUnseen : styles.storyRingSeen
+              ]}>
+                {group.profile?.avatar_url ? (
+                  <Image
+                    source={{ uri: getCdnUrl(group.profile.avatar_url) }}
+                    style={[styles.storyAvatar, !group.hasUnseen && { opacity: 0.6 }]}
+                  />
+                ) : (
+                  <View style={[styles.storyAvatar, styles.storyAvatarFallback]}>
+                    <Text style={styles.storyAvatarText}>{group.profile?.full_name?.[0] || '?'}</Text>
+                  </View>
+                )}
+                <VibeBadge vibe={group.profile?.settings?.vibe} size={14} style={{ position: 'absolute', bottom: -2, right: -2 }} />
+              </View>
+              <Text style={styles.storyName} numberOfLines={1}>
+                {group.profile?.full_name?.split(' ')[0] || group.profile?.username}
+              </Text>
+            </TouchableOpacity>
+          )
+        }}
+        ListEmptyComponent={
+          groups.length === 0 && user ? (
+            <Text style={{ fontSize: 12, color: colors.textDim, paddingVertical: 8, paddingHorizontal: 16 }}>No stories yet. Be first!</Text>
+          ) : null
+        }
+      />
+    </View>
   )
 }
 
@@ -380,13 +412,13 @@ export default function HomeScreen() {
   const TABS: { key: Tab; label: string }[] = [
     { key: 'for_you', label: 'For You' },
     { key: 'following', label: 'Following' },
-    { key: 'jobs', label: 'Jobs' },
+    { key: 'tea', label: 'Whispers' },
   ]
 
   // Load my profile for "What's on your mind" section
   useEffect(() => {
     if (!user) return
-    supabase.from('profiles').select('full_name, avatar_url, username, is_admin')
+    supabase.from('profiles').select('full_name, avatar_url, username, is_admin, settings')
       .eq('id', user.id).single()
       .then(({ data }) => setMyProfile(data))
       
@@ -418,11 +450,28 @@ export default function HomeScreen() {
       }
     }
 
+    const resolveAndSetPosts = async (postsToResolve: any[]) => {
+      const coAuthorIds = [...new Set(postsToResolve.map(p => p.settings?.co_author_id).filter(Boolean))] as string[];
+      if (coAuthorIds.length > 0) {
+        const { data: coAuthors } = await supabase.from('profiles').select('id, full_name, username, avatar_url, is_verified').in('id', coAuthorIds);
+        if (coAuthors) {
+          const coAuthorMap = new Map(coAuthors.map((c: any) => [c.id, c]));
+          postsToResolve.forEach(p => {
+            if (p.settings?.co_author_id) {
+              p.co_author_profile = coAuthorMap.get(p.settings.co_author_id);
+            }
+          });
+        }
+      }
+      setPosts(postsToResolve);
+      return postsToResolve;
+    }
+
     if (activeTab === 'for_you') {
       const [postsRes, adsRes] = await Promise.all([
         supabase
           .from('posts')
-          .select('*, profiles:creator_id(id, full_name, username, avatar_url, is_verified), likes(count), comments(count)')
+          .select('*, profiles:creator_id(id, full_name, username, avatar_url, is_verified, settings), likes(count), comments(count)')
           .or('settings->is_job.is.null,settings->is_job.eq.false')
           .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
           .order('created_at', { ascending: false })
@@ -434,8 +483,11 @@ export default function HomeScreen() {
       const { data, error } = postsRes
 
       if (!error && data) {
+        // Filter out news posts
+        const nonNewsData = data.filter((p: any) => p.profiles?.settings?.account_type !== 'news');
+
         // Algorithmic Sorting: (Likes * 1) + (Comments * 13)
-        const scoredPosts = data.map((p: any) => {
+        const scoredPosts = nonNewsData.map((p: any) => {
           const likesCount = p.likes?.[0]?.count || 0;
           const commentsCount = p.comments?.[0]?.count || 0;
           const score = (likesCount * 1) + (commentsCount * 13);
@@ -458,11 +510,11 @@ export default function HomeScreen() {
             is_liked: likedSet.has(p.id),
             is_bookmarked: bookmarkedSet.has(p.id)
           }))
-          setPosts(finalPosts)
-          AsyncStorage.setItem('home_feed_cache', JSON.stringify(finalPosts.slice(0, 5)))
+          await resolveAndSetPosts(finalPosts)
+          AsyncStorage.setItem('home_feed_cache', JSON.stringify(finalPosts.slice(0, 15)))
         } else {
-          setPosts(topPosts)
-          AsyncStorage.setItem('home_feed_cache', JSON.stringify(topPosts.slice(0, 5)))
+          await resolveAndSetPosts(topPosts)
+          AsyncStorage.setItem('home_feed_cache', JSON.stringify(topPosts.slice(0, 15)))
         }
       }
     }
@@ -476,31 +528,31 @@ export default function HomeScreen() {
 
       const { data, error } = await supabase
         .from('posts')
-        .select('*, profiles:creator_id(id, full_name, username, avatar_url, is_verified)')
+        .select('*, profiles:creator_id(id, full_name, username, avatar_url, is_verified, settings)')
         .in('creator_id', ids)
         .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
         .order('created_at', { ascending: false })
         .limit(30)
 
-      if (!error && data) setPosts(data)
+      if (!error && data) {
+        const nonNewsData = data.filter((p: any) => p.profiles?.settings?.account_type !== 'news');
+        await resolveAndSetPosts(nonNewsData)
+      }
     }
 
-    if (activeTab === 'jobs') {
-      const [jobsRes, adsRes] = await Promise.all([
-        supabase
-          .from('posts')
-          .select('*, profiles:creator_id(id, full_name, username, avatar_url)')
-          .contains('settings', { is_job: true })
-          .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-          .order('created_at', { ascending: false })
-          .limit(30),
-        supabase.from('direct_ads').select('*').order('created_at', { ascending: false }).limit(10)
-      ])
-      
-      if (adsRes.data) setDirectAds(adsRes.data)
-      const { data, error } = jobsRes
+    if (activeTab === 'tea') {
+      const { data, error } = await supabase
+        .from('posts')
+        .select('*, profiles:creator_id(id, full_name, username, avatar_url, is_verified, settings)')
+        .eq('settings->is_anonymous', true)
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+        .order('created_at', { ascending: false })
+        .limit(30)
 
-      if (!error && data) setPosts(data)
+      if (!error && data) {
+        // Shuffle or add some random delay if needed, but for now chronological is fine
+        await resolveAndSetPosts(data)
+      }
     }
 
     setLoading(false)
@@ -803,13 +855,16 @@ export default function HomeScreen() {
           activeOpacity={0.8}
           onPress={() => router.push('/create-post')}
         >
-          {myProfile?.avatar_url ? (
-            <Image source={{ uri: getCdnUrl(myProfile.avatar_url) }} style={styles.promptAvatar} />
-          ) : (
-            <View style={[styles.promptAvatar, styles.avatarFallback]}>
-              <Text style={styles.avatarText}>{myProfile?.full_name?.[0] || user.email?.[0]?.toUpperCase() || 'U'}</Text>
-            </View>
-          )}
+          <View style={{ position: 'relative' }}>
+            {myProfile?.avatar_url ? (
+              <Image source={{ uri: getCdnUrl(myProfile.avatar_url) }} style={styles.promptAvatar} />
+            ) : (
+              <View style={[styles.promptAvatar, styles.avatarFallback]}>
+                <Text style={styles.avatarText}>{myProfile?.full_name?.[0] || user.email?.[0]?.toUpperCase() || 'U'}</Text>
+              </View>
+            )}
+            <VibeBadge vibe={myProfile?.settings?.vibe} size={14} style={{ position: 'absolute', bottom: 0, right: -2 }} />
+          </View>
           <View style={styles.promptInput}>
             <Text style={styles.promptText}>What's on your mind?</Text>
           </View>
@@ -862,17 +917,6 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/search')}>
             <Text style={styles.emptyBtnText}>Find people to follow</Text>
           </TouchableOpacity>
-        </View>
-      )
-    }
-    if (activeTab === 'jobs') {
-      return (
-        <View style={styles.empty}>
-          <View style={[styles.emptyIcon, { backgroundColor: '#dbeafe' }]}>
-            <Ionicons name="briefcase-outline" size={32} color="#2563eb" />
-          </View>
-          <Text style={styles.emptyText}>No jobs right now</Text>
-          <Text style={styles.emptySub}>Check back later for new opportunities.</Text>
         </View>
       )
     }

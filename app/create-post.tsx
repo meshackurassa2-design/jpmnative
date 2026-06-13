@@ -3,7 +3,7 @@ import { useFocusEffect } from 'expo-router'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Image, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
-  ScrollView, Modal, Switch, TextInput as RNTextInput,
+  ScrollView, Modal, Switch, TextInput as RNTextInput, Animated,
 } from 'react-native'
 import { router, Stack } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -16,6 +16,7 @@ import { decode } from 'base64-arraybuffer'
 import { GiphyPicker } from '../components/GiphyPicker'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as StoreReview from 'expo-store-review'
+import * as FileSystem from 'expo-file-system/legacy'
 
 interface PostItem {
   id: string
@@ -23,6 +24,7 @@ interface PostItem {
   images: ImagePicker.ImagePickerAsset[]
   remoteUrls: string[]
   video: ImagePicker.ImagePickerAsset | null
+  isHidden?: boolean
 }
 
 const CATEGORIES = ['Funny', 'Trending', 'Relatable', 'Dank', 'Wholesome', 'Meme', 'Video', 'Art']
@@ -87,7 +89,7 @@ export default function CreatePostScreen() {
   const supabase = createClient()
 
   const [thread, setThread] = useState<PostItem[]>([{
-    id: Date.now().toString(), content: '', images: [], remoteUrls: [], video: null,
+    id: Date.now().toString(), content: '', images: [], remoteUrls: [], video: null, isHidden: false
   }])
   const [loading, setLoading] = useState(false)
   const [showGiphy, setShowGiphy] = useState<{ postIndex: number } | null>(null)
@@ -96,6 +98,27 @@ export default function CreatePostScreen() {
   const [reviewReplies, setReviewReplies] = useState(false)
   const [isGhost, setIsGhost] = useState(false)
   const [isDeal, setIsDeal] = useState(false)
+  const [isAnonymous, setIsAnonymous] = useState(false)
+  const [coAuthorUsername, setCoAuthorUsername] = useState('')
+  const [coAuthorId, setCoAuthorId] = useState<string | null>(null)
+  const [verifyingCoAuthor, setVerifyingCoAuthor] = useState(false)
+
+  // Smooth Upload Animation
+  const pulseAnim = useRef(new Animated.Value(0.7)).current;
+  
+  useEffect(() => {
+    if (loading) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.1, duration: 800, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 0.7, duration: 800, useNativeDriver: true })
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(0.7);
+    }
+  }, [loading]);
+
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isBusiness, setIsBusiness] = useState(false)
   const [profileAvatar, setProfileAvatar] = useState<string | null>(
@@ -160,7 +183,6 @@ export default function CreatePostScreen() {
       allowsEditing: true,
       allowsMultipleSelection: false, // Must be false for allowsEditing to work
       quality: 0.4, // AGGRESSIVE COMPRESSION: Reduces image size by 80% to save Supabase Egress!
-      base64: type === 'Images',
     })
     if (!result.canceled) {
       const post = thread[index]
@@ -198,13 +220,20 @@ export default function CreatePostScreen() {
 
         if (post.images.length > 0) {
           for (const img of post.images) {
-            if (!img.base64) continue
             const ext = img.uri.split('.').pop() || 'jpg'
-            const path = `memes/${user.id}_${Date.now()}_${Math.random()}.${ext}`
-            const { error: uploadErr } = await supabase.storage.from('post-media').upload(path, decode(img.base64), { contentType: `image/${ext}` })
-            if (!uploadErr) {
-              const { data } = supabase.storage.from('post-media').getPublicUrl(path)
-              imageUrls.push(data.publicUrl)
+            const path = `img_${Date.now()}_${Math.random()}.${ext}`
+            try {
+              // Reliably read local file as base64 in React Native
+              const base64 = await FileSystem.readAsStringAsync(img.uri, { encoding: 'base64' })
+              const { error: uploadErr } = await supabase.storage.from('memes').upload(path, decode(base64), { contentType: `image/${ext}` })
+              if (!uploadErr) {
+                const { data } = supabase.storage.from('memes').getPublicUrl(path)
+                imageUrls.push(data.publicUrl)
+              } else {
+                console.error('Upload Error:', uploadErr)
+              }
+            } catch (e) {
+              console.error('File read/upload failed', e)
             }
           }
         }
@@ -215,9 +244,9 @@ export default function CreatePostScreen() {
           try {
             const res = await fetch(post.video.uri)
             const blob = await res.blob()
-            const { error: uploadErr } = await supabase.storage.from('videos').upload(path, blob)
+            const { error: uploadErr } = await supabase.storage.from('memes').upload(path, blob)
             if (!uploadErr) {
-              const { data } = supabase.storage.from('videos').getPublicUrl(path)
+              const { data } = supabase.storage.from('memes').getPublicUrl(path)
               videoUrl = data.publicUrl
             }
           } catch (e) { console.error('Video upload failed', e) }
@@ -238,6 +267,9 @@ export default function CreatePostScreen() {
             ghost_mode: isGhost,
             is_deal: isDeal,
             category: selectedCategory,
+            is_anonymous: isAnonymous,
+            co_author_id: coAuthorId,
+            is_hidden: post.isHidden || false
           },
         }).select('id').single()
 
@@ -344,41 +376,56 @@ export default function CreatePostScreen() {
 
                 {/* Attached media previews */}
                 {(post.images.length > 0 || post.remoteUrls.length > 0 || post.video) && (
-                  <View style={styles.mediaRow}>
-                    {[...post.remoteUrls, ...post.images.map(i => i.uri)].map((uri, i) => (
-                      <View key={`${uri}-${i}`} style={styles.mediaItem}>
-                        <MediaImage uri={uri} styles={styles} />
-                        <TouchableOpacity
-                          style={styles.removeBtn}
-                          onPress={() => {
-                            if (i < post.remoteUrls.length) {
-                              updatePost(index, { remoteUrls: post.remoteUrls.filter((_, k) => k !== i) })
-                            } else {
-                              const imgIdx = i - post.remoteUrls.length
-                              updatePost(index, { images: post.images.filter((_, k) => k !== imgIdx) })
-                            }
-                          }}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Ionicons name="close-circle" size={24} color="#000" />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                    {post.video && (
-                      <View style={styles.mediaItem}>
-                        <View style={styles.videoPlaceholder}>
-                          <Ionicons name="play-circle" size={48} color="#fff" />
+                  <>
+                    <View style={styles.mediaRow}>
+                      {[...post.remoteUrls, ...post.images.map(i => i.uri)].map((uri, i) => (
+                        <View key={`${uri}-${i}`} style={styles.mediaItem}>
+                          <MediaImage uri={uri} styles={styles} />
+                          <TouchableOpacity
+                            style={styles.removeBtn}
+                            onPress={() => {
+                              if (i < post.remoteUrls.length) {
+                                updatePost(index, { remoteUrls: post.remoteUrls.filter((_, k) => k !== i) })
+                              } else {
+                                const imgIdx = i - post.remoteUrls.length
+                                updatePost(index, { images: post.images.filter((_, k) => k !== imgIdx) })
+                              }
+                            }}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons name="close-circle" size={24} color="#000" />
+                          </TouchableOpacity>
                         </View>
-                        <TouchableOpacity
-                          style={styles.removeBtn}
-                          onPress={() => updatePost(index, { video: null })}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Ionicons name="close-circle" size={24} color="#000" />
-                        </TouchableOpacity>
+                      ))}
+                      {post.video && (
+                        <View style={styles.mediaItem}>
+                          <View style={styles.videoPlaceholder}>
+                            <Ionicons name="play-circle" size={48} color="#fff" />
+                          </View>
+                          <TouchableOpacity
+                            style={styles.removeBtn}
+                            onPress={() => updatePost(index, { video: null })}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons name="close-circle" size={24} color="#000" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                    
+                    {/* Hide as Spoiler Toggle */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#27272a', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, marginTop: 12 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <Ionicons name="eye-off-outline" size={22} color="#a1a1aa" />
+                        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Hide as Spoiler / Surprise</Text>
                       </View>
-                    )}
-                  </View>
+                      <Switch 
+                        value={post.isHidden || false}
+                        onValueChange={(val) => updatePost(index, { isHidden: val })}
+                        trackColor={{ false: '#3f3f46', true: '#2563eb' }}
+                      />
+                    </View>
+                  </>
                 )}
 
                 {/* Toolbar */}
@@ -405,7 +452,7 @@ export default function CreatePostScreen() {
                     style={styles.addThreadBtn}
                     onPress={() => setThread(prev => [
                       ...prev,
-                      { id: Date.now().toString(), content: '', images: [], remoteUrls: [], video: null },
+                      { id: Date.now().toString(), content: '', images: [], remoteUrls: [], video: null, isHidden: false },
                     ])}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
@@ -488,14 +535,85 @@ export default function CreatePostScreen() {
 
             <View style={styles.settingRow}>
               <View style={{ flex: 1 }}>
+                <Text style={styles.settingLabel}>Whispers (Anonymous)</Text>
+                <Text style={styles.settingDesc}>Post completely anonymously</Text>
+              </View>
+              <Switch value={isAnonymous} onValueChange={setIsAnonymous} trackColor={{ true: '#9333ea' }} />
+            </View>
+
+            <View style={styles.settingRow}>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.settingLabel}>Review replies</Text>
                 <Text style={styles.settingDesc}>Verify replies before they go public</Text>
               </View>
               <Switch value={reviewReplies} onValueChange={setReviewReplies} trackColor={{ true: '#2563eb' }} />
             </View>
+
+            <View style={[styles.settingRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
+              <Text style={styles.settingLabel}>Invite Collaborator</Text>
+              <Text style={styles.settingDesc}>Type exact username of co-author</Text>
+              <View style={{ flexDirection: 'row', marginTop: 10 }}>
+                <TextInput
+                  style={{ flex: 1, backgroundColor: colors.background, padding: 10, borderRadius: 8, color: colors.text, borderColor: colors.border, borderWidth: 1 }}
+                  placeholder="@username"
+                  placeholderTextColor={colors.textDim}
+                  value={coAuthorUsername}
+                  onChangeText={(text) => {
+                    setCoAuthorUsername(text.replace('@', '').toLowerCase().trim())
+                    setCoAuthorId(null) // reset on change
+                  }}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity
+                  style={{ backgroundColor: coAuthorId ? '#16a34a' : '#3b82f6', paddingHorizontal: 16, justifyContent: 'center', borderRadius: 8, marginLeft: 8 }}
+                  disabled={verifyingCoAuthor || !coAuthorUsername}
+                  onPress={async () => {
+                    if (!coAuthorUsername) return;
+                    setVerifyingCoAuthor(true);
+                    const { data } = await supabase.from('profiles').select('id').eq('username', coAuthorUsername).single();
+                    if (data?.id) {
+                      setCoAuthorId(data.id);
+                      Alert.alert("Found!", "Collaborator successfully linked.");
+                    } else {
+                      Alert.alert("Not Found", "Could not find a user with that username.");
+                      setCoAuthorId(null);
+                    }
+                    setVerifyingCoAuthor(false);
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>
+                    {verifyingCoAuthor ? '...' : coAuthorId ? 'Verified' : 'Verify'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </ScrollView>
         </View>
       </Modal>
+
+      {/* Uploading Overlay */}
+      <Modal transparent visible={loading} animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' }}>
+          <Animated.View style={{ 
+            alignItems: 'center',
+            transform: [{ scale: pulseAnim }],
+            opacity: pulseAnim 
+          }}>
+            <View style={{
+              width: 100, height: 100, borderRadius: 50, 
+              backgroundColor: 'rgba(59, 130, 246, 0.2)',
+              justifyContent: 'center', alignItems: 'center',
+              borderWidth: 2, borderColor: '#3b82f6'
+            }}>
+              <Ionicons name="cloud-upload" size={48} color="#3b82f6" />
+            </View>
+            <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', marginTop: 24, letterSpacing: 1 }}>POSTING...</Text>
+            <Text style={{ color: '#a1a1aa', fontSize: 14, marginTop: 8 }}>Please wait while your media uploads</Text>
+          </Animated.View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   )
 }

@@ -13,6 +13,7 @@ import { createClient } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { decryptMessage, getSharedSecret } from '../../lib/crypto'
 import { Skeleton } from '../../components/Skeleton'
+import { VibeBadge } from '../../components/VibeBadge'
 
 export default function () {
   const { colors } = useTheme();
@@ -64,7 +65,7 @@ export default function () {
 
     const { data: profiles, error: err3 } = await supabase
       .from('profiles')
-      .select('id, full_name, username, avatar_url, is_verified, last_seen')
+      .select('id, full_name, username, avatar_url, is_verified, last_seen, settings')
       .in('id', [...partnerIds])
       
     console.log('Profiles fetched:', profiles?.length, err3)
@@ -127,7 +128,7 @@ export default function () {
     // Fetch inbound requests
     const { data: reqData } = await supabase
       .from('message_requests')
-      .select('*, sender:sender_id(id, full_name, username, avatar_url)')
+      .select('*, sender:sender_id(id, full_name, username, avatar_url, settings)')
       .eq('receiver_id', user.id)
       .eq('status', 'pending')
     
@@ -281,13 +282,16 @@ export default function () {
               style={styles.row}
               onPress={() => router.push(`/chat?id=${item.profile.id}`)}
             >
-              {item.profile.avatar_url ? (
-                <Image source={{ uri: getCdnUrl(item.profile.avatar_url) }} style={styles.avatar} />
-              ) : (
-                <View style={[styles.avatar, styles.avatarFallback]}>
-                  <Text style={styles.avatarText}>{item.profile.full_name?.[0] || '?'}</Text>
-                </View>
-              )}
+              <View style={{ position: 'relative' }}>
+                {item.profile.avatar_url ? (
+                  <Image source={{ uri: getCdnUrl(item.profile.avatar_url) }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarFallback]}>
+                    <Text style={styles.avatarText}>{item.profile.full_name?.[0] || '?'}</Text>
+                  </View>
+                )}
+                <VibeBadge vibe={item.profile.settings?.vibe} size={14} style={{ position: 'absolute', bottom: 0, right: -2 }} />
+              </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Text style={styles.name}>{item.profile.full_name}</Text>
@@ -340,13 +344,16 @@ export default function () {
               style={styles.row}
               onPress={() => router.push(`/chat?id=${item.sender?.id}`)}
             >
-              {item.sender?.avatar_url ? (
-                <Image source={{ uri: getCdnUrl(item.sender.avatar_url) }} style={styles.avatar} />
-              ) : (
-                <View style={[styles.avatar, styles.avatarFallback]}>
-                  <Text style={styles.avatarText}>{item.sender?.full_name?.[0] || '?'}</Text>
-                </View>
-              )}
+              <View style={{ position: 'relative' }}>
+                {item.sender.avatar_url ? (
+                  <Image source={{ uri: getCdnUrl(item.sender.avatar_url) }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarFallback]}>
+                    <Text style={styles.avatarText}>{item.sender.full_name?.[0] || '?'}</Text>
+                  </View>
+                )}
+                <VibeBadge vibe={item.sender.settings?.vibe} size={14} style={{ position: 'absolute', bottom: 0, right: -2 }} />
+              </View>
               <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
                 <Text style={styles.name}>{item.sender?.full_name}</Text>
                 <Text style={styles.username} numberOfLines={1}>wants to message you</Text>

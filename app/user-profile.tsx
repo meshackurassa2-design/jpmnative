@@ -4,7 +4,7 @@ import { useTheme } from '../lib/theme';
 import React, { useEffect, useState, useCallback } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  Image, FlatList, ActivityIndicator, Dimensions, Alert, ScrollView, Linking
+  Image, FlatList, ActivityIndicator, Dimensions, Alert, ScrollView, Linking, Modal, TextInput
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -13,6 +13,7 @@ import { createClient } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useUI } from '../lib/ui'
 import { PostItem, PostType } from '../components/PostItem'
+import { VibeBadge } from '../components/VibeBadge'
 import { Skeleton } from '../components/Skeleton'
 import { JobCard } from '../components/JobCard'
 import { BackButton } from '../components/BackButton'
@@ -21,6 +22,31 @@ const { width } = Dimensions.get('window')
 const GRID_SIZE = (width - 3) / 3
 
 export default function () {
+  const PRESET_VIBES = [
+    { icon: 'headset', color: '#06b6d4', text: 'Listening to music' }, // Cyan
+    { icon: 'game-controller', color: '#8b5cf6', text: 'Gaming' }, // Purple
+    { icon: 'moon', color: '#6366f1', text: 'Sleepy' }, // Indigo
+    { icon: 'fast-food', color: '#f59e0b', text: 'Eating' }, // Amber
+    { icon: 'airplane', color: '#3b82f6', text: 'Traveling' }, // Blue
+    { icon: 'laptop', color: '#10b981', text: 'Working' }, // Emerald
+    { icon: 'car', color: '#ef4444', text: 'Driving' }, // Red
+    { icon: 'film', color: '#ec4899', text: 'Watching a movie' }, // Pink
+    { icon: 'book', color: '#eab308', text: 'Studying' }, // Yellow
+    { icon: 'medkit', color: '#14b8a6', text: 'Sick' }, // Teal
+    { icon: 'sparkles', color: '#f43f5e', text: 'Partying' }, // Rose
+  ]
+  const PRESET_TEAMS = [
+    { id: 'simba', name: 'Simba SC', color: '#ef4444' }, // Red
+    { id: 'yanga', name: 'Young Africans', color: '#10b981' }, // Green
+    { id: 'azam', name: 'Azam FC', color: '#3b82f6' }, // Blue
+    { id: 'coastal', name: 'Coastal Union', color: '#dc2626' }, // Dark Red
+    { id: 'dodoma', name: 'Dodoma Jiji', color: '#8b5cf6' }, // Purple
+    { id: 'mtibwa', name: 'Mtibwa Sugar', color: '#22c55e' }, // Green
+    { id: 'kmc', name: 'KMC FC', color: '#f97316' }, // Orange
+    { id: 'namungo', name: 'Namungo FC', color: '#14b8a6' }, // Teal
+    { id: 'singida', name: 'Singida BS', color: '#ec4899' }, // Pink
+  ]
+
   const { colors } = useTheme();
   const styles = React.useMemo(() => getStyles(colors), [colors]);
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -39,6 +65,9 @@ export default function () {
   const [isFollowsMe, setIsFollowsMe] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'posts' | 'replies' | 'media' | 'reposts' | 'likes' | 'jobs' | 'archive'>('posts')
+  const [vibeModalVisible, setVibeModalVisible] = useState(false)
+  const [teamModalVisible, setTeamModalVisible] = useState(false)
+  const [customVibeText, setCustomVibeText] = useState('')
 
   const isOwnProfile = user?.id === id
 
@@ -232,6 +261,56 @@ export default function () {
     }
   }
 
+  const handleReport = () => {
+    if (isOwnProfile) return
+    showActionSheet('Why are you reporting this user?', [
+      { text: 'Spam or scam', onPress: () => submitUserReport('Spam') },
+      { text: 'Inappropriate content', onPress: () => submitUserReport('Inappropriate content') },
+      { text: 'Impersonation', onPress: () => submitUserReport('Impersonation') },
+      { text: 'Harassment or bullying', onPress: () => submitUserReport('Harassment') },
+      { text: 'Cancel', style: 'cancel', onPress: () => {} }
+    ])
+  }
+
+  const handleSetVibe = async (vibe: any) => {
+    if (!id || !profile) return
+    const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    const newVibe = { ...vibe, expires_at }
+    const newSettings = { ...profile.settings, vibe: newVibe }
+    setProfile({ ...profile, settings: newSettings })
+    setVibeModalVisible(false)
+    setCustomVibeText('')
+    await supabase.from('profiles').update({ settings: newSettings }).eq('id', id)
+  }
+
+  const handleCustomVibe = () => {
+    if (!customVibeText.trim()) return
+    handleSetVibe({ icon: 'chatbubble-ellipses', color: '#a855f7', text: customVibeText.trim() })
+  }
+
+  const handleClearVibe = async () => {
+    setVibeModalVisible(false)
+    const newSettings = { ...profile?.settings }
+    delete newSettings.vibe
+    setProfile({ ...profile, settings: newSettings })
+    await supabase.from('profiles').update({ settings: newSettings }).eq('id', user?.id)
+  }
+
+  const handleSetTeam = async (team: any) => {
+    setTeamModalVisible(false)
+    const newSettings = { ...profile?.settings, football_team: team }
+    setProfile({ ...profile, settings: newSettings })
+    await supabase.from('profiles').update({ settings: newSettings }).eq('id', user?.id)
+  }
+
+  const handleClearTeam = async () => {
+    setTeamModalVisible(false)
+    const newSettings = { ...profile?.settings }
+    delete newSettings.football_team
+    setProfile({ ...profile, settings: newSettings })
+    await supabase.from('profiles').update({ settings: newSettings }).eq('id', user?.id)
+  }
+
   const handleOptions = () => {
     if (isOwnProfile) return
     showActionSheet('Profile Options', [
@@ -326,15 +405,48 @@ export default function () {
           </View>
           <Text style={styles.username}>@{profile?.username || 'user'}</Text>
           {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
+          
+          {/* Vibe Status Pill */}
+          {profile?.settings?.vibe ? (
+            <TouchableOpacity 
+              onPress={() => isOwnProfile ? setVibeModalVisible(true) : null} 
+              activeOpacity={isOwnProfile ? 0.7 : 1}
+              style={{ alignSelf: 'flex-start', marginTop: 12, flexDirection: 'row', alignItems: 'center' }}
+            >
+              {profile.settings.vibe.icon ? (
+                <Ionicons name={profile.settings.vibe.icon as any} size={16} color={profile.settings.vibe.color || "#a855f7"} style={{ marginRight: 6 }} />
+              ) : (
+                <Text style={{ fontSize: 16, marginRight: 6 }}>{profile.settings.vibe.emoji}</Text>
+              )}
+              <Text style={{ fontSize: 13, color: '#fff', fontWeight: '600' }} numberOfLines={1}>{profile.settings.vibe.text}</Text>
+            </TouchableOpacity>
+          ) : isOwnProfile ? (
+            <TouchableOpacity 
+              onPress={() => setVibeModalVisible(true)} 
+              activeOpacity={0.7}
+              style={{ alignSelf: 'flex-start', marginTop: 12, flexDirection: 'row', alignItems: 'center' }}
+            >
+              <Ionicons name="add" size={16} color="#a1a1aa" style={{ marginRight: 4 }} />
+              <Text style={{ fontSize: 13, color: '#a1a1aa', fontWeight: '700' }}>Set Vibe</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {/* Right: Avatar */}
         <View style={styles.avatarWrap}>
-          {profile?.avatar_url ? (
-            <Image source={{ uri: getCdnUrl(profile.avatar_url) }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback]}>
-              <Text style={styles.avatarInitial}>{profile?.full_name?.[0] || '?'}</Text>
+          <View style={[profile?.settings?.football_team && { padding: 4, borderRadius: 45, borderWidth: 2, borderColor: profile.settings.football_team.color }]}>
+            {profile?.avatar_url ? (
+              <Image source={{ uri: getCdnUrl(profile.avatar_url) }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarFallback]}>
+                <Text style={styles.avatarInitial}>{profile?.full_name?.[0] || '?'}</Text>
+              </View>
+            )}
+          </View>
+          {profile?.settings?.football_team && (
+            <View style={{ position: 'absolute', bottom: -4, alignSelf: 'center', backgroundColor: profile.settings.football_team.color, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, borderWidth: 2, borderColor: '#18181b', flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="football" size={10} color="#fff" style={{ marginRight: 2 }} />
+              <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800' }}>{profile.settings.football_team.id.toUpperCase()}</Text>
             </View>
           )}
         </View>
@@ -373,12 +485,19 @@ export default function () {
       <View style={styles.ctaRow}>
         {isOwnProfile ? (
           <>
-            <TouchableOpacity style={[styles.btnOutline, {flex: 1}]} onPress={() => router.push('/(settings)/edit-profile')} activeOpacity={0.7}>
-              <Text style={styles.btnOutlineText}>Edit Profile</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.btnOutline, {flex: 1}]} activeOpacity={0.7}>
-              <Text style={styles.btnOutlineText}>Share profile</Text>
-            </TouchableOpacity>
+            <View style={{flexDirection: 'row', gap: 10, flex: 1}}>
+              <TouchableOpacity style={[styles.btnOutline, {flex: 1.2}]} onPress={() => router.push('/(settings)/edit-profile')} activeOpacity={0.7}>
+                <Text style={styles.btnOutlineText}>Edit Profile</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.btnOutline, {flex: 1, flexDirection: 'row'}]} onPress={() => setVibeModalVisible(true)} activeOpacity={0.7}>
+                <Ionicons name="sparkles" size={16} color={colors.text} style={{ marginRight: 6 }} />
+                <Text style={styles.btnOutlineText}>Vibe</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.btnOutline, {flex: 1, flexDirection: 'row'}]} onPress={() => setTeamModalVisible(true)} activeOpacity={0.7}>
+                <Ionicons name="football" size={16} color={colors.text} style={{ marginRight: 6 }} />
+                <Text style={styles.btnOutlineText}>Team</Text>
+              </TouchableOpacity>
+            </View>
             {userShop && (
               <TouchableOpacity style={styles.shopBtn} onPress={() => router.push(`/shop/${userShop.id}`)} activeOpacity={0.7}>
                 <Ionicons name="storefront" size={20} color="#fff" />
@@ -521,6 +640,110 @@ export default function () {
           return <PostItem key={`${post.id}-${post.is_repost}-${post.is_liked_tab}`} post={post as PostType} />
         }}
       />
+
+      {/* Vibe Modal */}
+      <Modal
+        visible={vibeModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setVibeModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Set your Vibe</Text>
+              <TouchableOpacity onPress={() => setVibeModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalSub}>Your vibe disappears in 24 hours.</Text>
+            
+            {/* Custom Vibe Input */}
+            <View style={styles.customVibeContainer}>
+              <View style={styles.customVibeInputWrap}>
+                <Ionicons name="chatbubble-ellipses" size={20} color="#a855f7" />
+                <TextInput
+                  style={styles.customVibeInput}
+                  placeholder="What's your vibe right now?"
+                  placeholderTextColor={colors.textDim}
+                  value={customVibeText}
+                  onChangeText={setCustomVibeText}
+                  maxLength={40}
+                  onSubmitEditing={handleCustomVibe}
+                />
+              </View>
+              {customVibeText.trim().length > 0 && (
+                <TouchableOpacity style={styles.customVibeBtn} onPress={handleCustomVibe}>
+                  <Text style={styles.customVibeBtnText}>Set</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.vibeGrid}>
+              {PRESET_VIBES.map((vibe, idx) => {
+                const isActive = profile?.settings?.vibe?.icon === vibe.icon || profile?.settings?.vibe?.emoji === (vibe as any).emoji
+                return (
+                  <TouchableOpacity 
+                    key={idx} 
+                    style={[styles.vibeItem, isActive && { borderColor: '#3f3f46', borderWidth: 1 }]}
+                    onPress={() => handleSetVibe(vibe)}
+                  >
+                    {vibe.icon ? (
+                      <Ionicons name={vibe.icon as any} size={28} color={vibe.color} />
+                    ) : (
+                      <Text style={styles.vibeEmoji}>{(vibe as any).emoji}</Text>
+                    )}
+                    <Text style={styles.vibeText}>{vibe.text}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+            
+            {profile?.settings?.vibe && (
+              <TouchableOpacity style={styles.clearVibeBtn} onPress={handleClearVibe}>
+                <Text style={styles.clearVibeBtnText}>Clear Vibe</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Team Selection Modal */}
+      <Modal visible={teamModalVisible} animationType="slide" transparent>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setTeamModalVisible(false)} />
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Choose Your Team ⚽</Text>
+            <TouchableOpacity onPress={() => setTeamModalVisible(false)}>
+              <Ionicons name="close-circle" size={28} color={colors.textDim} />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.modalSub}>Show your allegiance! Your avatar will get a glowing ring in your team's colors.</Text>
+
+          <View style={styles.vibeGrid}>
+            {PRESET_TEAMS.map((team, idx) => {
+              const isActive = profile?.settings?.football_team?.id === team.id
+              return (
+                <TouchableOpacity 
+                  key={idx} 
+                  style={[styles.vibeItem, { width: '45%' }, isActive && { borderColor: team.color, borderWidth: 1 }]}
+                  onPress={() => handleSetTeam(team)}
+                >
+                  <Ionicons name="football" size={28} color={team.color} />
+                  <Text style={styles.vibeText}>{team.name}</Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+
+          {profile?.settings?.football_team && (
+            <TouchableOpacity style={styles.clearVibeBtn} onPress={handleClearTeam}>
+              <Text style={styles.clearVibeBtnText}>Remove Team Badge</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </Modal>
+
     </SafeAreaView>
   )
 }
@@ -601,4 +824,23 @@ const getStyles = (colors: any) => StyleSheet.create({
   emptyText: { fontSize: 16, color: colors.text, fontWeight: '700' },
   emptyIcon: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   emptySub: { fontSize: 14, color: colors.textDim, textAlign: 'center' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
+  modalSub: { fontSize: 14, color: colors.textDim, marginBottom: 20 },
+  vibeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
+  vibeItem: { width: '30%', backgroundColor: 'transparent', padding: 12, borderRadius: 16, alignItems: 'center', gap: 6 },
+  vibeItemActive: {},
+  vibeEmoji: { fontSize: 28 },
+  vibeText: { fontSize: 11, fontWeight: '600', color: colors.textDim, textAlign: 'center' },
+  vibeTextActive: { color: '#2563eb' },
+  customVibeContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 },
+  customVibeInputWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.border, paddingHorizontal: 12, borderRadius: 16, height: 48, gap: 8 },
+  customVibeInput: { flex: 1, color: colors.text, fontSize: 15 },
+  customVibeBtn: { backgroundColor: '#2563eb', height: 48, paddingHorizontal: 20, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  customVibeBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  clearVibeBtn: { marginTop: 24, backgroundColor: '#fee2e2', padding: 14, borderRadius: 12, alignItems: 'center' },
+  clearVibeBtnText: { color: '#ef4444', fontWeight: '700', fontSize: 15 },
 })

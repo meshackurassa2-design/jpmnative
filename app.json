@@ -5,6 +5,11 @@
     "version": "2.3.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "userInterfaceStyle": "automatic",
     "scheme": "jpm",
     "ios": {
@@ -16,19 +21,15 @@
     },
     "android": {
       "package": "com.jpm.app",
+      "predictiveBackGestureEnabled": false,
+      "icon": "./assets/icon_real.png",
       "adaptiveIcon": {
-        "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./assets/android-icon-foreground.png"
-      },
-      "predictiveBackGestureEnabled": false
+        "foregroundImage": "./assets/icon_real.png",
+        "backgroundColor": "#ffffff"
+      }
     },
     "web": {
       "bundler": "metro"
-    },
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
     },
     "plugins": [
       "expo-router",

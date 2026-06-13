@@ -15,7 +15,6 @@ import { WebLayoutWrapper } from '../components/WebLayoutWrapper'
 import { UIProvider } from '../lib/ui'
 import { ThemeProvider, useTheme } from '../lib/theme'
 import { ThemeProvider as NavThemeProvider, DefaultTheme, DarkTheme } from '@react-navigation/native'
-import * as Updates from 'expo-updates'
 import Constants from 'expo-constants'
 // Configure how notifications appear when the app is in the foreground
 Notifications.setNotificationHandler({
@@ -70,24 +69,7 @@ function PushNotificationSetup() {
 }
 
 function AutoUpdateSetup() {
-  useEffect(() => {
-    async function onFetchUpdateAsync() {
-      try {
-        const update = await Updates.checkForUpdateAsync()
-        if (update.isAvailable) {
-          await Updates.fetchUpdateAsync()
-          await Updates.reloadAsync()
-        }
-      } catch (error) {
-        console.log('Error fetching update:', error)
-      }
-    }
-    // Only check for updates in production
-    if (!__DEV__) {
-      onFetchUpdateAsync()
-    }
-  }, [])
-  
+  // expo-updates OTA is disabled in this build — skip update checks to prevent startup crash
   return null
 }
 

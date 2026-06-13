@@ -1,6 +1,6 @@
 import { getCdnUrl } from '../lib/cdn';
 // components/PostItem.tsx — Reusable feed post component
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Image, Alert, Dimensions, ScrollView } from 'react-native'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -11,6 +11,7 @@ import { useTheme } from '../lib/theme';
 import { useUI } from '../lib/ui';
 import { getCDNUrl } from '../lib/cdn';
 import { Video, ResizeMode } from 'expo-av';
+import { VibeBadge } from './VibeBadge';
 
 const { width } = Dimensions.get('window')
 
@@ -45,6 +46,7 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
   const supabase = createClient()
   const { showActionSheet, showToast } = useUI()
   const [post, setPost] = useState(initialPost)
+  const [isDeleted, setIsDeleted] = useState(false)
   const videoRef = React.useRef(null)
 
   const timeAgo = (date: string) => {
@@ -107,9 +109,42 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
     else showToast('Could not submit report.', 'error')
   }
 
+  const handleDeletePost = async () => {
+    if (!user || !post) return
+    Alert.alert(
+      "Delete Post",
+      "Are you sure you want to delete this post? This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setIsDeleted(true)
+            const { error } = await supabase.from('posts').delete().eq('id', post.id).eq('creator_id', user.id)
+            if (error) {
+              setIsDeleted(false)
+              showToast('Could not delete post.', 'error')
+            } else {
+              showToast('Post deleted', 'success')
+            }
+          }
+        }
+      ]
+    )
+  }
+
   const handlePostOptions = () => {
     if (!user || !post) return
-    if (user.id === post.creator_id) return
+    
+    if (user.id === post.creator_id) {
+      showActionSheet('Post Options', [
+        { text: 'Delete Post', style: 'destructive', icon: 'trash', onPress: handleDeletePost },
+        { text: 'Cancel', style: 'cancel', onPress: () => {} }
+      ])
+      return
+    }
+
     showActionSheet('Post Options', [
       { text: 'Report Post', style: 'destructive', icon: 'flag', onPress: () => {
         setTimeout(() => {
@@ -126,34 +161,99 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
     ])
   }
 
+  if (isDeleted) return null
+
   const hasImage = post.image_urls && post.image_urls.length > 0
   const hasVideo = !!post.video_url
+  const isAnonymous = post.settings?.is_anonymous === true
+  
+  const [isRevealed, setIsRevealed] = useState(false)
+  const isHidden = post.settings?.is_hidden === true && !isRevealed
+  
+  const [coAuthor, setCoAuthor] = useState<any>(post.co_author_profile)
+
+  useEffect(() => {
+    if (!coAuthor && post.settings?.co_author_id) {
+      const supabase = createClient()
+      supabase.from('profiles').select('id, full_name, username, avatar_url, is_verified').eq('id', post.settings.co_author_id).single()
+        .then(({ data }) => {
+          if (data) setCoAuthor(data)
+        })
+    }
+  }, [post.settings?.co_author_id])
 
   return (
     <View style={styles.post}>
       <TouchableOpacity
         style={styles.postHeader}
-        onPress={() => router.push(`/user-profile?id=${post.creator_id}`)}
-        activeOpacity={0.7}
+        onPress={() => {
+          if (!isAnonymous) {
+            router.push(`/user-profile?id=${post.creator_id}`)
+          }
+        }}
+        activeOpacity={isAnonymous ? 1 : 0.7}
       >
-        {post.profiles?.avatar_url ? (
-          <Image source={{ uri: getCdnUrl(getCDNUrl(post.profiles.avatar_url) || '') }} style={[styles.avatar, post.is_ghost && { borderWidth: 2, borderColor: '#f59e0b' }]} />
-        ) : (
-          <View style={[styles.avatar, styles.avatarFallback, post.is_ghost && { borderWidth: 2, borderColor: '#f59e0b' }]}>
-            <Text style={styles.avatarText}>{post.profiles?.full_name?.[0] || '?'}</Text>
+        {isAnonymous ? (
+          <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: '#18181b', borderWidth: 1, borderColor: '#9333ea' }]}>
+            <Ionicons name="mask" size={20} color="#9333ea" />
           </View>
+        ) : coAuthor ? (
+          <View style={{ width: 44, height: 44, marginRight: 10, position: 'relative' }}>
+            <View style={{ position: 'absolute', top: 0, left: 0, width: 30, height: 30, borderRadius: 15, overflow: 'hidden', borderWidth: post.is_ghost ? 2 : 1, borderColor: post.is_ghost ? '#f59e0b' : colors.border }}>
+              {post.profiles?.avatar_url ? (
+                <Image source={{ uri: getCdnUrl(getCDNUrl(post.profiles.avatar_url) || '') }} style={{ width: 30, height: 30 }} />
+              ) : (
+                <View style={[styles.avatarFallback, { width: 30, height: 30 }]}>
+                  <Text style={[styles.avatarText, { fontSize: 13 }]}>{post.profiles?.full_name?.[0] || '?'}</Text>
+                </View>
+              )}
+            </View>
+            <View style={{ position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, borderWidth: 2, borderColor: colors.background, overflow: 'hidden' }}>
+              {coAuthor.avatar_url ? (
+                <Image source={{ uri: getCdnUrl(getCDNUrl(coAuthor.avatar_url) || '') }} style={{ width: 30, height: 30 }} />
+              ) : (
+                <View style={[styles.avatarFallback, { width: 30, height: 30 }]}>
+                  <Text style={[styles.avatarText, { fontSize: 13 }]}>{coAuthor.full_name?.[0] || '?'}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity onPress={() => router.push(`/user-profile?id=${post.creator_id}`)} activeOpacity={0.7} style={{ position: 'relative', marginRight: 10 }}>
+            <View style={post.profiles?.settings?.football_team && { padding: 2, borderRadius: 24, borderWidth: 2, borderColor: post.profiles.settings.football_team.color }}>
+              {post.profiles?.avatar_url ? (
+                <Image source={{ uri: getCDNUrl(post.profiles.avatar_url) }} style={[styles.avatar, { marginRight: 0 }, post.is_ghost && { borderWidth: 2, borderColor: '#f59e0b' }]} />
+              ) : (
+                <View style={[styles.avatar, { marginRight: 0 }, styles.avatarFallback, post.is_ghost && { borderWidth: 2, borderColor: '#f59e0b' }]}>
+                  <Text style={styles.avatarText}>{post.profiles?.full_name?.[0] || '?'}</Text>
+                </View>
+              )}
+            </View>
+            {post.profiles?.settings?.football_team && (
+              <View style={{ position: 'absolute', bottom: -6, alignSelf: 'center', backgroundColor: post.profiles.settings.football_team.color, paddingHorizontal: 4, paddingVertical: 1, borderRadius: 8, borderWidth: 1.5, borderColor: '#18181b', flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="football" size={8} color="#fff" style={{ marginRight: 2 }} />
+                <Text style={{ color: '#fff', fontSize: 7, fontWeight: '900' }}>{post.profiles.settings.football_team.id.toUpperCase()}</Text>
+              </View>
+            )}
+            {!post.profiles?.settings?.football_team && <VibeBadge vibe={post.profiles?.settings?.vibe} size={16} style={{ position: 'absolute', bottom: -2, right: -2 }} />}
+          </TouchableOpacity>
         )}
-        <View style={styles.postHeaderText}>
-          <Text style={styles.fullName}>{post.profiles?.username}</Text>
-          {post.profiles?.is_verified && (
-            <Ionicons name="checkmark-circle" size={16} color="#3b82f6" />
-          )}
-          <Text style={styles.username}>
+        <View style={[styles.postHeaderText, { flex: 1, marginRight: 8 }]}>
+          <Text style={[styles.fullName, { flexShrink: 1 }]} numberOfLines={1}>
+            {isAnonymous ? 'Anonymous' : (
+              coAuthor ? `${post.profiles?.username} & ${coAuthor.username}` : post.profiles?.username
+            )}
+          </Text>
+          {post.profiles?.settings?.account_type === 'news' ? (
+            <Ionicons name="newspaper" size={16} color="#eab308" style={{ flexShrink: 0 }} />
+          ) : post.profiles?.is_verified && !isAnonymous ? (
+            <Ionicons name="checkmark-circle" size={16} color="#3b82f6" style={{ flexShrink: 0 }} />
+          ) : null}
+          <Text style={[styles.username, { flexShrink: 0 }]} numberOfLines={1}>
             {' '}· {timeAgo(post.created_at)}
             {post.is_ghost && <Text style={{ color: '#f59e0b' }}>  👻 24h</Text>}
           </Text>
         </View>
-        <View style={{ flex: 1 }} />
         <TouchableOpacity style={{ padding: 4 }} onPress={handlePostOptions}>
           <Ionicons name="ellipsis-horizontal" size={20} color={colors.textDim} />
         </TouchableOpacity>
@@ -168,7 +268,13 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
       </TouchableOpacity>
 
       {hasVideo && (
-        <View style={{ width: '100%' }}>
+        <TouchableOpacity 
+          onPress={() => {
+            if (isHidden) setIsRevealed(true)
+          }}
+          activeOpacity={1}
+          style={{ width: '100%', position: 'relative' }}
+        >
           <Video
             ref={videoRef}
             source={{ uri: getCdnUrl(getCDNUrl(post.video_url) || '') }}
@@ -176,18 +282,40 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
             resizeMode={ResizeMode.COVER}
             useNativeControls={false}
             isLooping
-            shouldPlay
+            shouldPlay={!isHidden}
           />
-        </View>
+          {isHidden && (
+            <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.95)' }]}>
+              <Ionicons name="eye-off" size={48} color="#fff" style={{ marginBottom: 12, opacity: 0.8 }} />
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', opacity: 0.9 }}>Hidden Video</Text>
+              <Text style={{ color: '#a1a1aa', fontSize: 13, marginTop: 4 }}>Tap to reveal</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       )}
 
       {hasImage && !hasVideo && (
-        <TouchableOpacity onPress={() => router.push(`/post/${post.id}`)} activeOpacity={0.95}>
+        <TouchableOpacity 
+          onPress={() => {
+            if (isHidden) setIsRevealed(true)
+            else router.push(`/post/${post.id}`)
+          }} 
+          activeOpacity={0.95}
+          style={{ position: 'relative', width: '100%' }}
+        >
           <Image
             source={{ uri: getCdnUrl(getCDNUrl(post.image_urls![0]) || '') }}
-            style={styles.postImage}
+            style={[styles.postImage, isHidden && { opacity: 0.3 }]}
+            blurRadius={isHidden ? 50 : 0}
             resizeMode="cover"
           />
+          {isHidden && (
+            <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+              <Ionicons name="eye-off" size={48} color="#fff" style={{ marginBottom: 12, opacity: 0.8 }} />
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', opacity: 0.9 }}>Spoiler / Hidden Content</Text>
+              <Text style={{ color: '#a1a1aa', fontSize: 13, marginTop: 4 }}>Tap to reveal</Text>
+            </View>
+          )}
         </TouchableOpacity>
       )}
 
@@ -288,9 +416,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   postContent: { 
     fontSize: 16, 
     color: colors.text, 
-    lineHeight: 22,
-    fontWeight: '700', // To match screenshot bold text
-    textAlign: 'center' // To match screenshot centered text
+    lineHeight: 22
   },
   postImage: { 
     width: '100%', 

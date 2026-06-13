@@ -18,6 +18,7 @@ import { encryptMessage, decryptMessage, getSharedSecret } from '../lib/crypto'
 import { Audio } from 'expo-av'
 import { GiphyPicker } from '../components/GiphyPicker'
 import { Skeleton } from '../components/Skeleton'
+import { VibeBadge } from '../components/VibeBadge'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { PanResponder } from 'react-native'
 
@@ -159,6 +160,8 @@ export default function () {
   const [requestStatus, setRequestStatus] = useState<string | null>('allowed')
   const [checkingRequest, setCheckingRequest] = useState(true)
 
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false)
+
   const [showGiphy, setShowGiphy] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
   const [recording, setRecording] = useState(false)
@@ -208,7 +211,7 @@ export default function () {
     AsyncStorage.getItem(`@partner_${id}`).then(cached => {
       if (cached) try { setPartner(JSON.parse(cached)) } catch {}
     })
-    supabase.from('profiles').select('*').eq('id', id).single()
+    supabase.from('profiles').select('id, full_name, username, avatar_url, is_verified, settings').eq('id', id).single()
       .then(({ data }) => {
         if (data) {
           setPartner(data)
@@ -216,6 +219,17 @@ export default function () {
         }
       })
   }, [id])
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true))
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false))
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [])
 
   const checkRequestStatus = useCallback(async () => {
     if (!user || !id) return
@@ -818,15 +832,18 @@ export default function () {
     <SafeAreaView style={[styles.container, { paddingBottom: 0 }]} edges={['top']}>
       <View style={styles.header}>
         <BackButton style={{ marginRight: 12 }} />
-        {partner?.avatar_url ? (
-          <Image source={{ uri: getCdnUrl(partner.avatar_url) }} style={styles.headerAvatar} />
-        ) : partner ? (
-          <View style={[styles.headerAvatar, styles.avatarFallback]}>
-            <Text style={styles.avatarText}>{partner.full_name?.[0] || partner.username?.[0] || '?'}</Text>
-          </View>
-        ) : (
-          <Skeleton width={40} height={40} borderRadius={20} />
-        )}
+        <View style={{ position: 'relative' }}>
+          {partner?.avatar_url ? (
+            <Image source={{ uri: getCdnUrl(partner.avatar_url) }} style={styles.headerAvatar} />
+          ) : partner ? (
+            <View style={[styles.headerAvatar, styles.avatarFallback]}>
+              <Text style={styles.avatarText}>{partner.full_name?.[0] || partner.username?.[0] || '?'}</Text>
+            </View>
+          ) : (
+            <Skeleton width={40} height={40} borderRadius={20} />
+          )}
+          {partner && <VibeBadge vibe={partner.settings?.vibe} size={14} style={{ position: 'absolute', bottom: -2, right: -2 }} />}
+        </View>
         <TouchableOpacity
           style={{ flex: 1 }}
           onPress={() => router.push(`/user-profile?id=${id}` as any)}
@@ -853,23 +870,48 @@ export default function () {
       >
         {loading ? (
           <View style={{ flex: 1, paddingHorizontal: 12, paddingTop: 20 }}>
-            <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+            {/* Bubble 1 (Theirs) */}
+            <View style={{ flexDirection: 'row', marginBottom: 16 }}>
               <Skeleton width={32} height={32} borderRadius={16} style={{ marginRight: 8, alignSelf: 'flex-end' }} />
               <View style={{ gap: 4 }}>
-                <Skeleton width={180} height={36} borderRadius={20} style={{ borderBottomLeftRadius: 6 }} />
-                <Skeleton width={140} height={36} borderRadius={20} />
+                <Skeleton width={180} height={38} borderRadius={20} style={{ borderBottomLeftRadius: 6 }} />
+                <Skeleton width={120} height={38} borderRadius={20} />
               </View>
             </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 }}>
+
+            {/* Bubble 2 (Mine) */}
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 16 }}>
+              <Skeleton width={220} height={38} borderRadius={20} style={{ borderBottomRightRadius: 6 }} />
+            </View>
+
+            {/* Bubble 3 (Mine) */}
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 16 }}>
+              <Skeleton width={140} height={38} borderRadius={20} style={{ borderBottomRightRadius: 6 }} />
+            </View>
+
+            {/* Bubble 4 (Theirs) */}
+            <View style={{ flexDirection: 'row', marginBottom: 16 }}>
+              <Skeleton width={32} height={32} borderRadius={16} style={{ marginRight: 8, alignSelf: 'flex-end' }} />
+              <Skeleton width={200} height={50} borderRadius={20} style={{ borderBottomLeftRadius: 6 }} />
+            </View>
+
+            {/* Bubble 5 (Mine) */}
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 16 }}>
               <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                <Skeleton width={220} height={36} borderRadius={20} style={{ borderBottomRightRadius: 6 }} />
+                <Skeleton width={240} height={38} borderRadius={20} style={{ borderBottomRightRadius: 6 }} />
+                <Skeleton width={180} height={38} borderRadius={20} style={{ borderBottomRightRadius: 6 }} />
               </View>
             </View>
-            <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+
+            {/* Bubble 6 (Theirs) */}
+            <View style={{ flexDirection: 'row', marginBottom: 16 }}>
               <Skeleton width={32} height={32} borderRadius={16} style={{ marginRight: 8, alignSelf: 'flex-end' }} />
-              <View style={{ gap: 4 }}>
-                <Skeleton width={160} height={36} borderRadius={20} style={{ borderBottomLeftRadius: 6 }} />
-              </View>
+              <Skeleton width={160} height={38} borderRadius={20} style={{ borderBottomLeftRadius: 6 }} />
+            </View>
+            
+            {/* Bubble 7 (Mine) */}
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 16 }}>
+              <Skeleton width={190} height={38} borderRadius={20} style={{ borderBottomRightRadius: 6 }} />
             </View>
           </View>
         ) : (
@@ -945,7 +987,7 @@ export default function () {
                   {partner?.full_name?.split(' ')[0] || partner?.username || 'User'} is typing...
                 </Text>
               )}
-              <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+              <View style={[styles.inputBar, { paddingBottom: isKeyboardVisible ? 12 : Math.max(insets.bottom, 12) }]}>
                 <View style={styles.inputRow}>
                   <TextInput
                     ref={inputRef}

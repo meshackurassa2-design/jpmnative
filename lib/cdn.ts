@@ -12,17 +12,8 @@ const CDN_URL = 'https://cdn.jpmtz.online';
  */
 export function getCdnUrl(originalUrl?: string | null): string {
   if (!originalUrl) return '';
-  if (!SUPABASE_URL) return originalUrl;
-
-  if (originalUrl.startsWith(SUPABASE_URL)) {
-    // Bypass CDN for videos because Cloudflare often strips byte-range headers
-    // which are absolutely required by expo-av to play mp4 files on mobile
-    if (originalUrl.includes('/videos/')) {
-      return originalUrl;
-    }
-    return originalUrl.replace(SUPABASE_URL, CDN_URL);
-  }
-  
+  // Bypass Cloudflare CDN temporarily because it seems to be timing out/failing
+  // which is causing images to show up as blank grey boxes.
   return originalUrl;
 }
 
