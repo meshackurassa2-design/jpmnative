@@ -220,7 +220,7 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
           </View>
         ) : (
           <TouchableOpacity onPress={() => router.push(`/user-profile?id=${post.creator_id}`)} activeOpacity={0.7} style={{ position: 'relative', marginRight: 10 }}>
-            <View style={post.profiles?.settings?.football_team && { padding: 2, borderRadius: 24, borderWidth: 2, borderColor: post.profiles.settings.football_team.color }}>
+            <View style={[post.profiles?.settings?.football_team && { padding: 2, borderRadius: 24, borderWidth: 2, borderColor: post.profiles.settings.football_team.color }]}>
               {post.profiles?.avatar_url ? (
                 <Image source={{ uri: getCDNUrl(post.profiles.avatar_url) }} style={[styles.avatar, { marginRight: 0 }, post.is_ghost && { borderWidth: 2, borderColor: '#f59e0b' }]} />
               ) : (
