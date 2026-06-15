@@ -352,8 +352,6 @@ export default function AIScreen() {
   }
 
   async function processVoiceInput(uri: string) {
-    Alert.alert('Coming Soon', 'Dapaz AI voice features are currently being finalized and will be available in the next update!');
-    return;
 
     const cost = PRICING.voiceChat;
     setBalance(b => b - cost)
@@ -398,8 +396,6 @@ export default function AIScreen() {
   // ---------------------------------
 
   const sendMessage = async () => {
-    Alert.alert('Coming Soon', 'Dapaz AI features are currently being finalized and will be available in the next update!');
-    return;
 
     if (!inputText.trim() && !attachedImage) return;
     

@@ -13,7 +13,7 @@ const { width } = Dimensions.get('window');
 
 // Use the Official AdMob Test Native Advanced ID for development to prevent accidental bans
 // In production, use the real JPM In-Feed Native Ad Unit ID from the screenshot
-const adUnitId = __DEV__ ? TestIds.NATIVE : 'ca-app-pub-8166782428171770/6571593457';
+const adUnitId = __DEV__ ? TestIds.NATIVE : 'ca-app-pub-4939768656689626/6513364964';
 
 export function NativeAdCard() {
   const { colors } = useTheme();
