@@ -16,6 +16,7 @@ import { UIProvider } from '../lib/ui'
 import { ThemeProvider, useTheme } from '../lib/theme'
 import { ThemeProvider as NavThemeProvider, DefaultTheme, DarkTheme } from '@react-navigation/native'
 import Constants from 'expo-constants'
+import mobileAds from 'react-native-google-mobile-ads'
 // Configure how notifications appear when the app is in the foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -132,6 +133,12 @@ function AppStack() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    mobileAds().initialize().then(adapterStatuses => {
+      console.log('AdMob initialized', adapterStatuses);
+    }).catch(e => console.log('AdMob init error', e));
+  }, []);
+
   return (
     <ThemeProvider>
       <ThemedRoot />
@@ -159,5 +166,31 @@ function ThemedRoot() {
         </AuthProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>
+  )
+}
+
+import { ErrorBoundaryProps } from 'expo-router'
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native'
+
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return (
+    <View style={{ flex: 1, backgroundColor: '#990000', paddingTop: 50, paddingHorizontal: 20 }}>
+      <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>
+        Crash Detected 💥
+      </Text>
+      <Text style={{ color: 'white', fontSize: 16, marginBottom: 10, fontWeight: 'bold' }}>
+        {error?.message || 'Unknown Error'}
+      </Text>
+      <ScrollView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', padding: 10, borderRadius: 8 }}>
+        <Text style={{ color: '#ffcccc', fontSize: 12, fontFamily: 'monospace' }}>
+          {error?.stack || 'No stack trace available.'}
+        </Text>
+      </ScrollView>
+      <TouchableOpacity 
+        onPress={retry}
+        style={{ backgroundColor: 'white', padding: 15, borderRadius: 8, alignItems: 'center', marginVertical: 20 }}>
+        <Text style={{ color: '#990000', fontWeight: 'bold', fontSize: 16 }}>Retry App</Text>
+      </TouchableOpacity>
+    </View>
   )
 }

@@ -161,31 +161,7 @@ export default function () {
       }
       if (!data) throw new Error('No data returned from payment initialization.')
 
-      // Direct client-side STK push to bypass WAF bans
-      const normalizedPhone = phone.replace(/^\+?255/, '').replace(/^0/, '').replace(/\D/g, '')
-      const azamRes = await fetch('https://sandbox.azampay.co.tz/azampay/mno/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${data.accessToken}`,
-          'X-API-KEY': data.apiKey,
-        },
-        body: JSON.stringify({
-          accountNumber: normalizedPhone,
-          amount: String(Math.round(finalTotal)),
-          currency: 'TZS',
-          externalId: data.orderId,
-          provider: provider,
-        }),
-      });
 
-      const azamText = await azamRes.text();
-      let azamData: any = {};
-      try { azamData = JSON.parse(azamText); } catch (e) {}
-
-      if (!azamRes.ok || azamData?.success === false) {
-        throw new Error(azamData?.message || 'AzamPay checkout failed from client.')
-      }
 
       const sellerIds = Array.from(new Set(items.map(i => i.sellerId).filter(Boolean)))
       let sellersMap: Record<string, any> = {}

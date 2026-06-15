@@ -17,6 +17,7 @@ import { GiphyPicker } from '../components/GiphyPicker'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as StoreReview from 'expo-store-review'
 import * as FileSystem from 'expo-file-system/legacy'
+import * as VideoThumbnails from 'expo-video-thumbnails'
 
 interface PostItem {
   id: string
@@ -248,6 +249,26 @@ export default function CreatePostScreen() {
             if (!uploadErr) {
               const { data } = supabase.storage.from('memes').getPublicUrl(path)
               videoUrl = data.publicUrl
+              
+              // Generate and upload thumbnail
+              try {
+                const { uri } = await VideoThumbnails.getThumbnailAsync(post.video.uri, {
+                  time: 1000,
+                  quality: 0.5,
+                });
+                
+                const thumbExt = uri.split('.').pop() || 'jpg'
+                const thumbPath = `thumb_${Date.now()}_${Math.random()}.${thumbExt}`
+                const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' })
+                const { error: thumbUploadErr } = await supabase.storage.from('memes').upload(thumbPath, decode(base64), { contentType: `image/${thumbExt}` })
+                
+                if (!thumbUploadErr) {
+                  const { data: thumbData } = supabase.storage.from('memes').getPublicUrl(thumbPath)
+                  imageUrls.push(thumbData.publicUrl)
+                }
+              } catch (thumbErr) {
+                console.warn('Could not generate video thumbnail', thumbErr);
+              }
             }
           } catch (e) { console.error('Video upload failed', e) }
         }
@@ -269,6 +290,7 @@ export default function CreatePostScreen() {
             category: selectedCategory,
             is_anonymous: isAnonymous,
             co_author_id: coAuthorId,
+            co_author_status: coAuthorId ? 'pending' : undefined,
             is_hidden: post.isHidden || false
           },
         }).select('id').single()

@@ -173,14 +173,14 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
   const [coAuthor, setCoAuthor] = useState<any>(post.co_author_profile)
 
   useEffect(() => {
-    if (!coAuthor && post.settings?.co_author_id) {
+    if (!coAuthor && post.settings?.co_author_id && post.settings?.co_author_status === 'accepted') {
       const supabase = createClient()
       supabase.from('profiles').select('id, full_name, username, avatar_url, is_verified').eq('id', post.settings.co_author_id).single()
         .then(({ data }) => {
           if (data) setCoAuthor(data)
         })
     }
-  }, [post.settings?.co_author_id])
+  }, [post.settings?.co_author_id, post.settings?.co_author_status])
 
   return (
     <View style={styles.post}>

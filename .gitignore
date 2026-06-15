@@ -40,3 +40,6 @@ yarn-error.*
 /ios
 # /android - Kept so GitHub Actions can build the APK
 .vercel
+
+*.apk
+*.aab

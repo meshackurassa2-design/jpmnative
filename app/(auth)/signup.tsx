@@ -9,7 +9,7 @@ import { Link, router } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
-import { supabase } from '../../lib/supabase'
+import { createClient } from '../../lib/supabase'
 import { decode } from 'base64-arraybuffer'
 
 const { width, height } = Dimensions.get('window')
@@ -22,6 +22,7 @@ export default function SignupScreen() {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const supabase = createClient()
   
   const [birthDay, setBirthDay] = useState('')
   const [birthMonth, setBirthMonth] = useState('')

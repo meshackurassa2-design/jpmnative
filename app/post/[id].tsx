@@ -29,6 +29,16 @@ export default function PostDetail() {
   const [loading, setLoading] = useState(true)
   const [newComment, setNewComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [coAuthor, setCoAuthor] = useState<any>(null)
+
+  useEffect(() => {
+    if (!coAuthor && post?.settings?.co_author_id && post?.settings?.co_author_status === 'accepted') {
+      supabase.from('profiles').select('id, full_name, username, avatar_url, is_verified').eq('id', post.settings.co_author_id).single()
+        .then(({ data }) => {
+          if (data) setCoAuthor(data)
+        })
+    }
+  }, [post?.settings?.co_author_id, post?.settings?.co_author_status])
 
   const fetchData = useCallback(async () => {
     const postId = Array.isArray(id) ? id[0] : id
@@ -177,7 +187,28 @@ export default function PostDetail() {
 
   const renderHeader = () => (
     <View style={[styles.postHeader]}>
-      {post.profiles?.avatar_url ? (
+      {coAuthor ? (
+          <View style={{ width: 44, height: 44, marginRight: 10, position: 'relative' }}>
+            <View style={{ position: 'absolute', top: 0, left: 0, width: 30, height: 30, borderRadius: 15, overflow: 'hidden', borderWidth: post.is_ghost ? 2 : 1, borderColor: post.is_ghost ? '#f59e0b' : colors.border }}>
+              {post.profiles?.avatar_url ? (
+                <Image source={{ uri: getCdnUrl(post.profiles.avatar_url) }} style={{ width: 30, height: 30 }} />
+              ) : (
+                <View style={[styles.avatarFallback, { width: 30, height: 30 }]}>
+                  <Text style={[styles.avatarFallbackText, { fontSize: 13 }]}>{post.profiles?.full_name?.[0] || '?'}</Text>
+                </View>
+              )}
+            </View>
+            <View style={{ position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, borderWidth: 2, borderColor: colors.background, overflow: 'hidden' }}>
+              {coAuthor.avatar_url ? (
+                <Image source={{ uri: getCdnUrl(coAuthor.avatar_url) }} style={{ width: 30, height: 30 }} />
+              ) : (
+                <View style={[styles.avatarFallback, { width: 30, height: 30 }]}>
+                  <Text style={[styles.avatarFallbackText, { fontSize: 13 }]}>{coAuthor.full_name?.[0] || '?'}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+      ) : post.profiles?.avatar_url ? (
         <Image source={{ uri: getCdnUrl(post.profiles.avatar_url) }} style={[styles.postAvatar, post.is_ghost && { borderWidth: 2, borderColor: '#f59e0b' }]} />
       ) : (
         <View style={[styles.postAvatar, styles.avatarFallback, post.is_ghost && { borderWidth: 2, borderColor: '#f59e0b' }]}>
@@ -187,7 +218,7 @@ export default function PostDetail() {
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <Text style={styles.postName}>
-            {post.profiles?.username}
+            {coAuthor ? `${post.profiles?.username} & ${coAuthor.username}` : post.profiles?.username}
             {post.is_ghost && <Text style={{ color: '#f59e0b', fontWeight: '400' }}>  👻 24h</Text>}
           </Text>
           {post.profiles?.settings?.account_type === 'news' ? (

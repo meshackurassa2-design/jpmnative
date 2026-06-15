@@ -13,7 +13,7 @@ const SECTIONS = [
     body: 'We collect information that you provide directly to us or that is collected automatically when you use the Platform:',
     bullets: [
       'Account Information: Name, email address, password, profile picture, and demographic information.',
-      'Marketplace Data: If you buy or sell items, we collect transaction history, shipping addresses, phone numbers, and shop details. We do not store raw credit card numbers; payment processing is securely handled by third-party providers (e.g., AzamPay).',
+      'Marketplace Data: If you buy or sell items, we collect transaction history, shipping addresses, phone numbers, and shop details. We do not store raw credit card numbers; payment processing is securely handled by third-party providers.',
       'Content & Communications: Messages sent through our chat, posts, reviews, and feedback.',
       'AI Image Generation: Text prompts you submit to generate AI images are processed temporarily to provide the service. We do not use your generated images or prompts for our own training models.',
       'Device & Usage Data: Device identifiers (including Push Notification tokens via Firebase), IP address, operating system, and app interaction data.',

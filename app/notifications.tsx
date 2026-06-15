@@ -35,6 +35,7 @@ export default function () {
   const { user } = useAuth()
   const supabase = createClient()
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [pendingCollabs, setPendingCollabs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -53,11 +54,43 @@ export default function () {
     if (data) {
       setNotifications(data)
     }
+
+    const { data: collabData } = await supabase
+      .from('posts')
+      .select(`id, created_at, content, profiles:creator_id(id, full_name, username, avatar_url, is_verified)`)
+      .eq('settings->>co_author_id', user.id)
+      .eq('settings->>co_author_status', 'pending')
+    
+    if (collabData) setPendingCollabs(collabData)
+
     setLoading(false)
     setRefreshing(false)
   }, [user])
 
   useEffect(() => { fetchNotifications() }, [fetchNotifications])
+
+  const acceptCollab = async (postId: string) => {
+    const { data } = await supabase.from('posts').select('settings').eq('id', postId).single()
+    if (data) {
+      await supabase.from('posts').update({ 
+        settings: { ...data.settings, co_author_status: 'accepted' } 
+      }).eq('id', postId)
+    }
+    setPendingCollabs(prev => prev.filter(p => p.id !== postId))
+  }
+
+  const declineCollab = async (postId: string) => {
+    const { data } = await supabase.from('posts').select('settings').eq('id', postId).single()
+    if (data) {
+      const newSettings = { ...data.settings }
+      delete newSettings.co_author_id
+      delete newSettings.co_author_status
+      await supabase.from('posts').update({ 
+        settings: newSettings 
+      }).eq('id', postId)
+    }
+    setPendingCollabs(prev => prev.filter(p => p.id !== postId))
+  }
 
   const onRefresh = () => {
     setRefreshing(true)
@@ -182,6 +215,43 @@ export default function () {
         keyExtractor={item => item.id}
         renderItem={renderItem}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />}
+        ListHeaderComponent={
+          pendingCollabs.length > 0 ? (
+            <View style={{ paddingBottom: 16 }}>
+              {pendingCollabs.map(collab => (
+                <View key={collab.id} style={[styles.row, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                  <View style={styles.avatarContainer}>
+                    {collab.profiles?.avatar_url ? (
+                      <Image source={{ uri: getCdnUrl(collab.profiles.avatar_url) }} style={styles.avatar} />
+                    ) : (
+                      <View style={[styles.avatar, styles.avatarFallback]}>
+                        <Text style={styles.avatarText}>{collab.profiles?.full_name?.[0] || '?'}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.content}>
+                    <Text style={styles.name}>{collab.profiles?.username} invited you to collaborate</Text>
+                    {!!collab.content && <Text style={styles.actionText} numberOfLines={1}>"{collab.content}"</Text>}
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                      <TouchableOpacity 
+                        style={{ backgroundColor: '#3b82f6', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
+                        onPress={() => acceptCollab(collab.id)}
+                      >
+                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>Accept</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={{ backgroundColor: colors.border, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
+                        onPress={() => declineCollab(collab.id)}
+                      >
+                        <Text style={{ color: colors.text, fontWeight: 'bold' }}>Decline</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="notifications-off-outline" size={48} color="#d4d4d8" />

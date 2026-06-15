@@ -87,8 +87,7 @@ export default function () {
         tiktok_url: tiktok.trim(),
         instagram_url: instagram.trim(),
         facebook_url: facebook.trim(),
-        website: website.trim(),
-        is_private: isPrivate
+        website: website.trim()
       })
       .eq('id', user.id)
 
@@ -240,23 +239,7 @@ export default function () {
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Privacy</Text>
-        <View style={[styles.sectionCard, { marginBottom: 24 }]}>
-          <View style={[styles.switchContainer, { borderBottomWidth: 0 }]}>
-            <View style={styles.switchTextContainer}>
-              <Text style={styles.switchTitle}>Private Account</Text>
-              <Text style={styles.switchDesc}>
-                When private, only people you approve can see your posts.
-              </Text>
-            </View>
-            <Switch
-              value={isPrivate}
-              onValueChange={setIsPrivate}
-              trackColor={{ false: colors.border, true: '#10b981' }}
-              thumbColor="#fff"
-            />
-          </View>
-        </View>
+
 
 
 

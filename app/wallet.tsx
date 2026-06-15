@@ -27,8 +27,6 @@ export default function WalletScreen() {
   
   const [balance, setBalance] = useState<number>(0)
   const [loading, setLoading] = useState(true)
-  const [watchingAd, setWatchingAd] = useState(false)
-  
   const [withdrawEmail, setWithdrawEmail] = useState('')
   const [showWithdraw, setShowWithdraw] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
@@ -57,55 +55,7 @@ export default function WalletScreen() {
     setLoading(false)
   }
 
-  // AzamPay State
-  const [topupAmount, setTopupAmount] = useState('1000')
-  const [topupPhone, setTopupPhone] = useState('')
-  const [topupProvider, setTopupProvider] = useState('Mpesa')
-  const [isToppingUp, setIsToppingUp] = useState(false)
 
-  const handleAzamPayTopup = async () => {
-    Alert.alert('Coming Soon', 'Instant Top-Up integration is currently being finalized. Please check back later!');
-    return;
-
-    if (!topupAmount || isNaN(Number(topupAmount)) || Number(topupAmount) < 1000) {
-      Alert.alert('Invalid Amount', 'Minimum top-up is 1,000 TZS.')
-      return
-    }
-    if (!topupPhone || topupPhone.length < 9) {
-      Alert.alert('Invalid Phone', 'Please enter a valid Tanzanian mobile number.')
-      return
-    }
-    
-    setIsToppingUp(true)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      const res = await fetch(`https://tgfuufsgkelgjjktbugg.supabase.co/functions/v1/azampay-checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
-        },
-        body: JSON.stringify({
-          amount: topupAmount,
-          accountNumber: topupPhone,
-          provider: topupProvider
-        })
-      })
-
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Checkout failed')
-      
-      Alert.alert('Check your phone!', 'A payment prompt has been sent to your mobile. Enter your PIN to complete the top-up.')
-      
-      // Auto-refresh wallet after 15 seconds as a fallback
-      setTimeout(fetchWallet, 15000)
-    } catch (e: any) {
-      Alert.alert('Top-up Error', e.message)
-    } finally {
-      setIsToppingUp(false)
-    }
-  }
 
   const userIdRef = useRef(user?.id);
 
@@ -113,31 +63,7 @@ export default function WalletScreen() {
     userIdRef.current = user?.id;
   }, [user?.id]);
 
-  const handleWatchAd = () => {
-    if (watchingAd) return
-    
-    setWatchingAd(true)
-    // Simulate watching an ad
-    setTimeout(async () => {
-      const { data: reward, error } = await supabase.rpc('grant_ad_reward', { p_user_id: user?.id })
-      setWatchingAd(false)
-      if (!error && reward) {
-        if (reward === 1000) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-          Alert.alert('💥 JACKPOT! 💥', `You just won ${reward} coins!!`)
-        } else if (reward === 100) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-          Alert.alert('Amazing! 🎉', `You found a rare drop of ${reward} coins!`)
-        } else {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-          Alert.alert('Reward Granted!', `You earned ${reward} coins!`)
-        }
-        fetchWallet()
-      } else {
-        Alert.alert('Error', error?.message || 'Failed to claim reward.')
-      }
-    }, 3000)
-  }
+
 
   const handleWithdraw = async () => {
     if (!withdrawEmail || !withdrawEmail.includes('@')) {
@@ -251,86 +177,6 @@ export default function WalletScreen() {
           </View>
         </View>
 
-        {/* Quick Actions Grid */}
-        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 30 }}>
-          {/* Watch Ad Button */}
-          <TouchableOpacity 
-            style={[styles.gridActionBtn, watchingAd && { opacity: 0.7 }]} 
-            onPress={handleWatchAd}
-            disabled={watchingAd}
-            activeOpacity={0.8}
-          >
-            {watchingAd ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Ionicons name="play-circle" size={32} color="#fff" style={{ marginBottom: 8 }} />
-            )}
-            <Text style={styles.gridActionText}>Watch Ad</Text>
-            <Text style={styles.gridActionSubText}>Free Coins</Text>
-          </TouchableOpacity>
-
-          {/* AI Mentor Button */}
-          <TouchableOpacity 
-            style={styles.gridActionBtn} 
-            onPress={() => router.push('/(tabs)/ai')}
-            activeOpacity={0.8}
-          >
-            <Text style={{ fontSize: 32, marginBottom: 8 }}>🧠</Text>
-            <Text style={styles.gridActionText}>Dapaz AI</Text>
-            <Text style={styles.gridActionSubText}>Business Chat</Text>
-          </TouchableOpacity>
-        </View>
-
-
-        {/* AzamPay Top-Up Section */}
-        <View style={{ marginBottom: 20, marginTop: 10, backgroundColor: colors.background, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
-          <Text style={styles.sectionTitle}>⚡ Instant Top-Up (AzamPay)</Text>
-          <View style={{ backgroundColor: '#f59e0b', borderRadius: 8, padding: 10, marginBottom: 12 }}>
-            <Text style={{ color: '#000', fontWeight: '800', textAlign: 'center', fontSize: 14 }}>🚧 COMING SOON — Payment integration is being finalized</Text>
-          </View>
-          <Text style={styles.withdrawSub}>Buy coins instantly via Mobile Money.</Text>
-
-          <Text style={[styles.formLabel, { marginTop: 10 }]}>Amount (TZS)</Text>
-          <TextInput
-            style={styles.voucherInput}
-            keyboardType="numeric"
-            value={topupAmount}
-            onChangeText={setTopupAmount}
-            placeholder="1000"
-            placeholderTextColor="#a1a1aa"
-          />
-
-          <Text style={[styles.formLabel, { marginTop: 12 }]}>Network Provider</Text>
-          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-            {['Mpesa', 'Tigo', 'Airtel', 'Halopesa'].map(prov => (
-              <TouchableOpacity 
-                key={prov} 
-                style={[{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: colors.border }, topupProvider === prov && { backgroundColor: colors.primary, borderColor: colors.primary }]}
-                onPress={() => setTopupProvider(prov)}
-              >
-                <Text style={[{ color: colors.text, fontWeight: '600' }, topupProvider === prov && { color: '#fff' }]}>{prov}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={styles.formLabel}>Mobile Number</Text>
-          <TextInput
-            style={styles.voucherInput}
-            keyboardType="phone-pad"
-            value={topupPhone}
-            onChangeText={setTopupPhone}
-            placeholder="e.g. 0700000000"
-            placeholderTextColor="#a1a1aa"
-          />
-
-          <TouchableOpacity 
-            style={[styles.redeemBtn, { width: '100%', marginTop: 16 }, isToppingUp && { opacity: 0.7 }]} 
-            onPress={handleAzamPayTopup}
-            disabled={isToppingUp}
-          >
-            {isToppingUp ? <ActivityIndicator color="#fff" /> : <Text style={styles.redeemBtnText}>Pay with {topupProvider}</Text>}
-          </TouchableOpacity>
-        </View>
 
         {/* Coin Store Section */}
         <View style={{ marginBottom: 10 }}>

@@ -41,66 +41,10 @@ export default function () {
   const [showCityPicker, setShowCityPicker] = useState(false)
   const [showCategoryPicker, setShowCategoryPicker] = useState(false)
 
-  // AzamPay State
-  const [provider, setProvider] = useState('Mpesa')
-  const [phone, setPhone] = useState('')
 
   const handleSubmit = async () => {
     Alert.alert('Coming Soon', 'Payment integration is currently being finalized. Shop registration is paused. Please check back later!');
     return;
-
-    if (!user) {
-      Alert.alert('Login Required', 'Please log in to open a shop.')
-      return
-    }
-    if (!shopName.trim() || !category.trim() || !city.trim()) {
-      Alert.alert('Missing Fields', 'Please fill in all required fields.')
-      return
-    }
-    const cleanTin = traTin.replace(/\D/g, '')
-    if (cleanTin.length !== 9) {
-      Alert.alert('Invalid TIN', 'Please enter a valid 9-digit TRA TIN.')
-      return
-    }
-    if (!phone || phone.length < 9) {
-      Alert.alert('Invalid Phone', 'Please enter a valid Tanzanian mobile number.')
-      return
-    }
-
-    setLoading(true)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      const res = await fetch(`https://tgfuufsgkelgjjktbugg.supabase.co/functions/v1/azampay-checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
-        },
-        body: JSON.stringify({
-          amount: "2000",
-          accountNumber: phone,
-          provider: provider,
-          transactionType: 'SHOP_FEE',
-          metadata: {
-            shopName: shopName.trim(),
-            description: description.trim(),
-            category,
-            city,
-            traTin: cleanTin
-          }
-        })
-      })
-
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Checkout failed')
-      
-      setDone(true)
-    } catch (e: any) {
-      Alert.alert('Payment Error', e.message)
-    } finally {
-      setLoading(false)
-    }
   }
 
   if (done) {

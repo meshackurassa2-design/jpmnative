@@ -1,13 +1,15 @@
 // app/(tabs)/_layout.tsx
 // Native bottom tab navigator — NO iOS home indicator conflicts
 import { Tabs, router } from 'expo-router'
-import { Platform, Animated, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native'
+import { Platform, Animated, StyleSheet, TouchableOpacity, View, useWindowDimensions, Text } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../../lib/theme';
 import { useUI } from '../../lib/ui';
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import Svg, { Path } from 'react-native-svg'
+import { createClient } from '../../lib/supabase'
+import { useAuth } from '../../lib/auth'
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets()
@@ -16,6 +18,31 @@ export default function TabLayout() {
   const tabHeight = 56 + insets.bottom
   
   const anim = useRef(new Animated.Value(0)).current
+  const { user } = useAuth()
+  const [unreadMessages, setUnreadMessages] = useState(0)
+  const supabase = createClient()
+
+  const fetchUnread = useCallback(async () => {
+    if (!user) return
+    const { count } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('receiver_id', user.id)
+      .eq('is_read', false)
+    setUnreadMessages(count || 0)
+  }, [user])
+
+  useEffect(() => {
+    fetchUnread()
+    if (!user) return
+    
+    // Listen for new messages or reads
+    const sub = supabase.channel('public:messages')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, fetchUnread)
+      .subscribe()
+      
+    return () => { supabase.removeChannel(sub) }
+  }, [user, fetchUnread])
 
   useEffect(() => {
     Animated.spring(anim, {
@@ -24,7 +51,7 @@ export default function TabLayout() {
       bounciness: 0,
       speed: 12
     }).start()
-  }, [isTabBarVisible])
+  }, [isTabBarVisible, tabHeight])
 
   const { width } = useWindowDimensions()
   const isDesktop = Platform.OS === 'web' && width >= 768
@@ -84,45 +111,7 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="create-post-shortcut"
-        options={{
-          tabBarIcon: () => null,
-          tabBarButton: (props) => (
-            <TouchableOpacity
-              {...props}
-              onPress={() => router.push('/create-post')}
-              style={{
-                top: -10,
-                justifyContent: 'center',
-                alignItems: 'center',
-                shadowColor: '#8b5cf6',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.5,
-                shadowRadius: 10,
-                elevation: 5,
-              }}
-            >
-              <View style={{
-                width: 48,
-                height: 48,
-                borderRadius: 16,
-                backgroundColor: '#6366f1',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}>
-                <Ionicons name="add" size={32} color="#fff" />
-              </View>
-            </TouchableOpacity>
-          )
-        }}
-        listeners={{
-          tabPress: (e) => {
-            e.preventDefault();
-            router.push('/create-post');
-          },
-        }}
-      />
+
       <Tabs.Screen
         name="marketplace"
         options={{
@@ -135,7 +124,14 @@ export default function TabLayout() {
         name="messages"
         options={{
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={26} color={color} />
+            <View style={{ position: 'relative' }}>
+              <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={26} color={color} />
+              {unreadMessages > 0 && (
+                <View style={{ position: 'absolute', top: -2, right: -4, backgroundColor: '#ef4444', minWidth: 16, height: 16, borderRadius: 8, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: colors.tabBar, paddingHorizontal: 3 }}>
+                  <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900' }}>{unreadMessages > 99 ? '99+' : unreadMessages}</Text>
+                </View>
+              )}
+            </View>
           ),
         }}
       />

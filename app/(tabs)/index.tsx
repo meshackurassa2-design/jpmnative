@@ -22,6 +22,7 @@ import { Skeleton } from '../../components/Skeleton'
 import { JobCard } from '../../components/JobCard'
 import { PostItem } from '../../components/PostItem'
 import { VibeBadge } from '../../components/VibeBadge'
+import { NativeAdCard } from '../../components/NativeAdCard'
 import { useTheme } from '../../lib/theme';
 import { useUI } from '../../lib/ui'
 import { BlurView } from 'expo-blur'
@@ -651,11 +652,16 @@ export default function HomeScreen() {
         data.push({ id: `daily-verse-card-${i}`, isVerseCard: true })
       }
       
-      // Inject Direct Ads every 3 posts
-      if ((i + 1) % 3 === 0 && directAds.length > 0) {
+      // Inject Direct Ads every 4 posts to prevent stacking with Google Ads
+      if ((i + 1) % 4 === 0 && directAds.length > 0) {
         data.push({ ...directAds[directAdIndex % directAds.length], isDirectAd: true })
         directAdIndex++
       } 
+      
+      // Inject Google Native Ad every 3 posts
+      if ((i + 1) % 3 === 0) {
+        data.push({ id: `admob-native-${i}`, isAdMobNative: true })
+      }
     })
     return data
   }, [posts, directAds, loading])
@@ -682,6 +688,7 @@ export default function HomeScreen() {
 
   const renderItem = ({ item }: { item: any }) => {
     if (item.isVerseCard) return <DailyVerseCard />
+    if (item.isAdMobNative) return <NativeAdCard />
 
     if (item.isDirectAd) return <DirectAdCard ad={item} isAdmin={myProfile?.is_admin} onDelete={() => handleDeleteDirectAd(item.id)} />
     if (item.settings?.is_job) return <JobCard post={item} isAdmin={myProfile?.is_admin} onDelete={() => handleDeleteJob(item.id)} />
