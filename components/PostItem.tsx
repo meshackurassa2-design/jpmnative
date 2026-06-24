@@ -10,6 +10,7 @@ import { useAuth } from '../lib/auth'
 import { useTheme } from '../lib/theme';
 import { useUI } from '../lib/ui';
 import { getCDNUrl } from '../lib/cdn';
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Video, ResizeMode } from 'expo-av';
 import { VibeBadge } from './VibeBadge';
 
@@ -146,6 +147,20 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
     }
 
     showActionSheet('Post Options', [
+      { text: 'Hide Post', icon: 'eye-off', onPress: async () => {
+        try {
+          const hiddenStr = await AsyncStorage.getItem('hidden_posts')
+          const hiddenPosts = hiddenStr ? JSON.parse(hiddenStr) : []
+          if (!hiddenPosts.includes(post.id)) {
+            hiddenPosts.push(post.id)
+            await AsyncStorage.setItem('hidden_posts', JSON.stringify(hiddenPosts))
+          }
+          setIsDeleted(true)
+          showToast('Post hidden', 'info')
+        } catch (e) {
+          console.error('Error hiding post', e)
+        }
+      }},
       { text: 'Report Post', style: 'destructive', icon: 'flag', onPress: () => {
         setTimeout(() => {
           showActionSheet('Why are you reporting this post?', [
@@ -161,14 +176,30 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
     ])
   }
 
-  if (isDeleted) return null
+  const confirmHideAllSpecialPosts = () => {
+    Alert.alert(
+      'Hide these posts?',
+      'Do you want to stop seeing Food Delivery and Job posts in your feed?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Yes, hide them', style: 'destructive', onPress: async () => {
+          try {
+            await AsyncStorage.setItem('hide_food_hire_posts', 'true')
+            setIsDeleted(true)
+            showToast('You will no longer see these posts.', 'success')
+          } catch (e) {
+            console.error('Error saving preference', e)
+          }
+        }}
+      ]
+    )
+  }
+
+
 
   const hasImage = post.image_urls && post.image_urls.length > 0
   const hasVideo = !!post.video_url
   const isAnonymous = post.settings?.is_anonymous === true
-  
-  const [isRevealed, setIsRevealed] = useState(false)
-  const isHidden = post.settings?.is_hidden === true && !isRevealed
   
   const [coAuthor, setCoAuthor] = useState<any>(post.co_author_profile)
 
@@ -181,6 +212,8 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
         })
     }
   }, [post.settings?.co_author_id, post.settings?.co_author_status])
+
+  if (isDeleted) return null
 
   return (
     <View style={styles.post}>
@@ -195,7 +228,7 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
       >
         {isAnonymous ? (
           <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: '#18181b', borderWidth: 1, borderColor: '#9333ea' }]}>
-            <Ionicons name="mask" size={20} color="#9333ea" />
+            <Ionicons name="person" size={20} color="#9333ea" />
           </View>
         ) : coAuthor ? (
           <View style={{ width: 44, height: 44, marginRight: 10, position: 'relative' }}>
@@ -254,9 +287,16 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
             {post.is_ghost && <Text style={{ color: '#f59e0b' }}>  👻 24h</Text>}
           </Text>
         </View>
-        <TouchableOpacity style={{ padding: 4 }} onPress={handlePostOptions}>
-          <Ionicons name="ellipsis-horizontal" size={20} color={colors.textDim} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {(post.settings?.is_job || post.profiles?.settings?.shop_category === 'Food & Restaurants') && (
+            <TouchableOpacity style={{ padding: 4, marginRight: 4 }} onPress={confirmHideAllSpecialPosts}>
+              <Ionicons name="close" size={22} color={colors.textDim} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={{ padding: 4 }} onPress={handlePostOptions}>
+            <Ionicons name="ellipsis-horizontal" size={20} color={colors.textDim} />
+          </TouchableOpacity>
+        </View>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.push(`/post/${post.id}`)} activeOpacity={0.9}>
@@ -268,54 +308,28 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
       </TouchableOpacity>
 
       {hasVideo && (
-        <TouchableOpacity 
-          onPress={() => {
-            if (isHidden) setIsRevealed(true)
-          }}
-          activeOpacity={1}
-          style={{ width: '100%', position: 'relative' }}
-        >
-          <Video
-            ref={videoRef}
-            source={{ uri: getCdnUrl(getCDNUrl(post.video_url) || '') }}
-            style={styles.postImage}
-            resizeMode={ResizeMode.COVER}
-            useNativeControls={false}
-            isLooping
-            shouldPlay={!isHidden}
-          />
-          {isHidden && (
-            <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.95)' }]}>
-              <Ionicons name="eye-off" size={48} color="#fff" style={{ marginBottom: 12, opacity: 0.8 }} />
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', opacity: 0.9 }}>Hidden Video</Text>
-              <Text style={{ color: '#a1a1aa', fontSize: 13, marginTop: 4 }}>Tap to reveal</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        <Video
+          ref={videoRef}
+          source={{ uri: getCdnUrl(getCDNUrl(post.video_url) || '') }}
+          style={styles.postImage}
+          resizeMode={ResizeMode.COVER}
+          useNativeControls={false}
+          isLooping
+          shouldPlay
+        />
       )}
 
       {hasImage && !hasVideo && (
-        <TouchableOpacity 
-          onPress={() => {
-            if (isHidden) setIsRevealed(true)
-            else router.push(`/post/${post.id}`)
-          }} 
+        <TouchableOpacity
+          onPress={() => router.push(`/post/${post.id}`)}
           activeOpacity={0.95}
           style={{ position: 'relative', width: '100%' }}
         >
           <Image
             source={{ uri: getCdnUrl(getCDNUrl(post.image_urls![0]) || '') }}
-            style={[styles.postImage, isHidden && { opacity: 0.3 }]}
-            blurRadius={isHidden ? 50 : 0}
+            style={styles.postImage}
             resizeMode="cover"
           />
-          {isHidden && (
-            <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-              <Ionicons name="eye-off" size={48} color="#fff" style={{ marginBottom: 12, opacity: 0.8 }} />
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', opacity: 0.9 }}>Spoiler / Hidden Content</Text>
-              <Text style={{ color: '#a1a1aa', fontSize: 13, marginTop: 4 }}>Tap to reveal</Text>
-            </View>
-          )}
         </TouchableOpacity>
       )}
 
@@ -342,7 +356,7 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
 
         <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={toggleRepost}>
           <Ionicons
-            name={post.is_reposted ? 'repeat' : 'repeat-outline'}
+            name={post.is_reposted ? 'sync' : 'sync-outline'}
             size={22}
             color={post.is_reposted ? '#10b981' : colors.textDim}
           />

@@ -13,9 +13,11 @@ import { useAuth } from '../lib/auth'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { encryptMessage, getSharedSecret } from '../lib/crypto'
+import { LinearGradient } from 'expo-linear-gradient'
+import { BlurView } from 'expo-blur'
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window')
-const DURATION = 5000
+const DURATION = 6000
 
 function timeLeft(expiresAt: string) {
   const diff = Math.max(0, new Date(expiresAt).getTime() - Date.now())
@@ -215,19 +217,31 @@ export function StoryViewer({ groups, startGroupIndex, visible, onClose, onViewe
 
   if (!current || !currentGroup) return null
 
-  const bgColor = current.bg_color || '#000000'
-  const textColor = bgColor === '#ffffff' ? '#000000' : '#ffffff'
+  // Parse gradient from bg_color if available
+  let gradientColors = ['#000000', '#000000']
+  try {
+    if (current.bg_color?.startsWith('[')) {
+      gradientColors = JSON.parse(current.bg_color)
+    } else {
+      gradientColors = [current.bg_color || '#000', current.bg_color || '#000']
+    }
+  } catch (e) {}
 
   return (
     <Modal visible={visible} animationType="fade" statusBarTranslucent onRequestClose={onClose}>
-      <View style={[styles.container, { backgroundColor: bgColor }]}>
-        {/* Background image */}
-        {current.image_url ? (
-          <Image source={{ uri: getCdnUrl(current.image_url) }} style={styles.bgImage} resizeMode="cover" />
-        ) : null}
+      <View style={styles.container}>
+        {/* Beautiful Gradient Background */}
+        <LinearGradient
+          colors={gradientColors.length === 2 ? [gradientColors[0], gradientColors[1]] : [gradientColors[0], gradientColors[1], gradientColors[2]] || ['#000', '#000']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
 
-        {/* Dark overlay */}
-        <View style={styles.overlay} />
+        {/* Foreground Image if it's an image story */}
+        {current.image_url && (
+          <Image source={{ uri: getCdnUrl(current.image_url) }} style={styles.bgImage} resizeMode="contain" />
+        )}
 
         {/* Progress bars */}
         <View style={[styles.progressRow, { top: insets.top + 10 }]}>
@@ -253,17 +267,24 @@ export function StoryViewer({ groups, startGroupIndex, visible, onClose, onViewe
         <View style={[styles.header, { top: insets.top + 24 }]}>
           <TouchableOpacity
             style={styles.headerProfile}
-            onPress={() => { onClose(); router.push(`/profile?id=${current.creator_id}`) }}
+            onPress={() => { onClose(); router.push(`/user-profile?id=${current.creator_id}`) }}
           >
-            {currentGroup.profile?.avatar_url ? (
-              <Image source={{ uri: getCdnUrl(currentGroup.profile.avatar_url) }} style={styles.headerAvatar} />
-            ) : (
-              <View style={[styles.headerAvatar, styles.headerAvatarFallback]}>
-                <Text style={{ color: '#ffffff', fontWeight: '700' }}>
-                  {currentGroup.profile?.full_name?.[0] || '?'}
-                </Text>
-              </View>
-            )}
+            {/* Awesome Story Ring around Avatar */}
+            <LinearGradient
+              colors={['#833ab4', '#fd1d1d', '#fcb045']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={styles.headerAvatarRing}
+            >
+              {currentGroup.profile?.avatar_url ? (
+                <Image source={{ uri: getCdnUrl(currentGroup.profile.avatar_url) }} style={styles.headerAvatar} />
+              ) : (
+                <View style={[styles.headerAvatar, styles.headerAvatarFallback]}>
+                  <Text style={{ color: '#ffffff', fontWeight: '700' }}>
+                    {currentGroup.profile?.full_name?.[0] || '?'}
+                  </Text>
+                </View>
+              )}
+            </LinearGradient>
             <View>
               <Text style={styles.headerName}>{currentGroup.profile?.full_name}</Text>
               <Text style={styles.headerTime}>{timeLeft(current.expires_at)}</Text>
@@ -278,17 +299,17 @@ export function StoryViewer({ groups, startGroupIndex, visible, onClose, onViewe
         {/* Text overlay */}
         {current.text_content ? (
           <View style={styles.textOverlay}>
-            <Text style={[styles.storyText, { color: textColor }]}>
+            <Text style={styles.storyText}>
               {current.text_content}
             </Text>
           </View>
         ) : null}
 
         {/* Touch zones for prev/next */}
-        <TouchableWithoutFeedback onPress={goPrev}>
+        <TouchableWithoutFeedback onPress={goPrev} onLongPress={() => setIsPaused(true)} onPressOut={() => setIsPaused(false)}>
           <View style={styles.tapLeft} />
         </TouchableWithoutFeedback>
-        <TouchableWithoutFeedback onPress={goNext}>
+        <TouchableWithoutFeedback onPress={goNext} onLongPress={() => setIsPaused(true)} onPressOut={() => setIsPaused(false)}>
           <View style={styles.tapRight} />
         </TouchableWithoutFeedback>
 
@@ -313,14 +334,14 @@ export function StoryViewer({ groups, startGroupIndex, visible, onClose, onViewe
                 <TouchableOpacity style={styles.likeBtn} onPress={handleLike} activeOpacity={0.7}>
                   <Ionicons
                     name={isLiked ? 'heart' : 'heart-outline'}
-                    size={26}
+                    size={28}
                     color={isLiked ? '#ef4444' : '#ffffff'}
                   />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.likeBtn} onPress={handleReply} activeOpacity={0.7}>
                   {sending
                     ? <ActivityIndicator size="small" color="#fff" />
-                    : <Ionicons name="paper-plane-outline" size={24} color="#fff" />
+                    : <Ionicons name="paper-plane" size={24} color="#fff" />
                   }
                 </TouchableOpacity>
               </View>
@@ -343,10 +364,10 @@ export function StoryViewer({ groups, startGroupIndex, visible, onClose, onViewe
 const getStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000000' },
   bgImage: { ...StyleSheet.absoluteFillObject },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.25)' },
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.2)' },
   progressRow: {
     position: 'absolute', left: 12, right: 12,
-    flexDirection: 'row', gap: 4, zIndex: 50,
+    flexDirection: 'row', gap: 6, zIndex: 50,
   },
   progressTrack: {
     flex: 1, height: 3, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2, overflow: 'hidden',
@@ -357,35 +378,43 @@ const getStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 50,
   },
   headerProfile: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  headerAvatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' },
+  headerAvatarRing: {
+    padding: 2, borderRadius: 24,
+  },
+  headerAvatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: '#000' },
   headerAvatarFallback: { backgroundColor: '#444', justifyContent: 'center', alignItems: 'center' },
-  headerName: { color: '#ffffff', fontSize: 14, fontWeight: '700' },
-  headerTime: { color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 1 },
-  closeBtn: { padding: 4 },
+  headerName: { color: '#ffffff', fontSize: 15, fontWeight: '800', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 3 },
+  headerTime: { color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2, fontWeight: '600' },
+  closeBtn: { padding: 4, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 3 },
   textOverlay: {
     ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center',
-    paddingHorizontal: 40, zIndex: 20,
+    paddingHorizontal: 24, zIndex: 20,
   },
-  storyText: { fontSize: 34, fontWeight: '900', textAlign: 'center', lineHeight: 42 },
+  storyText: { 
+    fontSize: 40, fontWeight: '900', textAlign: 'center', lineHeight: 48, color: '#ffffff',
+    textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 1, height: 2 }, textShadowRadius: 6,
+  },
   tapLeft: { position: 'absolute', left: 0, top: 0, bottom: 0, width: SCREEN_W * 0.3, zIndex: 40 },
   tapRight: { position: 'absolute', right: 0, top: 0, bottom: 0, width: SCREEN_W * 0.3, zIndex: 40 },
   bottomBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 50,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingTop: 12,
   },
-  replyRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  replyRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   replyInput: {
-    flex: 1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 28, paddingHorizontal: 18, paddingVertical: 10,
-    color: '#ffffff', fontSize: 15, backgroundColor: 'rgba(255,255,255,0.1)',
+    flex: 1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
+    borderRadius: 30, paddingHorizontal: 20, paddingVertical: 12,
+    color: '#ffffff', fontSize: 16, backgroundColor: 'rgba(0,0,0,0.3)',
+    fontWeight: '500'
   },
   likeBtn: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)'
   },
-  quickReactionsRow: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 16, paddingBottom: 8 },
-  quickReactionBtn: { padding: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 24 },
-  quickReactionEmoji: { fontSize: 28 },
+  quickReactionsRow: { flexDirection: 'row', justifyContent: 'center', gap: 18, marginTop: 16, paddingBottom: 12 },
+  quickReactionBtn: { padding: 10, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 30, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  quickReactionEmoji: { fontSize: 26 },
 })

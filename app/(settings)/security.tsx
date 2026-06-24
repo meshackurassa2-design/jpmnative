@@ -57,8 +57,13 @@ export default function () {
               return
             }
 
-            // 2. Delete profile
-            await supabase.from('profiles').delete().eq('id', user?.id)
+            // 2. Delete user entirely from auth and public schema via RPC
+            const { error: deleteErr } = await supabase.rpc('delete_user_account')
+            if (deleteErr) {
+              setDeleteLoading(false)
+              Alert.alert('Error', 'Failed to completely delete account.')
+              return
+            }
             
             // 3. Sign out
             await supabase.auth.signOut()

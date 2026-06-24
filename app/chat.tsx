@@ -20,7 +20,8 @@ import { GiphyPicker } from '../components/GiphyPicker'
 import { Skeleton } from '../components/Skeleton'
 import { VibeBadge } from '../components/VibeBadge'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { PanResponder } from 'react-native'
+import { PanResponder, TouchableWithoutFeedback } from 'react-native'
+import * as Clipboard from 'expo-clipboard'
 
 type Message = {
   id: string
@@ -34,6 +35,7 @@ type Message = {
   offer_amount?: number
   offer_status?: string // 'pending', 'accepted', 'declined'
   offer_product_id?: string
+  reactions?: Record<string, string>
 }
 
 // ── Swipe to reply wrapper ────────────────────────────────────────────────────
@@ -41,7 +43,8 @@ const SwipeableMessage = React.memo(({ children, onSwipe, mine }: { children: Re
   const translateX = useRef(new Animated.Value(0)).current
 
   const panResponder = useRef(PanResponder.create({
-    onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dy) < 12,
+    onMoveShouldSetPanResponderCapture: (_, g) => Math.abs(g.dx) > 10 && Math.abs(g.dy) < 5,
+    onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 10 && Math.abs(g.dy) < 5,
     onPanResponderMove: (_, g) => {
       if (g.dx > 0) translateX.setValue(Math.min(g.dx, 60))
     },
@@ -155,7 +158,7 @@ export default function () {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
-  const isShopChat = is_shop === 'true' || !!make_offer || messages.some(m => m.is_shop_chat)
+  const isShopChat = is_shop === 'true' || !!make_offer
 
   const [requestStatus, setRequestStatus] = useState<string | null>('allowed')
   const [checkingRequest, setCheckingRequest] = useState(true)
@@ -182,6 +185,48 @@ export default function () {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isTyping, setIsTyping] = useState(false)
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+  const [selectedMessageMenu, setSelectedMessageMenu] = useState<{msg: Message, content: string} | null>(null)
+
+  // ── Local persistent reactions cache (bypasses RLS) ──────────────────────
+  const REACTIONS_CACHE_KEY = `@reactions_${user?.id}_${id}`
+
+  const mergeReactionsIntoMessages = useCallback(async (msgs: Message[]) => {
+    try {
+      const cached = await AsyncStorage.getItem(REACTIONS_CACHE_KEY)
+      if (!cached) return msgs
+      const reactionsMap: Record<string, Record<string, string>> = JSON.parse(cached)
+      return msgs.map(m => reactionsMap[m.id] ? { ...m, reactions: { ...(m.reactions || {}), ...reactionsMap[m.id] } } : m)
+    } catch {
+      return msgs
+    }
+  }, [REACTIONS_CACHE_KEY])
+
+  const handleReaction = async (emoji: string) => {
+    if (!selectedMessageMenu || !user) return
+    const msgId = selectedMessageMenu.msg.id
+    setSelectedMessageMenu(null)
+
+    // 1. Update local state immediately
+    setMessages(prev => prev.map(m => {
+      if (m.id !== msgId) return m
+      return { ...m, reactions: { ...(m.reactions || {}), [user.id]: emoji } }
+    }))
+
+    // 2. Persist to local AsyncStorage cache (survives re-opens, bypasses RLS)
+    try {
+      const cached = await AsyncStorage.getItem(REACTIONS_CACHE_KEY)
+      const reactionsMap: Record<string, Record<string, string>> = cached ? JSON.parse(cached) : {}
+      reactionsMap[msgId] = { ...(reactionsMap[msgId] || {}), [user.id]: emoji }
+      await AsyncStorage.setItem(REACTIONS_CACHE_KEY, JSON.stringify(reactionsMap))
+    } catch (e) {
+      console.error('Failed to save reaction to cache', e)
+    }
+
+    // 3. Also try Supabase (best effort)
+    const currentMsg = messages.find(m => m.id === msgId)
+    const newReactions = { ...(currentMsg?.reactions || {}), [user.id]: emoji }
+    supabase.from('messages').update({ reactions: newReactions }).eq('id', msgId).then()
+  }
 
   const sharedSecret = user && id ? getSharedSecret(user.id, id) : ''
   const offerSentRef = useRef(false)
@@ -287,7 +332,8 @@ export default function () {
   const loadMessages = useCallback(async () => {
     if (!user || !id) return
 
-    const cached = await AsyncStorage.getItem(`@chat_${user.id}_${id}`)
+    const cacheKey = `@chat_${user.id}_${id}_${isShopChat}`
+    const cached = await AsyncStorage.getItem(cacheKey)
     if (cached) {
       try {
         setMessages(JSON.parse(cached))
@@ -295,12 +341,21 @@ export default function () {
       } catch (e) {}
     }
 
-    const { data } = await supabase
+    let query = supabase
       .from('messages')
       .select('*')
-      .or(`and(sender_id.eq.${user.id},receiver_id.eq.${id}),and(sender_id.eq.${id},receiver_id.eq.${user.id})`)
+      .in('sender_id', [user.id, id])
+      .in('receiver_id', [user.id, id])
       .order('created_at', { ascending: false })
       .limit(100)
+
+    if (isShopChat) {
+      query = query.eq('is_shop_chat', true)
+    } else {
+      query = query.or('is_shop_chat.eq.false,is_shop_chat.is.null')
+    }
+
+    const { data } = await query
 
     if (data) {
       const decrypted = await Promise.all(
@@ -309,57 +364,61 @@ export default function () {
           content: await decryptMessage(m.content, sharedSecret),
         }))
       )
-      setMessages(decrypted)
+      // Merge in locally-cached reactions so they survive re-opens
+      const withReactions = await mergeReactionsIntoMessages(decrypted)
+      setMessages(withReactions)
     }
     setLoading(false)
 
-    await supabase
+    let updateQuery = supabase
       .from('messages')
       .update({ is_read: true } as any)
       .eq('sender_id', id)
       .eq('receiver_id', user.id)
       .eq('is_read', false)
+
+    if (isShopChat) {
+      updateQuery = updateQuery.eq('is_shop_chat', true)
+    } else {
+      updateQuery = updateQuery.or('is_shop_chat.eq.false,is_shop_chat.is.null')
+    }
+    await updateQuery
   }, [user, id, sharedSecret])
 
   useEffect(() => { 
-    const task = InteractionManager.runAfterInteractions(() => {
-      loadMessages()
-    })
-    return () => task.cancel()
+    loadMessages()
   }, [loadMessages])
 
   useEffect(() => {
     if (!user || !id || messages.length === 0) return
-    AsyncStorage.setItem(`@chat_${user.id}_${id}`, JSON.stringify(messages))
+    AsyncStorage.setItem(`@chat_${user.id}_${id}_${isShopChat}`, JSON.stringify(messages))
   }, [messages, user, id])
 
   useEffect(() => {
     if (!user || !id) return
     const roomName = [user.id, id].sort().join('-')
-    const channelName = `chat-${roomName}`
-
-    supabase.getChannels().forEach(c => {
-      if (c.topic === `realtime:${channelName}`) supabase.removeChannel(c)
-    })
+    const channelName = `chat-${roomName}-${Date.now()}` // Ensure unique connection
 
     const channel = supabase
       .channel(channelName)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, async (payload) => {
-        if (payload.eventType === 'INSERT') {
-          if (payload.new.receiver_id === user.id && payload.new.sender_id === id) {
-            const decryptedContent = await decryptMessage(payload.new.content, sharedSecret)
-            setMessages(prev => [{ ...payload.new, content: decryptedContent } as Message, ...prev])
-            setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 100)
-            supabase.from('messages').update({ is_read: true } as any).eq('id', payload.new.id).then()
-          }
-        } else if (payload.eventType === 'UPDATE') {
-          if (payload.new.sender_id === user.id) {
-            setMessages(prev => prev.map(m => m.id === payload.new.id ? { ...m, is_read: payload.new.is_read } : m))
-          }
-          if (payload.new.offer_status) {
-            setMessages(prev => prev.map(m => m.id === payload.new.id ? { ...m, offer_status: payload.new.offer_status } : m))
-          }
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, async (payload) => {
+        if (payload.new.sender_id === id && Boolean(payload.new.is_shop_chat) === isShopChat) {
+          const decryptedContent = await decryptMessage(payload.new.content, sharedSecret)
+          setMessages(prev => {
+            // Prevent duplicates
+            if (prev.some(m => m.id === payload.new.id)) return prev
+            return [{ ...payload.new, content: decryptedContent } as Message, ...prev]
+          })
+          setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 100)
+          supabase.from('messages').update({ is_read: true } as any).eq('id', payload.new.id).then()
         }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, (payload) => {
+        // Catch reaction updates from the other person
+        setMessages(prev => prev.map(m => m.id === payload.new.id ? { ...m, reactions: payload.new.reactions, offer_status: payload.new.offer_status || m.offer_status } : m))
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `sender_id=eq.${user.id}` }, (payload) => {
+        setMessages(prev => prev.map(m => m.id === payload.new.id ? { ...m, is_read: payload.new.is_read, reactions: payload.new.reactions, offer_status: payload.new.offer_status || m.offer_status } : m))
       })
       .on('broadcast', { event: 'typing' }, (payload) => {
         if (payload.payload.user_id === id) {
@@ -779,49 +838,73 @@ export default function () {
       )
     }
 
+    const handleLongPress = () => {
+      setSelectedMessageMenu({ msg, content: actualContent })
+    }
+
     return (
       <View style={[styles.msgRow, mine ? styles.msgRowMine : styles.msgRowTheirs, { marginTop: sameAsOlder ? 2 : 10 }]}>
-        {!mine && !sameAsNewer && partner?.avatar_url ? (
-          <Image source={{ uri: getCdnUrl(partner.avatar_url) }} style={styles.msgAvatar} />
-        ) : !mine ? (
-          <View style={styles.msgAvatarSpacer} />
-        ) : null}
+        {/* Inner horizontal row: avatar + bubble */}
+        <View style={[styles.msgRowInner, mine ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' }]}>
+          {!mine && !sameAsNewer && partner?.avatar_url ? (
+            <Image source={{ uri: getCdnUrl(partner.avatar_url) }} style={styles.msgAvatar} />
+          ) : !mine ? (
+            <View style={styles.msgAvatarSpacer} />
+          ) : null}
 
-        <SwipeableMessage
-          mine={mine}
-          onSwipe={() => setReplyingTo({ ...msg, content: actualContent })}
-        >
-          {replyMsg && (
-            <View style={[styles.replyPreview, mine ? styles.replyPreviewMine : styles.replyPreviewTheirs, { alignSelf: mine ? 'flex-end' : 'flex-start' }]}>
-              <Text style={styles.replyPreviewText} numberOfLines={1}>
-                {replyMsg.content.startsWith('voice:') ? '🎤 Voice note' :
-                 replyMsg.content.startsWith('gif:') ? '🖼️ GIF' :
-                 replyMsg.content.includes('|') ? replyMsg.content.split('|')[1] : replyMsg.content}
-              </Text>
-            </View>
-          )}
+          <SwipeableMessage
+            mine={mine}
+            onSwipe={() => setReplyingTo({ ...msg, content: actualContent })}
+          >
+            {replyMsg && (
+              <View style={[styles.replyPreview, mine ? styles.replyPreviewMine : styles.replyPreviewTheirs, { alignSelf: mine ? 'flex-end' : 'flex-start' }]}>
+                <Text style={styles.replyPreviewText} numberOfLines={1}>
+                  {replyMsg.content.startsWith('voice:') ? '🎤 Voice note' :
+                   replyMsg.content.startsWith('gif:') ? '🖼️ GIF' :
+                   replyMsg.content.includes('|') ? replyMsg.content.split('|')[1] : replyMsg.content}
+                </Text>
+              </View>
+            )}
 
-          {isVoice ? (
-            <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs, borderRadius, { paddingHorizontal: 8, paddingVertical: 6, alignSelf: mine ? 'flex-end' : 'flex-start' }]}>
-              <VoiceNote url={actualContent.slice(6)} mine={mine} />
-            </View>
-          ) : isGif ? (
-            <View style={[{ overflow: 'hidden', maxWidth: SCREEN_WIDTH * 0.72, alignSelf: mine ? 'flex-end' : 'flex-start' }, borderRadius]}>
-              <Image source={{ uri: getCdnUrl(actualContent.slice(4)) }} style={styles.gifMessage} resizeMode="cover" />
-            </View>
-          ) : (
-            <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs, borderRadius, { alignSelf: mine ? 'flex-end' : 'flex-start' }]}>
-              <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextTheirs}>
-                {actualContent}
-              </Text>
-            </View>
-          )}
-        </SwipeableMessage>
+            {isVoice ? (
+              <TouchableOpacity onLongPress={handleLongPress} activeOpacity={0.9} style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs, borderRadius, { paddingHorizontal: 8, paddingVertical: 6, alignSelf: mine ? 'flex-end' : 'flex-start' }]}>
+                <VoiceNote url={actualContent.slice(6)} mine={mine} />
+              </TouchableOpacity>
+            ) : isGif ? (
+              <TouchableOpacity onLongPress={handleLongPress} activeOpacity={0.9} style={[{ overflow: 'hidden', maxWidth: SCREEN_WIDTH * 0.72, alignSelf: mine ? 'flex-end' : 'flex-start' }, borderRadius]}>
+                <Image source={{ uri: getCdnUrl(actualContent.slice(4)) }} style={styles.gifMessage} resizeMode="cover" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onLongPress={handleLongPress} activeOpacity={0.9} style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs, borderRadius, { alignSelf: mine ? 'flex-end' : 'flex-start' }]}>
+                <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextTheirs}>
+                  {actualContent}
+                </Text>
+              </TouchableOpacity>
+            )}
 
-        {mine && !sameAsNewer && (
-          <View style={styles.msgTimeRow}>
+            {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+              <View style={[styles.reactionsContainer, mine ? styles.reactionsContainerMine : styles.reactionsContainerTheirs]}>
+                {Array.from(new Set(Object.values(msg.reactions))).map((emoji, i) => (
+                  <Text key={i} style={styles.reactionPillEmoji}>{emoji}</Text>
+                ))}
+                {Object.keys(msg.reactions).length > 1 && (
+                  <Text style={styles.reactionPillCount}>{Object.keys(msg.reactions).length}</Text>
+                )}
+              </View>
+            )}
+          </SwipeableMessage>
+        </View>
+
+        {/* Time + tick — BELOW the bubble */}
+        {!sameAsNewer && mine && (
+          <View style={[styles.msgTimeRow, { alignSelf: 'flex-end', marginTop: 2, marginRight: 6 }]}>
             <Text style={styles.msgTime}>{formatTime(msg.created_at)}</Text>
-            <Ionicons name="checkmark-done" size={14} color={msg.is_read ? '#3b82f6' : colors.textDim} style={{ marginLeft: 4 }} />
+            <Ionicons name="checkmark-done" size={13} color={msg.is_read ? '#3b82f6' : colors.textDim} style={{ marginLeft: 3 }} />
+          </View>
+        )}
+        {!sameAsNewer && !mine && (
+          <View style={[styles.msgTimeRow, { alignSelf: 'flex-start', marginTop: 2, marginLeft: 40 }]}>
+            <Text style={styles.msgTime}>{formatTime(msg.created_at)}</Text>
           </View>
         )}
       </View>
@@ -865,8 +948,9 @@ export default function () {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-        keyboardVerticalOffset={0}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        enabled={Platform.OS === 'ios'}
       >
         {loading ? (
           <View style={{ flex: 1, paddingHorizontal: 12, paddingTop: 20 }}>
@@ -987,7 +1071,7 @@ export default function () {
                   {partner?.full_name?.split(' ')[0] || partner?.username || 'User'} is typing...
                 </Text>
               )}
-              <View style={[styles.inputBar, { paddingBottom: isKeyboardVisible ? 12 : Math.max(insets.bottom, 12) }]}>
+              <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
                 <View style={styles.inputRow}>
                   <TextInput
                     ref={inputRef}
@@ -996,7 +1080,7 @@ export default function () {
                     placeholderTextColor="#a1a1aa"
                     value={input}
                     onChangeText={handleTextChange}
-                    autoFocus={true}
+                    autoFocus={false}
                     multiline
                     maxLength={1000}
                   />
@@ -1099,6 +1183,84 @@ export default function () {
         onGifSelect={sendGif}
       />
 
+      <Modal visible={!!selectedMessageMenu} transparent animationType="fade">
+        <TouchableWithoutFeedback onPress={() => setSelectedMessageMenu(null)}>
+          <View style={styles.modalOverlay}>
+            {selectedMessageMenu && (
+              <TouchableWithoutFeedback>
+                <View style={styles.contextMenuContainer}>
+                  {/* Emoji Reactions */}
+                  <View style={styles.reactionBar}>
+                    {['❤️', '😂', '😮', '😢', '😡', '👍', '➕'].map(emoji => (
+                      <TouchableOpacity key={emoji} style={styles.reactionEmojiBtn} onPress={() => handleReaction(emoji)}>
+                        <Text style={styles.reactionEmojiText}>{emoji}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Date Header */}
+                  <View style={styles.contextMenuDateContainer}>
+                    <Text style={styles.contextMenuDateText}>
+                      {new Date(selectedMessageMenu.msg.created_at).toLocaleDateString(undefined, { weekday: 'long', hour: '2-digit', minute: '2-digit' }).toUpperCase()}
+                    </Text>
+                  </View>
+
+                  {/* Action List */}
+                  <View style={styles.actionList}>
+                    <TouchableOpacity 
+                      style={styles.actionItem} 
+                      onPress={() => {
+                        setReplyingTo({ ...selectedMessageMenu.msg, content: selectedMessageMenu.content })
+                        setSelectedMessageMenu(null)
+                      }}
+                    >
+                      <Ionicons name="arrow-undo-outline" size={24} color="#e4e4e7" />
+                      <Text style={styles.actionText}>Reply</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={styles.actionItem} 
+                      onPress={() => {
+                        Clipboard.setStringAsync(selectedMessageMenu.content)
+                        Alert.alert('Copied', 'Message copied to clipboard.')
+                        setSelectedMessageMenu(null)
+                      }}
+                    >
+                      <Ionicons name="copy-outline" size={24} color="#e4e4e7" />
+                      <Text style={styles.actionText}>Copy</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={[styles.actionItem, { borderBottomWidth: 0 }]} 
+                      onPress={async () => {
+                        const msgId = selectedMessageMenu.msg.id
+                        setMessages(prev => prev.filter(m => m.id !== msgId))
+                        setSelectedMessageMenu(null)
+                        await supabase.from('messages').delete().eq('id', msgId)
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={24} color="#e4e4e7" />
+                      <Text style={styles.actionText}>Delete for you</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={[styles.actionItem, { borderTopWidth: 1, borderTopColor: '#3f3f46', borderBottomWidth: 0 }]} 
+                      onPress={() => {
+                        Alert.alert('Reported', 'Message reported. Our team will review this shortly.')
+                        setSelectedMessageMenu(null)
+                      }}
+                    >
+                      <Ionicons name="alert-circle-outline" size={24} color="#ef4444" />
+                      <Text style={[styles.actionText, { color: '#ef4444' }]}>Report</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            )}
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
       {/* Payment Modal */}
       <Modal visible={showPaymentModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -1165,9 +1327,10 @@ const getStyles = (colors: any) => StyleSheet.create({
   headerUsername: { fontSize: 13, color: colors.textDim, marginTop: 1 },
 
   messagesList: { paddingHorizontal: 12, paddingVertical: 12, flexGrow: 1 },
-  msgRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
-  msgRowMine: { justifyContent: 'flex-end' },
-  msgRowTheirs: { justifyContent: 'flex-start' },
+  msgRow: { flexDirection: 'column', gap: 0 },
+  msgRowMine: { alignItems: 'flex-end' },
+  msgRowTheirs: { alignItems: 'flex-start' },
+  msgRowInner: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
   msgAvatar: { width: 28, height: 28, borderRadius: 14 },
   msgAvatarSpacer: { width: 28 },
   bubble: { maxWidth: SCREEN_WIDTH * 0.72, paddingHorizontal: 14, paddingVertical: 10 },
@@ -1175,8 +1338,8 @@ const getStyles = (colors: any) => StyleSheet.create({
   bubbleTheirs: { backgroundColor: colors.border },
   bubbleTextMine: { fontSize: 15, color: colors.background, lineHeight: 21 },
   bubbleTextTheirs: { fontSize: 15, color: colors.text, lineHeight: 21 },
-  msgTime: { fontSize: 11, color: colors.textDim, marginTop: 4, alignSelf: 'flex-end', marginHorizontal: 4 },
-  msgTimeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 4, marginHorizontal: 4 },
+  msgTime: { fontSize: 11, color: colors.textDim },
+  msgTimeRow: { flexDirection: 'row', alignItems: 'center' },
 
   gifMessage: { width: SCREEN_WIDTH * 0.55, height: SCREEN_WIDTH * 0.4, borderRadius: 16 },
 
@@ -1308,4 +1471,92 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   btnDeclineText: { fontSize: 14, fontWeight: '600', color: colors.text },
   btnAcceptText: { fontSize: 14, fontWeight: '600', color: '#fff' },
+
+  actionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#27272a',
+  },
+  actionText: {
+    color: '#e4e4e7',
+    fontSize: 16,
+    fontWeight: '500',
+    marginLeft: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  contextMenuContainer: {
+    width: '100%',
+    maxWidth: 320,
+    alignItems: 'center',
+  },
+  reactionBar: {
+    flexDirection: 'row',
+    backgroundColor: '#27272a',
+    borderRadius: 30,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 20,
+    width: '100%',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  reactionEmojiBtn: {
+    paddingHorizontal: 4,
+  },
+  reactionEmojiText: {
+    fontSize: 26,
+  },
+  contextMenuDateContainer: {
+    width: '100%',
+    backgroundColor: '#1f1f22',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#27272a',
+  },
+  contextMenuDateText: {
+    color: '#a1a1aa',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  actionList: {
+    width: '100%',
+    backgroundColor: '#1f1f22',
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    overflow: 'hidden',
+  },
+  reactionsContainer: {
+    position: 'absolute',
+    bottom: -10,
+    backgroundColor: '#27272a',
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#000',
+  },
+  reactionsContainerMine: { right: 8 },
+  reactionsContainerTheirs: { left: 8 },
+  reactionPillEmoji: { fontSize: 12 },
+  reactionPillCount: { fontSize: 11, color: '#fff', marginLeft: 2, fontWeight: '700' },
 })

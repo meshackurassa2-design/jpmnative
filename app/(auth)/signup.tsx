@@ -3,7 +3,7 @@ import { useTheme } from '../../lib/theme';
 import React, { useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator, Image, Dimensions
+  KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator, Image, Dimensions, Animated
 } from 'react-native'
 import { Link, router } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -15,8 +15,8 @@ import { decode } from 'base64-arraybuffer'
 const { width, height } = Dimensions.get('window')
 
 export default function SignupScreen() {
-  const { colors } = useTheme();
-  const styles = React.useMemo(() => getStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = React.useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [username, setUsername] = useState('')
@@ -33,6 +33,21 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [avatar, setAvatar] = useState<ImagePicker.ImagePickerAsset | null>(null)
+
+  const animValue = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.timing(animValue, {
+        toValue: 1,
+        duration: 25000,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, [animValue]);
+
+  const spin1 = animValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const spin2 = animValue.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -144,9 +159,9 @@ export default function SignupScreen() {
       style={styles.container}
     >
       {/* Background Shapes */}
-      <View style={styles.bgShape1} />
-      <View style={styles.bgShape2} />
-      <View style={styles.bgShape3} />
+      <Animated.View style={[styles.bgShape1, { transform: [{ rotate: spin1 }] }]} />
+      <Animated.View style={[styles.bgShape2, { transform: [{ rotate: spin2 }] }]} />
+      <Animated.View style={[styles.bgShape3, { transform: [{ rotate: spin1 }] }]} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={{ marginTop: 20, marginBottom: 24, alignItems: 'center' }}>
@@ -159,10 +174,10 @@ export default function SignupScreen() {
             {avatar ? (
               <Image source={{ uri: getCdnUrl(avatar.uri) }} style={styles.avatarImage} />
             ) : (
-              <Ionicons name="person-outline" size={32} color="#555" />
+              <Ionicons name="person-outline" size={32} color={colors.textDim} />
             )}
             <View style={styles.avatarBadge}>
-              <Ionicons name="camera" size={12} color="#000" />
+              <Ionicons name="camera" size={12} color={colors.background} />
             </View>
           </TouchableOpacity>
         </View>
@@ -213,13 +228,13 @@ export default function SignupScreen() {
               <TextInput
                 style={[styles.input, { flex: 1, borderWidth: 0 }]}
                 placeholder="Password"
-                placeholderTextColor="#666"
+                placeholderTextColor={colors.textDim}
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
               />
               <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color="#666" />
+                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color={colors.textDim} />
               </TouchableOpacity>
             </View>
           </View>
@@ -278,7 +293,7 @@ export default function SignupScreen() {
           </View>
 
           <TouchableOpacity style={styles.submitBtn} onPress={handleSignup} disabled={loading} activeOpacity={0.8}>
-            {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.submitBtnText}>Create account</Text>}
+            {loading ? <ActivityIndicator color={isDark ? '#000' : '#fff'} /> : <Text style={styles.submitBtnText}>Create account</Text>}
           </TouchableOpacity>
         </View>
 
@@ -295,65 +310,65 @@ export default function SignupScreen() {
   )
 }
 
-const getStyles = (colors: any) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   bgShape1: {
-    position: 'absolute', left: -80, top: -50, width: 280, height: 380, borderRadius: 140, borderWidth: 1, borderColor: '#222',
+    position: 'absolute', left: -80, top: -50, width: 280, height: 380, borderRadius: 140, borderWidth: 1, borderColor: isDark ? '#222' : '#e5e7eb',
   },
   bgShape2: {
-    position: 'absolute', left: -120, top: -100, width: 360, height: 480, borderRadius: 180, borderWidth: 1, borderColor: '#1a1a1a',
+    position: 'absolute', left: -120, top: -100, width: 360, height: 480, borderRadius: 180, borderWidth: 1, borderColor: isDark ? '#1a1a1a' : '#f3f4f6',
   },
   bgShape3: {
-    position: 'absolute', right: -80, bottom: -150, width: 250, height: 500, borderRadius: 125, borderWidth: 1, borderColor: '#222',
+    position: 'absolute', right: -80, bottom: -150, width: 250, height: 500, borderRadius: 125, borderWidth: 1, borderColor: isDark ? '#222' : '#e5e7eb',
   },
   scrollContent: { flexGrow: 1, paddingHorizontal: 28, paddingVertical: 40, zIndex: 10 },
-  title: { fontSize: 26, fontWeight: '800', color: '#fff', textAlign: 'center' },
+  title: { fontSize: 26, fontWeight: '800', color: colors.text, textAlign: 'center' },
   
   avatarContainer: { alignItems: 'center', marginBottom: 24 },
   avatarButton: {
     width: 88, height: 88, borderRadius: 44,
-    backgroundColor: '#0a0a0a', borderWidth: 1, borderColor: '#333',
+    backgroundColor: isDark ? '#0a0a0a' : '#fff', borderWidth: 1, borderColor: isDark ? '#333' : '#e5e7eb',
     justifyContent: 'center', alignItems: 'center',
   },
   avatarImage: { width: '100%', height: '100%', borderRadius: 44 },
   avatarBadge: {
     position: 'absolute', bottom: 0, right: 0,
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#fff',
+    backgroundColor: colors.text,
     justifyContent: 'center', alignItems: 'center',
   },
   
   form: { gap: 16 },
   formGroup: {
-    backgroundColor: '#0a0a0a', borderRadius: 16, borderWidth: 1, borderColor: '#222', overflow: 'hidden',
+    backgroundColor: isDark ? '#0a0a0a' : '#fff', borderRadius: 16, borderWidth: 1, borderColor: isDark ? '#222' : '#e5e7eb', overflow: 'hidden',
   },
-  inputDivider: { height: 1, backgroundColor: '#222' },
-  vertDivider: { width: 1, backgroundColor: '#222' },
+  inputDivider: { height: 1, backgroundColor: isDark ? '#222' : '#e5e7eb' },
+  vertDivider: { width: 1, backgroundColor: isDark ? '#222' : '#e5e7eb' },
   input: {
-    height: 60, paddingHorizontal: 16, fontSize: 16, color: '#fff', backgroundColor: '#0a0a0a',
+    height: 60, paddingHorizontal: 16, fontSize: 16, color: colors.text, backgroundColor: isDark ? '#0a0a0a' : '#fff', textAlign: 'center',
   },
   inputRow: { flexDirection: 'row', alignItems: 'center', position: 'relative' },
-  atSymbol: { position: 'absolute', left: 16, zIndex: 1, color: '#666', fontSize: 16 },
-  passwordContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0a0a0a' },
+  atSymbol: { position: 'absolute', left: 16, zIndex: 1, color: colors.textDim, fontSize: 16 },
+  passwordContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#0a0a0a' : '#fff' },
   eyeIcon: { padding: 16 },
   
   dateInput: { flex: 1, textAlign: 'center' },
   
   sectionHeader: { marginTop: 4, marginBottom: -8, marginLeft: 8 },
-  sectionTitle: { fontSize: 12, fontWeight: '700', color: '#666', letterSpacing: 1 },
+  sectionTitle: { fontSize: 12, fontWeight: '700', color: colors.textDim, letterSpacing: 1 },
   
-  genderButton: { flex: 1, height: 56, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0a0a0a' },
-  genderButtonActive: { backgroundColor: '#222' },
-  genderText: { fontSize: 15, fontWeight: '600', color: '#888' },
-  genderTextActive: { color: '#fff' },
+  genderButton: { flex: 1, height: 56, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#0a0a0a' : '#fff' },
+  genderButtonActive: { backgroundColor: isDark ? '#222' : '#f3f4f6' },
+  genderText: { fontSize: 15, fontWeight: '600', color: colors.textDim },
+  genderTextActive: { color: colors.text },
   
   submitBtn: {
-    height: 56, backgroundColor: '#fff', borderRadius: 28,
+    height: 56, backgroundColor: colors.text, borderRadius: 28,
     justifyContent: 'center', alignItems: 'center', marginTop: 16,
   },
-  submitBtnText: { color: '#000', fontSize: 16, fontWeight: '800' },
+  submitBtnText: { color: colors.background, fontSize: 16, fontWeight: '800' },
   
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 40 },
-  footerText: { fontSize: 14, color: '#888' },
-  footerLink: { fontSize: 14, color: '#fff', fontWeight: '700' },
+  footerText: { fontSize: 14, color: colors.textDim },
+  footerLink: { fontSize: 14, color: colors.text, fontWeight: '700' },
 });

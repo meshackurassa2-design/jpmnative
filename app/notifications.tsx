@@ -1,7 +1,6 @@
 import { getCdnUrl } from '../lib/cdn';
-// app/notifications.tsx
 import { useTheme } from '../lib/theme';
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   Image, ActivityIndicator, RefreshControl
@@ -19,14 +18,17 @@ type Notification = {
   type: string
   created_at: string
   read: boolean
-  actor_id: string
-  actor: {
+  actor_id?: string
+  post_id?: string
+  actor?: {
     id: string
     username: string
     full_name: string
     avatar_url?: string
     is_verified?: boolean
+    settings?: any
   }
+  count?: number // Used for UI grouping
 }
 
 export default function () {
@@ -41,11 +43,12 @@ export default function () {
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return
+    setLoading(true)
     const { data } = await supabase
       .from('notifications')
       .select(`
         *,
-        actor:actor_id(id, username, full_name, avatar_url, is_verified)
+        actor:actor_id(id, username, full_name, avatar_url, is_verified, settings)
       `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
@@ -68,6 +71,35 @@ export default function () {
   }, [user])
 
   useEffect(() => { fetchNotifications() }, [fetchNotifications])
+
+  useEffect(() => {
+    if (!user) return
+    const channel = supabase.channel(`notifications_inbox_${user.id}_${Date.now()}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, async (payload) => {
+        const { data: nData } = await supabase.from('notifications').select('*, actor:actor_id(id, username, full_name, avatar_url, is_verified, settings)').eq('id', payload.new.id).single()
+        if (nData) {
+          setNotifications(prev => [nData, ...prev])
+        }
+      })
+      .subscribe()
+      
+    return () => { supabase.removeChannel(channel) }
+  }, [user])
+
+  // Group similar consecutive notifications
+  const groupedNotifications = useMemo(() => {
+    const grouped: Notification[] = []
+    for (const n of notifications) {
+      const last = grouped[grouped.length - 1]
+      // Only group likes and comments from the same actor
+      if (last && last.actor_id === n.actor_id && last.type === n.type && ['like', 'comment'].includes(n.type)) {
+        last.count = (last.count || 1) + 1
+      } else {
+        grouped.push({ ...n, count: 1 })
+      }
+    }
+    return grouped
+  }, [notifications])
 
   const acceptCollab = async (postId: string) => {
     const { data } = await supabase.from('posts').select('settings').eq('id', postId).single()
@@ -107,13 +139,16 @@ export default function () {
     return () => clearTimeout(timer)
   }, [user])
 
-  const getActionText = (type: string) => {
+  const getActionText = (type: string, count: number = 1) => {
     switch (type) {
-      case 'like': return 'liked your post'
-      case 'comment': return 'commented on your post'
+      case 'like': return count > 1 ? `liked ${count} of your posts` : 'liked your post'
+      case 'comment': return count > 1 ? `commented on ${count} of your posts` : 'commented on your post'
       case 'follow': return 'followed you'
       case 'mention': return 'mentioned you'
       case 'message': return 'sent you a message'
+      case 'verification_approved': return 'Your account has been officially verified! 🎉'
+      case 'verification_denied': return 'Your verification request was declined. Review guidelines.'
+      case 'monetization_approved': return 'You have been approved for monetization! 💰'
       default: return 'interacted with you'
     }
   }
@@ -123,6 +158,9 @@ export default function () {
       case 'like': return <Ionicons name="heart" size={12} color="#fff" />
       case 'comment': return <Ionicons name="chatbubble" size={12} color="#fff" />
       case 'follow': return <Ionicons name="person" size={12} color="#fff" />
+      case 'verification_approved': return <Ionicons name="checkmark-circle" size={12} color="#fff" />
+      case 'verification_denied': return <Ionicons name="close-circle" size={12} color="#fff" />
+      case 'monetization_approved': return <Ionicons name="cash" size={12} color="#fff" />
       default: return <Ionicons name="notifications" size={12} color="#fff" />
     }
   }
@@ -132,6 +170,9 @@ export default function () {
       case 'like': return '#ef4444' // Red
       case 'comment': return '#3b82f6' // Blue
       case 'follow': return '#8b5cf6' // Purple
+      case 'verification_approved': return '#2563eb' // Blue Check
+      case 'verification_denied': return '#dc2626' // Red Reject
+      case 'monetization_approved': return '#eab308' // Gold
       default: return colors.textDim
     }
   }
@@ -150,11 +191,17 @@ export default function () {
       onPress={() => {
         if (item.type === 'follow') router.push(`/user-profile?id=${item.actor_id}`)
         else if (item.type === 'message') router.push(`/chat?id=${item.actor_id}`)
-        // TODO: route to post for likes/comments if post_id was stored in notifications
+        else if (['like', 'comment'].includes(item.type) && item.post_id) router.push(`/post/${item.post_id}`)
+        else if (item.type.includes('monetization')) router.push('/(settings)/monetization')
+        else if (item.type.includes('verification')) router.push('/(settings)/verification')
       }}
     >
       <View style={styles.avatarContainer}>
-        {item.actor?.avatar_url ? (
+        {item.type.includes('verification') || item.type.includes('monetization') ? (
+          <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: '#f4f4f5' }]}>
+            <Ionicons name={item.type.includes('verification') ? "shield-checkmark" : "diamond"} size={22} color={getBadgeColor(item.type)} />
+          </View>
+        ) : item.actor?.avatar_url ? (
           <Image source={{ uri: getCdnUrl(item.actor.avatar_url) }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatar, styles.avatarFallback]}>
@@ -168,11 +215,14 @@ export default function () {
 
       <View style={styles.content}>
         <View style={styles.headerLine}>
-          <Text style={styles.name} numberOfLines={1}>{item.actor?.full_name}</Text>
+          <Text style={styles.name} numberOfLines={1}>
+            {item.type.includes('verification') || item.type.includes('monetization') ? 'System' : item.actor?.full_name}
+          </Text>
           {item.actor?.is_verified && <Ionicons name="checkmark-circle" size={14} color="#2563eb" style={{ marginLeft: 4 }} />}
+          {item.actor?.settings?.account_type === 'news' && <Ionicons name="newspaper" size={14} color="#eab308" style={{ marginLeft: 4 }} />}
           <Text style={styles.time}>{timeAgo(item.created_at)}</Text>
         </View>
-        <Text style={styles.actionText}>{getActionText(item.type)}</Text>
+        <Text style={styles.actionText}>{getActionText(item.type, item.count)}</Text>
       </View>
     </TouchableOpacity>
   )
@@ -211,9 +261,10 @@ export default function () {
       </View>
 
       <FlatList
-        data={notifications}
+        data={groupedNotifications}
         keyExtractor={item => item.id}
         renderItem={renderItem}
+        showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />}
         ListHeaderComponent={
           pendingCollabs.length > 0 ? (
@@ -271,14 +322,13 @@ const getStyles = (colors: any) => StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  backBtn: { padding: 4, marginRight: 8 },
   title: { fontSize: 22, fontWeight: '800', color: colors.text },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  rowUnread: {},
+  rowUnread: { backgroundColor: colors.border + '33' },
   avatarContainer: { position: 'relative' },
   avatar: { width: 48, height: 48, borderRadius: 24 },
   avatarFallback: { backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center' },
@@ -293,7 +343,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   headerLine: { flexDirection: 'row', alignItems: 'center' },
   name: { fontSize: 15, fontWeight: '700', color: colors.text, maxWidth: '75%' },
   time: { fontSize: 13, color: colors.textDim, marginLeft: 8 },
-  actionText: { fontSize: 14, color: '#52525b', marginTop: 2 },
+  actionText: { fontSize: 14, color: '#52525b', marginTop: 2, fontWeight: '500' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 100, gap: 12 },
   emptyText: { fontSize: 16, color: colors.textDim },
 })

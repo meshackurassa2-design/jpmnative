@@ -14,6 +14,7 @@ type ConnectionUser = {
   username: string
   avatar_url: string | null
   is_verified: boolean
+  settings?: any
 }
 
 export default function ConnectionsScreen() {
@@ -36,7 +37,7 @@ export default function ConnectionsScreen() {
         if (activeTab === 'followers') {
           const { data, error } = await supabase
             .from('follows')
-            .select(`profiles!follows_follower_id_fkey(id, full_name, username, avatar_url, is_verified)`)
+            .select(`profiles!follows_follower_id_fkey(id, full_name, username, avatar_url, is_verified, settings)`)
             .eq('following_id', userId)
             
           if (!error && data) {
@@ -44,14 +45,14 @@ export default function ConnectionsScreen() {
           } else {
             const { data: fbData } = await supabase
               .from('follows')
-              .select(`profiles!follower_id(id, full_name, username, avatar_url, is_verified)`)
+              .select(`profiles!follower_id(id, full_name, username, avatar_url, is_verified, settings)`)
               .eq('following_id', userId)
             if (fbData) fetchedUsers = fbData.map((item: any) => item.profiles) as ConnectionUser[]
           }
         } else {
           const { data, error } = await supabase
             .from('follows')
-            .select(`profiles!follows_following_id_fkey(id, full_name, username, avatar_url, is_verified)`)
+            .select(`profiles!follows_following_id_fkey(id, full_name, username, avatar_url, is_verified, settings)`)
             .eq('follower_id', userId)
             
           if (!error && data) {
@@ -59,7 +60,7 @@ export default function ConnectionsScreen() {
           } else {
             const { data: fbData } = await supabase
               .from('follows')
-              .select(`profiles!following_id(id, full_name, username, avatar_url, is_verified)`)
+              .select(`profiles!following_id(id, full_name, username, avatar_url, is_verified, settings)`)
               .eq('follower_id', userId)
             if (fbData) fetchedUsers = fbData.map((item: any) => item.profiles) as ConnectionUser[]
           }
@@ -98,6 +99,9 @@ export default function ConnectionsScreen() {
           <Text style={styles.fullName} numberOfLines={1}>{item.full_name}</Text>
           {item.is_verified && (
             <Ionicons name="checkmark-circle" size={14} color="#2563eb" style={{ marginLeft: 4 }} />
+          )}
+          {item.settings?.account_type === 'news' && (
+            <Ionicons name="newspaper" size={14} color="#eab308" style={{ marginLeft: 4 }} />
           )}
         </View>
         <Text style={styles.username} numberOfLines={1}>@{item.username}</Text>

@@ -2,8 +2,9 @@
 import { useTheme } from '../../lib/theme';
 import React from 'react'
 import { ScrollView, View, Text, StyleSheet } from 'react-native'
+import { useTranslation } from '../../lib/i18n';
 
-const SECTIONS = [
+const TERMS_EN = [
   {
     title: '1. Acceptance of Terms',
     body: 'By accessing or using the platform, you agree to be bound by these Terms of Service. If you do not agree to these terms, you may not use the platform.',
@@ -42,9 +43,42 @@ const SECTIONS = [
   },
 ]
 
+const TERMS_SW = [
+  { title: '1. Kukubali Vigezo', body: 'Kwa kutumia programu hii, unakubaliana na Vigezo hivi vya Huduma. Ikiwa hukubaliani navyo, hupaswi kutumia programu hii.' },
+  { title: '2. Kustahiki', body: 'Lazima uwe na angalau miaka 18 kufungua akaunti. Kwa kutumia programu hii, unathibitisha kuwa una umri halali kisheria.' },
+  { title: '3. Mwenendo wa Mtumiaji', body: 'Tunadumisha miongozo thabiti ya maudhui. Unakubali kutojihusisha na mambo yafuatayo:', bullets: ['Maudhui Haramu: Kuchapisha maudhui ambayo ni kinyume cha sheria.', 'Maudhui ya Watu Wazima: Kuchapisha picha za utupu.', 'Lugha ya Chuki: Kunyanyasa, kuonewa, au kuhamasisha ubaguzi.', 'Taarifa za Uongo: Kusambaza taarifa za uongo au matangazo ya barua taka.', 'Matumizi Mabaya: Kujaribu kuingilia usalama wa programu.'], footer: 'Tathmini: Tunayo haki ya kuondoa maudhui yanayokiuka vigezo hivi. Akaunti zitakazokiuka miongozo hii zitafungiwa moja kwa moja.' },
+  { title: '4. Umiliki wa Maudhui', body: 'Unabaki na umiliki wa maudhui unayochapisha. Hata hivyo, unatupa leseni ya kutumia, kuonyesha, na kusambaza maudhui hayo kutoa huduma.' },
+  { title: '5. Kufunga Akaunti', body: 'Tuna haki ya kusitisha au kufunga akaunti yako kwa hiari yetu, bila taarifa, kwa mienendo inayo kiuka Vigezo hivi.' },
+  { title: '6. Kikomo cha Dhima', body: 'Programu hii inatolewa "kama ilivyo" bila udhamini wowote. Hatutawajibika kwa uharibifu wowote kutokana na matumizi yako.' },
+  { title: '7. Mabadiliko ya Vigezo', body: 'Tunaweza kusasisha Vigezo hivi mara kwa mara. Tutaarifu kuhusu mabadiliko yoyote makubwa hapa.' }
+]
+
+const TERMS_SUK = [
+  { title: '1. Kukubali Mihayo', body: 'Kwa kutumia programu iyi, ukubaliana na Mihayo iyi ya Huduma. Ukileka kukubaliana, uleke kutumia programu iyi.' },
+  { title: '2. Kwilwa', body: 'Ulinga uwe na miaka 18 kwingia. Ukatumia programu iyi, uthibitishe kuwa una umri wa kisheria.' },
+  { title: '3. Nhalika ya Mtumiaji', body: 'Unakubali kuleka kwinjila na mambo gano:', bullets: ['Shinhu sha Wubhi: Kubika shinhu shibhi.', 'Shinhu sha Banhu Bakulu: Kubika shinhu sha utupu.', 'Lugha ya Mbita: Kunyanyasa, kubagula.', 'Mhola ja Uongo: Kupa mbita ja uongo.', 'Kutumia Vibhi: Kwingilila usalama wa programu.'], footer: 'Tathmini: Tuli na haki ya kuondoa shinhu shibhi. Akaunti jabhi jikufungwa.' },
+  { title: '4. Kumiliki Shinhu', body: 'Unabaki na umiliki wa shinhu shako. Hata hivyo, unatupa ruhusa ya kutumia na kuonyesha shinhu isho.' },
+  { title: '5. Kufunga Akaunti', body: 'Tuli na haki ya kufunga akaunti yako bila kukuambia kwa namba inayo kiuka Mihayo iyi.' },
+  { title: '6. Kikomo cha Dhima', body: 'Programu iyi inatolewa "kama ilivyo" bila udhamini.' },
+  { title: '7. Kubadili Mihayo', body: 'Tunaweza kusasisha Mihayo iyi. Tutakuambia mabadiliko yoyote hapa.' }
+]
+
+const TERMS_CHA = [
+  { title: '1. Kukunda Mawio', body: 'Kwa kutumia programu iyi, ukunda na Mawio gha Huduma. Ukileka kukunda, uleke kutumia programu iyi.' },
+  { title: '2. Kimenywa', body: 'Ulazima uwe na miaka 18. Kwa kutumia programu iyi, uthibitishe kuwa una umri ukiwako.' },
+  { title: '3. Njia ya Mndu', body: 'Tuna miongozo ya kindu kiza. Ukunda kuleka mambo ghafwata:', bullets: ['Kindu kibaya: Kuwika kindu kibaya.', 'Kindu kya utupu.', 'Kunyanyasa mndu.', 'Meseji za uongo.', 'Kuharibu programu.'], footer: 'Tunayo haki ya kuleka kindu kibaya. Akaunti zinaharibu zikufungwa.' },
+  { title: '4. Kyako', body: 'Unabaki na kindu kyako. Hata hivyo, utupe leseni ya kuwika na kuonyesha.' },
+  { title: '5. Kufunga Akaunti', body: 'Tuna haki ya kufunga akaunti yako kwa mambo ghabaya.' },
+  { title: '6. Kutokuwajibika', body: 'Programu inatolewa bila udhamini wowote.' },
+  { title: '7. Kubadili Mawio', body: 'Tunaweza kusasisha Mawio ghafwata hapa.' }
+]
+
 export default function () {
   const { colors } = useTheme();
   const styles = React.useMemo(() => getStyles(colors), [colors]);
+  const { lang, t } = useTranslation();
+  
+  const SECTIONS = lang === 'sw' ? TERMS_SW : lang === 'suk' ? TERMS_SUK : lang === 'cha' ? TERMS_CHA : TERMS_EN;
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.date}>Last updated: March 26, 2026</Text>
@@ -59,7 +93,7 @@ export default function () {
               <Text style={styles.bulletText}>{bullet}</Text>
             </View>
           ))}
-          {section.footer && <Text style={[styles.body, { marginTop: 12 }]}>{section.footer}</Text>}
+          {(section as any).footer && <Text style={[styles.body, { marginTop: 12 }]}>{(section as any).footer}</Text>}
         </View>
       ))}
 

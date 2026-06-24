@@ -6,14 +6,16 @@ import {
   ScrollView, Modal, Switch, TextInput as RNTextInput, Animated,
 } from 'react-native'
 import { router, Stack } from 'expo-router'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { createClient } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useTheme } from '../lib/theme';
+import { useTranslation } from '../lib/i18n';
 import { decode } from 'base64-arraybuffer'
 import { GiphyPicker } from '../components/GiphyPicker'
+import { PhotoEditor } from '../components/PhotoEditor'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as StoreReview from 'expo-store-review'
 import * as FileSystem from 'expo-file-system/legacy'
@@ -29,6 +31,37 @@ interface PostItem {
 }
 
 const CATEGORIES = ['Funny', 'Trending', 'Relatable', 'Dank', 'Wholesome', 'Meme', 'Video', 'Art']
+
+const DICT = {
+  en: {
+    cancel: 'Cancel', whats_happening: "What's happening?", say_more: 'Say more...', add_to_thread: 'Add to thread',
+    post_deal: 'Post as Local Deal', post_deal_desc: 'List this post on the Deals Feed', options: 'Options', post: 'Post',
+    drafts_hint: 'Drafts auto-save to local history', post_settings: 'Post Settings', who_can_reply: 'WHO CAN REPLY?',
+    ghost_post: 'Ghost Post', ghost_desc: 'Anonymous, disappears in 24h', whispers: 'Whispers (Anonymous)', whispers_desc: 'Post completely anonymously',
+    review_replies: 'Review replies', review_desc: 'Verify replies before they go public', invite_collab: 'Invite Collaborator', invite_desc: 'Type exact username of co-author'
+  },
+  sw: {
+    cancel: 'Ghairi', whats_happening: "Kuna nini kipya?", say_more: 'Sema zaidi...', add_to_thread: 'Ongeza kwenye uzi',
+    post_deal: 'Chapisha kama Dili', post_deal_desc: 'Orodhesha kwenye Uzi wa Dili', options: 'Chaguzi', post: 'Chapisha',
+    drafts_hint: 'Rasimu inahifadhiwa kiotomatiki', post_settings: 'Mipangilio ya Chapisho', who_can_reply: 'NANI ANAWEZA KUJIBU?',
+    ghost_post: 'Chapisho la Siri', ghost_desc: 'Bila jina, hupotea baada ya saa 24', whispers: 'Minong\'ono (Bila jina)', whispers_desc: 'Chapisha bila kujulikana',
+    review_replies: 'Kagua majibu', review_desc: 'Hakiki majibu kabla ya kuonekana', invite_collab: 'Alika Mshiriki', invite_desc: 'Andika jina la mtumiaji'
+  },
+  suk: {
+    cancel: 'Leka', whats_happening: "Kuli mbita gani?", say_more: 'Longela zaidi...', add_to_thread: 'Ongeza haha',
+    post_deal: 'Bika Deal', post_deal_desc: 'Bika kwenye Deal', options: 'Chaguzi', post: 'Bika',
+    drafts_hint: 'Inahifadhiwa yenyewe', post_settings: 'Mipangilio', who_can_reply: 'NANI AKUJIBA?',
+    ghost_post: 'Mhola ya Siri', ghost_desc: 'Ipotea baada ya 24h', whispers: 'Minong\'ono', whispers_desc: 'Bika siri',
+    review_replies: 'Kagua majibu', review_desc: 'Kagua kabla ya kubika', invite_collab: 'Alika Mponyi', invite_desc: 'Andika zina'
+  },
+  cha: {
+    cancel: 'Leka', whats_happening: "Kuna kiki?", say_more: 'Ocha zaidi...', add_to_thread: 'Wika haha',
+    post_deal: 'Wika Dili', post_deal_desc: 'Wika kwenye Dili', options: 'Chaguzi', post: 'Wika',
+    drafts_hint: 'Inahifadhiwa yenyewe', post_settings: 'Mipangilio', who_can_reply: 'NANI AKUJIBU?',
+    ghost_post: 'Kindu kya Siri', ghost_desc: 'Kipotea baada ya 24h', whispers: 'Minong\'ono', whispers_desc: 'Wika siri',
+    review_replies: 'Kagua majibu', review_desc: 'Kagua kabla ya kuwika', invite_collab: 'Ika Mndu', invite_desc: 'Wika zina'
+  }
+}
 
 // ─── Stable avatar component ─────────────────────────────────────────────────
 // Defined outside the screen so React never re-mounts it on parent re-render.
@@ -88,6 +121,9 @@ export default function CreatePostScreen() {
   const { colors } = useTheme()
   const styles = useMemo(() => getStyles(colors), [colors])
   const supabase = createClient()
+  const insets = useSafeAreaInsets()
+  const { lang } = useTranslation()
+  const tLocal = (key: keyof typeof DICT.en) => (DICT[lang as keyof typeof DICT] || DICT.en)[key]
 
   const [thread, setThread] = useState<PostItem[]>([{
     id: Date.now().toString(), content: '', images: [], remoteUrls: [], video: null, isHidden: false
@@ -103,6 +139,7 @@ export default function CreatePostScreen() {
   const [coAuthorUsername, setCoAuthorUsername] = useState('')
   const [coAuthorId, setCoAuthorId] = useState<string | null>(null)
   const [verifyingCoAuthor, setVerifyingCoAuthor] = useState(false)
+  const [editingPhoto, setEditingPhoto] = useState<{ uri: string, index: number, asset: any } | null>(null)
 
   // Smooth Upload Animation
   const pulseAnim = useRef(new Animated.Value(0.7)).current;
@@ -129,6 +166,31 @@ export default function CreatePostScreen() {
   // Input ref so we can focus programmatically ONCE on mount (not on every render)
   const inputRef = useRef<RNTextInput>(null)
   const didFocus = useRef(false)
+
+  // Auto-save drafts
+  useEffect(() => {
+    const timeout = setTimeout(async () => {
+      const hasContent = thread.length > 1 || thread[0].content.trim() || thread[0].images.length > 0;
+      if (hasContent) {
+        await AsyncStorage.setItem('@dapaz_post_draft', JSON.stringify(thread));
+      } else {
+        await AsyncStorage.removeItem('@dapaz_post_draft');
+      }
+    }, 1000);
+    return () => clearTimeout(timeout);
+  }, [thread]);
+
+  // Load drafts on mount
+  useEffect(() => {
+    AsyncStorage.getItem('@dapaz_post_draft').then(draft => {
+      if (draft) {
+        try {
+          const parsed = JSON.parse(draft);
+          if (parsed && parsed.length > 0) setThread(parsed);
+        } catch(e) {}
+      }
+    });
+  }, []);
 
   // Load profile — same pattern as web (cache-first, then fresh from DB)
   useEffect(() => {
@@ -188,8 +250,7 @@ export default function CreatePostScreen() {
     if (!result.canceled) {
       const post = thread[index]
       if (type === 'Images') {
-        const newImages = [...post.images, ...result.assets].slice(0, 4 - post.remoteUrls.length)
-        updatePost(index, { images: newImages, video: null })
+        setEditingPhoto({ uri: result.assets[0].uri, index, asset: result.assets[0] })
       } else {
         updatePost(index, { video: result.assets[0], images: [], remoteUrls: [] })
       }
@@ -316,6 +377,7 @@ export default function CreatePostScreen() {
         console.warn('Store review skipped:', reviewErr)
       }
 
+      await AsyncStorage.removeItem('@dapaz_post_draft');
       router.back()
     } catch (e: any) {
       Alert.alert('Error', e.message)
@@ -329,13 +391,13 @@ export default function CreatePostScreen() {
   )
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.root} edges={['left', 'right']}>
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* ── Fixed header — lives OUTSIDE KeyboardAvoidingView, never jumps ── */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Text style={styles.headerBtnText}>Cancel</Text>
+          <Text style={styles.headerBtnText}>{tLocal('cancel')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -388,7 +450,7 @@ export default function CreatePostScreen() {
                 <TextInput
                   ref={index === 0 ? inputRef : undefined}
                   style={styles.input}
-                  placeholder={index === 0 ? "What's happening?" : 'Say more...'}
+                  placeholder={index === 0 ? tLocal('whats_happening') : tLocal('say_more')}
                   placeholderTextColor="#a1a1aa"
                   multiline
                   value={post.content}
@@ -435,18 +497,6 @@ export default function CreatePostScreen() {
                       )}
                     </View>
                     
-                    {/* Hide as Spoiler Toggle */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#27272a', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, marginTop: 12 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <Ionicons name="eye-off-outline" size={22} color="#a1a1aa" />
-                        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Hide as Spoiler / Surprise</Text>
-                      </View>
-                      <Switch 
-                        value={post.isHidden || false}
-                        onValueChange={(val) => updatePost(index, { isHidden: val })}
-                        trackColor={{ false: '#3f3f46', true: '#2563eb' }}
-                      />
-                    </View>
                   </>
                 )}
 
@@ -478,7 +528,7 @@ export default function CreatePostScreen() {
                     ])}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <Text style={styles.addThreadText}>Add to thread</Text>
+                    <Text style={styles.addThreadText}>{tLocal('add_to_thread')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -493,8 +543,8 @@ export default function CreatePostScreen() {
             >
               <Ionicons name="pricetag" size={20} color={isDeal ? '#15803d' : '#71717a'} />
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[styles.dealTitle, isDeal && styles.dealTitleActive]}>Post as Local Deal</Text>
-                <Text style={styles.dealDesc}>List this post on the Deals Feed</Text>
+                <Text style={[styles.dealTitle, isDeal && styles.dealTitleActive]}>{tLocal('post_deal')}</Text>
+                <Text style={styles.dealDesc}>{tLocal('post_deal_desc')}</Text>
               </View>
               <Switch value={isDeal} onValueChange={setIsDeal} trackColor={{ true: '#22c55e' }} />
             </TouchableOpacity>
@@ -506,37 +556,50 @@ export default function CreatePostScreen() {
           onClose={() => setShowGiphy(null)}
           onGifSelect={handleGifSelect}
         />
+        <PhotoEditor
+          visible={!!editingPhoto}
+          imageUri={editingPhoto?.uri || ''}
+          onCancel={() => setEditingPhoto(null)}
+          onSave={(newUri) => {
+            if (!editingPhoto) return
+            const post = thread[editingPhoto.index]
+            const newAsset = { ...editingPhoto.asset, uri: newUri }
+            const newImages = [...post.images, newAsset].slice(0, 4 - post.remoteUrls.length)
+            updatePost(editingPhoto.index, { images: newImages, video: null })
+            setEditingPhoto(null)
+          }}
+        />
       </KeyboardAvoidingView>
 
       {/* Floating Bottom Action Bar */}
       <View style={styles.bottomBarWrapper}>
         <View style={styles.bottomBar}>
           <TouchableOpacity style={styles.bottomOptionsBtn} onPress={() => setShowOptions(true)}>
-            <Text style={styles.bottomOptionsText}>Options</Text>
+            <Text style={styles.bottomOptionsText}>{tLocal('options')}</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.bottomPostBtn, isEmpty && styles.bottomPostBtnDisabled]} 
             onPress={handlePost}
             disabled={loading || isEmpty}
           >
-            {loading ? <ActivityIndicator size="small" color={colors.background} /> : <Text style={styles.bottomPostText}>Post</Text>}
+            {loading ? <ActivityIndicator size="small" color={colors.background} /> : <Text style={styles.bottomPostText}>{tLocal('post')}</Text>}
           </TouchableOpacity>
         </View>
-        <Text style={styles.bottomHint}>Drafts auto-save to local history</Text>
+        <Text style={styles.bottomHint}>{tLocal('drafts_hint')}</Text>
       </View>
 
       {/* Post settings modal */}
       <Modal visible={showOptions} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowOptions(false)}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Post Settings</Text>
+            <Text style={styles.modalTitle}>{tLocal('post_settings')}</Text>
             <TouchableOpacity onPress={() => setShowOptions(false)} style={styles.modalClose}>
               <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalScroll}>
             <View style={styles.settingSection}>
-              <Text style={styles.settingHeader}>WHO CAN REPLY?</Text>
+              <Text style={styles.settingHeader}>{tLocal('who_can_reply')}</Text>
               {(['Anyone', 'Followers', 'Followed', 'Mentioned'] as const).map(opt => (
                 <TouchableOpacity key={opt} style={styles.radioRow} onPress={() => setReplyPrivacy(opt)}>
                   <Text style={[styles.radioLabel, replyPrivacy === opt && styles.radioLabelActive]}>{opt}</Text>
@@ -549,31 +612,31 @@ export default function CreatePostScreen() {
 
             <View style={styles.settingRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.settingLabel}>Ghost Post</Text>
-                <Text style={styles.settingDesc}>Anonymous, disappears in 24h</Text>
+                <Text style={styles.settingLabel}>{tLocal('ghost_post')}</Text>
+                <Text style={styles.settingDesc}>{tLocal('ghost_desc')}</Text>
               </View>
               <Switch value={isGhost} onValueChange={setIsGhost} trackColor={{ true: '#f59e0b' }} />
             </View>
 
             <View style={styles.settingRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.settingLabel}>Whispers (Anonymous)</Text>
-                <Text style={styles.settingDesc}>Post completely anonymously</Text>
+                <Text style={styles.settingLabel}>{tLocal('whispers')}</Text>
+                <Text style={styles.settingDesc}>{tLocal('whispers_desc')}</Text>
               </View>
               <Switch value={isAnonymous} onValueChange={setIsAnonymous} trackColor={{ true: '#9333ea' }} />
             </View>
 
             <View style={styles.settingRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.settingLabel}>Review replies</Text>
-                <Text style={styles.settingDesc}>Verify replies before they go public</Text>
+                <Text style={styles.settingLabel}>{tLocal('review_replies')}</Text>
+                <Text style={styles.settingDesc}>{tLocal('review_desc')}</Text>
               </View>
               <Switch value={reviewReplies} onValueChange={setReviewReplies} trackColor={{ true: '#2563eb' }} />
             </View>
 
             <View style={[styles.settingRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
-              <Text style={styles.settingLabel}>Invite Collaborator</Text>
-              <Text style={styles.settingDesc}>Type exact username of co-author</Text>
+              <Text style={styles.settingLabel}>{tLocal('invite_collab')}</Text>
+              <Text style={styles.settingDesc}>{tLocal('invite_desc')}</Text>
               <View style={{ flexDirection: 'row', marginTop: 10 }}>
                 <TextInput
                   style={{ flex: 1, backgroundColor: colors.background, padding: 10, borderRadius: 8, color: colors.text, borderColor: colors.border, borderWidth: 1 }}

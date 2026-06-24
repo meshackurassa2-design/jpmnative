@@ -4,8 +4,9 @@ import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Linking, LayoutAnimation } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
+import { useTranslation } from '../../lib/i18n';
 
-const FAQ = [
+const FAQ_EN = [
   {
     q: 'How do I change my username?',
     a: 'Go to Settings → Edit Profile and tap on your username to change it.'
@@ -25,7 +26,31 @@ const FAQ = [
   {
     q: 'How do I delete my account?',
     a: 'Please contact us at meshackurassa2@gmail.com and we will process your request within 48 hours.'
-  },
+  }
+]
+
+const FAQ_SW = [
+  { q: 'Ninabadilishaje jina langu?', a: 'Nenda Mipangilio → Hariri Wasifu na uguse jina lako ili kulibadilisha.' },
+  { q: 'Ninaripotije chapisho?', a: 'Gusa vitone vitatu kwenye chapisho na uchague "Ripoti". Timu yetu inakagua ripoti zote.' },
+  { q: 'Ninaweshaje kutengeneza pesa?', a: 'Nenda Mipangilio → Kutengeneza Pesa na uangalie sifa zako. Endelea kuchapisha maudhui mazuri.' },
+  { q: 'Ninafunguaje duka?', a: 'Nenda Mipangilio → Dashibodi ya Duka na uchague "Unda Duka". Duka lako litakaguliwa.' },
+  { q: 'Ninafutaje akaunti yangu?', a: 'Tafadhali wasiliana nasi kupitia meshackurassa2@gmail.com na tutashughulikia ndani ya saa 48.' }
+]
+
+const FAQ_SUK = [
+  { q: 'Nabadilisha nhamba zina lyane?', a: 'Shila Mipangilio → Bisa Wasifu ubonye zina lyako.' },
+  { q: 'Naripoti nhamba chapisho?', a: 'Bonya tudoti tudatu kwenye chapisho na uchague "Ripoti".' },
+  { q: 'Napata hela nhamba?', a: 'Shila Mipangilio → Kupata Hela ubonye sifa jako. Pona shinhu shiza sana.' },
+  { q: 'Nafungula nhamba shisheko?', a: 'Shila Mipangilio → Dashibodi ya Shisheko ubonye "Fungula Shisheko".' },
+  { q: 'Nafuta nhamba akaunti?', a: 'Longela nasi kwa meshackurassa2@gmail.com tutafuta.' }
+]
+
+const FAQ_CHA = [
+  { q: 'Nabadilisha mkyi zina lyangu?', a: 'Nda Mipangilio → Wika Wasifu ubonye zina lyako.' },
+  { q: 'Naripoti mkyi chapisho?', a: 'Bonya doti idatu kwa chapisho ubonye "Ripoti".' },
+  { q: 'Napata mkyi hela?', a: 'Nda Mipangilio → Kupata Hela uwone sifa. Wika kindu kiza.' },
+  { q: 'Nafungua mkyi duka?', a: 'Nda Mipangilio → Dashibodi ya Duka ubonye "Fungua Duka".' },
+  { q: 'Nafuta mkyi akaunti?', a: 'Ocha naswi kwa meshackurassa2@gmail.com.' }
 ]
 
 function FAQItem({ q, a, styles }: { q: string, a: string, styles: any }) {
@@ -52,6 +77,10 @@ function FAQItem({ q, a, styles }: { q: string, a: string, styles: any }) {
 export default function () {
   const { colors } = useTheme();
   const styles = React.useMemo(() => getStyles(colors), [colors]);
+  const { lang, t } = useTranslation();
+  
+  const FAQ = lang === 'sw' ? FAQ_SW : lang === 'suk' ? FAQ_SUK : lang === 'cha' ? FAQ_CHA : FAQ_EN;
+  
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Contact card */}
@@ -60,16 +89,15 @@ export default function () {
           <Ionicons name="mail-outline" size={24} color="#2563eb" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.contactTitle}>Support Email</Text>
+          <Text style={styles.contactTitle}>{t('help_support')}</Text>
           <TouchableOpacity onPress={() => Linking.openURL('mailto:meshackurassa2@gmail.com')}>
             <Text style={styles.contactLink}>meshackurassa2@gmail.com</Text>
           </TouchableOpacity>
-          <Text style={styles.contactNote}>We respond within 24–48 hours</Text>
         </View>
       </View>
 
       {/* FAQ */}
-      <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
+      <Text style={styles.sectionTitle}>FAQ</Text>
       <View style={styles.card}>
         {FAQ.map((item, i) => (
           <View key={i}>
@@ -82,9 +110,9 @@ export default function () {
       {/* Extra links */}
       <View style={styles.linksCard}>
         {[
-          { label: 'View App Guide',   icon: 'book-outline',          onPress: () => router.push('/onboarding') },
-          { label: 'Terms of Service', icon: 'document-text-outline', onPress: () => router.push('/(settings)/terms') },
-          { label: 'Privacy Policy',   icon: 'lock-closed-outline',   onPress: () => router.push('/(settings)/privacy') },
+          { label: t('app_tour'),   icon: 'book-outline',          onPress: () => router.push('/onboarding') },
+          { label: t('terms_of_service'), icon: 'document-text-outline', onPress: () => router.push('/(settings)/terms') },
+          { label: t('privacy_policy'),   icon: 'lock-closed-outline',   onPress: () => router.push('/(settings)/privacy') },
         ].map((item, i) => (
           <TouchableOpacity
             key={i}
@@ -92,7 +120,7 @@ export default function () {
             onPress={item.onPress}
           >
             <Ionicons name={item.icon as any} size={18} color="#71717a" />
-            <Text style={styles.linkText}>{item.label}</Text>
+            <Text style={styles.linkText}>{item.label || item.label}</Text>
             <Ionicons name="open-outline" size={16} color="#a1a1aa" />
           </TouchableOpacity>
         ))}

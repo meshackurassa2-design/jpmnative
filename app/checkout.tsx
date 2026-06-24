@@ -5,7 +5,9 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, ActivityIndicator, Alert, Modal, FlatList
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import Constants from 'expo-constants'
+import { Platform } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { createClient } from '../lib/supabase'
@@ -43,6 +45,8 @@ export default function () {
   const { user } = useAuth()
   const supabase = createClient()
   const { items, cartTotal, clearCart } = useCart()
+  const insets = useSafeAreaInsets()
+  const topPadding = insets.top > 0 ? insets.top : (Platform.OS === 'ios' ? 54 : Constants.statusBarHeight)
 
   const [name, setName] = useState(user?.user_metadata?.full_name || '')
   const [email, setEmail] = useState(user?.email || '')
@@ -130,9 +134,6 @@ export default function () {
   } | null>(null)
 
   const handleCheckout = async () => {
-    Alert.alert('Coming Soon', 'Checkout and payment integration is currently being finalized. Please check back later!');
-    return;
-
     if (!name.trim()) return Alert.alert('Error', 'Please enter your full name.')
     if (!email || !email.includes('@')) return Alert.alert('Error', 'Please enter a valid email address.')
     if (!phone || phone.replace(/\D/g, '').length < 9) return Alert.alert('Error', 'Please enter a valid phone number.')
@@ -276,7 +277,7 @@ export default function () {
 
   if (success) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#000000' }}>
+      <View style={{ flex: 1, backgroundColor: '#000000', paddingTop: topPadding, paddingBottom: insets.bottom || 24 }}>
         <View style={styles.header}>
           <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>Digital Receipt</Text>
         </View>
@@ -370,19 +371,21 @@ export default function () {
             <Text style={[styles.primaryBtnText, { color: '#FFFFFF' }]}>Return to Home</Text>
           </TouchableOpacity>
         </ScrollView>
-      </SafeAreaView>
+      </View>
     )
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: topPadding, paddingBottom: insets.bottom || 24 }]}>
       <View style={styles.header}>
-        <BackButton />
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Checkout</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <Text style={styles.sectionTitle}>Your Details</Text>
 
         <View style={styles.inputGroup}>
@@ -546,7 +549,7 @@ export default function () {
           )}
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   )
 }
 
@@ -555,10 +558,10 @@ const getStyles = (colors: any) => StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: colors.background },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
+    paddingHorizontal: 16, height: 56,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  backBtn: { width: 40, alignItems: 'flex-start' },
+  backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
   
   scrollContent: { padding: 20 },

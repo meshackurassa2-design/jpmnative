@@ -12,11 +12,20 @@ import * as ImagePicker from 'expo-image-picker'
 import { createClient } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { LinearGradient } from 'expo-linear-gradient'
+import * as FileSystem from 'expo-file-system/legacy'
+import { decode } from 'base64-arraybuffer'
+import { BlurView } from 'expo-blur'
 
-const BG_COLORS = [
-  '#000000', '#111111', '#18181b', '#0f172a',
-  '#1c1917', '#27272a', '#3f3f46', '#ffffff',
-  '#1e3a5f', '#2d1b69', '#4a0e0e', '#0d4a2a',
+const BG_GRADIENTS = [
+  ['#833ab4', '#fd1d1d', '#fcb045'], // Instagram Classic
+  ['#8E2DE2', '#4A00E0'], // Purple to Deep Blue
+  ['#FF416C', '#FF4B2B'], // Vibrant Red
+  ['#f12711', '#f5af19'], // Fire
+  ['#00B4DB', '#0083B0'], // Ocean Blue
+  ['#11998e', '#38ef7d'], // Neon Green
+  ['#1c1c1c', '#000000'], // Midnight Dark
+  ['#C33764', '#1D2671'], // Sunset
 ]
 
 interface Props {
@@ -33,12 +42,11 @@ export function StoryCreator({ onClose, onCreated }: Props) {
 
   const [mode, setMode] = useState<'text' | 'image'>('text')
   const [text, setText] = useState('')
-  const [bgColorIndex, setBgColorIndex] = useState(0)
+  const [bgIndex, setBgIndex] = useState(0)
   const [imageUri, setImageUri] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
 
-  const bgColor = BG_COLORS[bgColorIndex]
-  const textColor = bgColor === '#ffffff' ? '#000000' : '#ffffff'
+  const currentGradient = BG_GRADIENTS[bgIndex]
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -52,7 +60,7 @@ export function StoryCreator({ onClose, onCreated }: Props) {
     }
   }
 
-  const cycleBg = () => setBgColorIndex(i => (i + 1) % BG_COLORS.length)
+  const cycleBg = () => setBgIndex(i => (i + 1) % BG_GRADIENTS.length)
 
   const handleSubmit = async () => {
     if (!user || uploading) return
@@ -72,18 +80,27 @@ export function StoryCreator({ onClose, onCreated }: Props) {
       try {
         const ext = imageUri.split('.').pop() || 'jpg'
         const path = `stories/${user.id}/${Date.now()}.${ext}`
-        const resp = await fetch(imageUri)
-        const blob = await resp.blob()
+        
+        // Reliably read local file via fetch blob in React Native
+        const res = await fetch(imageUri)
+        const blob = await res.blob()
         const { data, error } = await supabase.storage.from('memes').upload(path, blob, {
           contentType: `image/${ext}`,
           upsert: true,
         })
-        if (!error && data) {
+        
+        if (error) {
+          Alert.alert('Upload failed', error.message)
+          setUploading(false)
+          return
+        }
+        
+        if (data) {
           const { data: pubData } = supabase.storage.from('memes').getPublicUrl(path)
           imageUrl = pubData.publicUrl
         }
-      } catch (e) {
-        Alert.alert('Upload failed', 'Could not upload image. Try again.')
+      } catch (e: any) {
+        Alert.alert('Upload failed', e.message || 'Could not upload image. Try again.')
         setUploading(false)
         return
       }
@@ -93,7 +110,7 @@ export function StoryCreator({ onClose, onCreated }: Props) {
       creator_id: user.id,
       text_content: mode === 'text' ? text.trim() : null,
       image_url: imageUrl,
-      bg_color: mode === 'text' ? bgColor : '#000000',
+      bg_color: JSON.stringify(currentGradient),
     })
 
     setUploading(false)
@@ -110,28 +127,34 @@ export function StoryCreator({ onClose, onCreated }: Props) {
   return (
     <Modal visible animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: mode === 'image' ? '#000000' : bgColor }}
+        style={{ flex: 1, backgroundColor: '#000' }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.container}>
-            {/* Background image preview */}
-            {mode === 'image' && imageUri ? (
-              <Image source={{ uri: getCdnUrl(imageUri) }} style={styles.bgImage} resizeMode="cover" />
-            ) : null}
+            
+            {/* Background Layer */}
+            <LinearGradient
+              colors={currentGradient.length === 2 ? [currentGradient[0], currentGradient[1]] : [currentGradient[0], currentGradient[1], currentGradient[2]]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            
+            {mode === 'image' && imageUri && (
+              <Image source={{ uri: imageUri }} style={styles.bgImage} resizeMode="contain" />
+            )}
 
-            {/* Dark overlay for image mode */}
-            {mode === 'image' && <View style={styles.darkOverlay} />}
 
             {/* Text input overlay */}
             {mode === 'text' && (
               <View style={styles.textCenter}>
                 <TextInput
-                  style={[styles.textInput, { color: textColor }]}
+                  style={styles.textInput}
                   value={text}
                   onChangeText={setText}
-                  placeholder="Type something..."
-                  placeholderTextColor={textColor === '#ffffff' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)'}
+                  placeholder="Tap to type..."
+                  placeholderTextColor="rgba(255,255,255,0.6)"
                   multiline
                   maxLength={160}
                   textAlign="center"
@@ -143,15 +166,12 @@ export function StoryCreator({ onClose, onCreated }: Props) {
             {/* Top controls */}
             <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
               <TouchableOpacity style={styles.iconBtn} onPress={onClose}>
-                <Ionicons name="close" size={24} color="#fff" />
+                <Ionicons name="close" size={26} color="#fff" />
               </TouchableOpacity>
               {mode === 'text' && (
                 <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <TouchableOpacity style={styles.iconBtn} onPress={() => Keyboard.dismiss()}>
-                    <Ionicons name="chevron-down" size={24} color="#fff" />
-                  </TouchableOpacity>
                   <TouchableOpacity style={styles.iconBtn} onPress={cycleBg}>
-                    <Ionicons name="color-palette-outline" size={24} color="#fff" />
+                    <Ionicons name="color-palette" size={22} color="#fff" />
                   </TouchableOpacity>
                 </View>
               )}
@@ -171,7 +191,7 @@ export function StoryCreator({ onClose, onCreated }: Props) {
                     onPress={pickImage}
                     style={[styles.modeBtn, mode === 'image' && styles.modeBtnActive]}
                   >
-                    <Ionicons name="image-outline" size={18} color="#fff" />
+                    <Ionicons name="image" size={18} color="#fff" />
                     <Text style={styles.modeBtnText}> Photo</Text>
                   </TouchableOpacity>
                 </View>
@@ -180,7 +200,7 @@ export function StoryCreator({ onClose, onCreated }: Props) {
               {hasContent && (
                 <View style={styles.submitRow}>
                   <TouchableOpacity style={styles.iconBtn} onPress={pickImage}>
-                    <Ionicons name="images-outline" size={22} color="#fff" />
+                    <Ionicons name="images" size={22} color="#fff" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.submitBtn, uploading && { opacity: 0.6 }]}
@@ -192,8 +212,8 @@ export function StoryCreator({ onClose, onCreated }: Props) {
                       <ActivityIndicator color="#000" size="small" />
                     ) : (
                       <>
-                        <Text style={styles.submitBtnText}>Your Story</Text>
-                        <Ionicons name="chevron-forward" size={16} color="#000" />
+                        <Text style={styles.submitBtnText}>Share Story</Text>
+                        <Ionicons name="paper-plane" size={16} color="#000" />
                       </>
                     )}
                   </TouchableOpacity>
@@ -208,17 +228,18 @@ export function StoryCreator({ onClose, onCreated }: Props) {
 }
 
 const getStyles = (colors: any) => StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, borderRadius: 20, overflow: 'hidden' },
   bgImage: { ...StyleSheet.absoluteFillObject },
   darkOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' },
   textCenter: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center', alignItems: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
   },
   textInput: {
-    fontSize: 36, fontWeight: '900', textAlign: 'center',
-    lineHeight: 44, width: '100%',
+    fontSize: 40, fontWeight: '900', textAlign: 'center',
+    lineHeight: 48, width: '100%', color: '#ffffff',
+    textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 4,
   },
   topBar: {
     position: 'absolute', top: 0, left: 0, right: 0,
@@ -227,30 +248,33 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   bottomBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    paddingHorizontal: 24, zIndex: 50,
+    paddingHorizontal: 20, zIndex: 50,
   },
   iconBtn: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
   },
   modeRow: {
-    flexDirection: 'row', justifyContent: 'center', gap: 24,
+    flexDirection: 'row', justifyContent: 'center', gap: 16,
+    backgroundColor: 'rgba(0,0,0,0.4)', alignSelf: 'center',
+    padding: 6, borderRadius: 30,
   },
   modeBtn: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24,
   },
-  modeBtnActive: { backgroundColor: 'rgba(255,255,255,0.35)' },
-  modeBtnText: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
+  modeBtnActive: { backgroundColor: 'rgba(255,255,255,0.2)' },
+  modeBtnText: { color: '#ffffff', fontSize: 16, fontWeight: '800' },
   submitRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
   submitBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#ffffff', borderRadius: 28,
-    paddingHorizontal: 20, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#ffffff', borderRadius: 30,
+    paddingHorizontal: 24, paddingVertical: 14,
+    shadowColor: '#000', shadowOpacity: 0.3, shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
   },
-  submitBtnText: { color: '#000000', fontSize: 15, fontWeight: '900' },
+  submitBtnText: { color: '#000000', fontSize: 16, fontWeight: '900' },
 })

@@ -2,31 +2,37 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Dimensions, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../lib/theme';
+/*
 import {
   NativeAd,
   NativeAdView,
   NativeMediaView,
   TestIds
 } from 'react-native-google-mobile-ads';
+*/
 
 const { width } = Dimensions.get('window');
 
 // Use the Official AdMob Test Native Advanced ID for development to prevent accidental bans
 // In production, use the real JPM In-Feed Native Ad Unit ID from the screenshot
-const adUnitId = __DEV__ ? TestIds.NATIVE : 'ca-app-pub-4939768656689626/6513364964';
+// const adUnitId = __DEV__ ? TestIds.NATIVE : 'ca-app-pub-4939768656689626/6513364964';
 
 export function NativeAdCard() {
+  return null;
+}
+
+export function NativeAdCardOriginal() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const [nativeAd, setNativeAd] = useState<NativeAd | null>(null);
+  const [nativeAd, setNativeAd] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let ad: NativeAd;
+    let ad: any;
     const loadAd = async () => {
       try {
-        ad = await NativeAd.createForAdRequest(adUnitId);
-        setNativeAd(ad);
+        // ad = await NativeAd.createForAdRequest(adUnitId);
+        // setNativeAd(ad);
       } catch (e: any) {
         console.log('Native Ad failed to load', e);
         setError(e.message);
@@ -43,8 +49,8 @@ export function NativeAdCard() {
 
   return (
     <View style={styles.post}>
-      <NativeAdView
-        nativeAd={nativeAd}
+      <View
+        // nativeAd={nativeAd}
         style={{ width: '100%', minHeight: 100 }}
       >
         {/* HEADER: Matches standard PostHeader */}
@@ -81,7 +87,7 @@ export function NativeAdCard() {
         {/* MEDIA: Matches standard PostImage */}
         {nativeAd.mediaContent ? (
           <View style={{ marginBottom: 10, width: '100%', aspectRatio: 1.5 }}>
-             <NativeMediaView style={styles.postImage} />
+             <View style={styles.postImage} />
           </View>
         ) : nativeAd.images && nativeAd.images.length > 0 ? (
           <View style={{ marginBottom: 10, width: '100%', aspectRatio: 1.5 }}>
@@ -101,7 +107,7 @@ export function NativeAdCard() {
              </View>
           ) : null}
         </View>
-      </NativeAdView>
+      </View>
     </View>
   );
 }

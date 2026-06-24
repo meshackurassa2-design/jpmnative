@@ -17,7 +17,7 @@ import DateTimePicker from '@react-native-community/datetimepicker'
 const PRODUCT_CATEGORIES = [
   'Food & Beverages', 'Dairy', 'Meat & Poultry', 'Fruits & Vegetables',
   'Snacks', 'Cleaning Products', 'Health & Medicine', 'Beauty & Cosmetics',
-  'Electronics', 'Clothing', 'Stationery', 'Building Materials', 'Fuel',
+  'Electronics', 'Clothing', 'Services & Freelance', 'Stationery', 'Building Materials', 'Fuel',
   'Household', 'Other'
 ]
 

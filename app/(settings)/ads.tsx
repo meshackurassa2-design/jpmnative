@@ -12,6 +12,8 @@ import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { decode } from 'base64-arraybuffer'
 import { createClient } from '../../lib/supabase'
+import { useAuth } from '../../lib/auth'
+import { router } from 'expo-router'
 import { Skeleton } from '../../components/Skeleton'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
@@ -20,10 +22,19 @@ export default function () {
   const { colors } = useTheme();
   const styles = React.useMemo(() => getStyles(colors), [colors]);
   const supabase = createClient()
+  const { user } = useAuth()
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
   const [ads, setAds] = useState<any[]>([])
   const [creators, setCreators] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'ads' | 'create' | 'creators'>('ads')
+
+  // Check admin status on mount
+  useEffect(() => {
+    if (!user) { setIsAdmin(false); return }
+    supabase.from('profiles').select('is_admin').eq('id', user.id).single()
+      .then(({ data }) => setIsAdmin(!!data?.is_admin))
+  }, [user])
 
   // Ad Form State
   const [adTitle, setAdTitle] = useState('')
@@ -31,10 +42,6 @@ export default function () {
   const [targetUrl, setTargetUrl] = useState('')
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null)
   const [postingAd, setPostingAd] = useState(false)
-
-  useEffect(() => {
-    fetchData()
-  }, [activeTab])
 
   const fetchData = async () => {
     if (activeTab === 'create') return
@@ -51,6 +58,12 @@ export default function () {
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    fetchData()
+  }, [activeTab, isAdmin])
+
+  // Block access if not admin — these are rendered in the JSX below, NOT as early returns before hooks
 
   const handleCreatorAction = async (creatorId: string, action: 'approved' | 'declined') => {
     const { data: profileData } = await supabase.from('profiles').select('settings').eq('id', creatorId).single()
@@ -74,8 +87,14 @@ export default function () {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete', style: 'destructive', onPress: async () => {
-          await supabase.from('direct_ads').delete().eq('id', id)
+          // Remove from UI immediately (optimistic)
           setAds(prev => prev.filter(a => a.id !== id))
+          const { error } = await supabase.from('direct_ads').delete().eq('id', id)
+          if (error) {
+            Alert.alert('Delete Failed', error.message)
+            // Restore list from server
+            fetchData()
+          }
         }
       }
     ])
@@ -100,6 +119,10 @@ export default function () {
       Alert.alert('Missing Image', 'Please select an Ad Image.')
       return
     }
+    if (!targetUrl.trim()) {
+      Alert.alert('Missing Link URL', 'Please add a Link URL for your ad (e.g. https://yourshop.com).')
+      return
+    }
 
     setPostingAd(true)
     try {
@@ -119,7 +142,7 @@ export default function () {
       const { error } = await supabase.from('direct_ads').insert({
         title: adTitle.trim(),
         description: adDesc.trim() || null,
-        target_url: targetUrl.trim() || null,
+        target_url: targetUrl.trim(),
         image_url: imageUrl,
       })
 
@@ -183,6 +206,22 @@ export default function () {
 
   return (
     <View style={styles.container}>
+      {/* Admin Guard */}
+      {isAdmin === null ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" />
+        </View>
+      ) : isAdmin === false ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+          <Ionicons name="lock-closed" size={48} color="#ef4444" />
+          <Text style={{ color: '#ef4444', fontSize: 20, fontWeight: '800', marginTop: 16, textAlign: 'center' }}>Admin Only</Text>
+          <Text style={{ color: '#a1a1aa', fontSize: 14, marginTop: 8, textAlign: 'center' }}>You do not have permission to access Ads Management.</Text>
+          <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 24, backgroundColor: '#18181b', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}>
+            <Text style={{ color: '#fff', fontWeight: '700' }}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
       {/* Tab bar */}
       <View style={styles.tabs}>
         {(['ads', 'create', 'creators'] as const).map(tab => (
@@ -319,6 +358,8 @@ export default function () {
             </View>
           }
         />
+      )}
+      </>
       )}
     </View>
   )

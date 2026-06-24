@@ -21,7 +21,7 @@ const TANZANIA_CITIES = [
 ]
 
 const SHOP_CATEGORIES = [
-  'Clothing', 'Electronics', 'Food & Restaurants', 'Beauty', 'Books', 
+  'Clothing', 'Electronics', 'Food & Restaurants', 'Services & Freelance', 'Beauty', 'Books', 
   'Home', 'Sports', 'Toys', 'Other'
 ]
 
@@ -43,18 +43,56 @@ export default function () {
 
 
   const handleSubmit = async () => {
-    Alert.alert('Coming Soon', 'Payment integration is currently being finalized. Shop registration is paused. Please check back later!');
-    return;
+    if (!shopName || !category || !city || !traTin) {
+      Alert.alert('Missing Fields', 'Please fill in all required fields.')
+      return
+    }
+    
+    setLoading(true)
+    try {
+      // 1. Check coin balance
+      const { data: profile, error: profileErr } = await supabase.from('profiles').select('wallet_balance').eq('id', user?.id).single()
+      if (profileErr) throw profileErr
+      
+      const balance = profile.wallet_balance || 0
+      
+      if (balance < 2000) {
+        Alert.alert('Insufficient Coins', 'You need 2,000 Dapaz Coins to open a shop. Please visit your Wallet to redeem a voucher.')
+        setLoading(false)
+        return
+      }
+      
+      // 2. Insert Shop
+      const { error: shopErr } = await supabase.from('shops').insert({
+        owner_id: user?.id,
+        name: shopName,
+        description,
+        category,
+        location_city: city,
+        status: 'active'
+      })
+      if (shopErr) throw shopErr
+      
+      // 3. Deduct Balance
+      const { error: updateErr } = await supabase.from('profiles').update({ wallet_balance: balance - 2000 }).eq('id', user?.id)
+      if (updateErr) throw updateErr
+      
+      setDone(true)
+    } catch (e: any) {
+      Alert.alert('Error', e.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (done) {
     return (
       <SafeAreaView style={styles.center}>
         <Ionicons name="checkmark-circle" size={80} color="#16a34a" />
-        <Text style={styles.successTitle}>Check Your Phone!</Text>
+        <Text style={styles.successTitle}>Shop Opened!</Text>
         <Text style={styles.successText}>
-          A payment prompt of 2,000 TZS has been sent to your mobile. Enter your PIN to complete the payment. 
-          Your shop "{shopName}" will be automatically opened once the payment is successful!
+          2,000 Dapaz Coins were successfully deducted from your wallet. 
+          Your shop "{shopName}" is now active!
         </Text>
         <TouchableOpacity style={styles.primaryBtn} onPress={() => router.replace('/seller-onboarding')}>
           <Text style={styles.primaryBtnText}>Explore Seller Features</Text>
@@ -137,23 +175,23 @@ export default function () {
 
         <View style={{ marginBottom: 20, marginTop: 10, backgroundColor: colors.border, padding: 16, borderRadius: 16 }}>
           <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 4 }}>Shop Opening Fee</Text>
-          <Text style={{ fontSize: 14, color: colors.textDim, marginBottom: 12 }}>A one-time fee of 2,000 TZS is required.</Text>
+          <Text style={{ fontSize: 14, color: colors.textDim, marginBottom: 12 }}>A one-time fee of 2,000 Dapaz Coins is required.</Text>
 
-          <View style={{ backgroundColor: '#f59e0b', borderRadius: 8, padding: 12, marginBottom: 4 }}>
-            <Text style={{ color: '#000', fontWeight: '800', textAlign: 'center', fontSize: 14 }}>🚧 COMING SOON — Payment integration is being finalized</Text>
-            <Text style={{ color: '#000', fontWeight: '500', textAlign: 'center', fontSize: 12, marginTop: 4 }}>Shop registration will be open shortly. Check back later!</Text>
+          <View style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: 8, padding: 12, marginBottom: 4 }}>
+            <Text style={{ color: '#3b82f6', fontWeight: '800', textAlign: 'center', fontSize: 14 }}>Balance Check Required</Text>
+            <Text style={{ color: colors.text, fontWeight: '500', textAlign: 'center', fontSize: 12, marginTop: 4 }}>This amount will be deducted instantly from your wallet.</Text>
           </View>
         </View>
 
         <TouchableOpacity 
-          style={[styles.primaryBtn, { opacity: 0.5 }]} 
+          style={[styles.primaryBtn, loading && { opacity: 0.5 }]} 
           onPress={handleSubmit}
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.primaryBtnText}>🚧 Coming Soon</Text>
+            <Text style={styles.primaryBtnText}>Pay 2,000 🪙 & Open</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

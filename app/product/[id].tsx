@@ -16,6 +16,8 @@ import { useAuth } from '../../lib/auth'
 import * as ImagePicker from 'expo-image-picker'
 import { decode } from 'base64-arraybuffer'
 import { Modal, TextInput, Switch } from 'react-native'
+import { PhotoEditor } from '../../components/PhotoEditor'
+import * as FileSystem from 'expo-file-system/legacy'
 
 
 interface Product {
@@ -84,6 +86,7 @@ export default function ProductDetailScreen() {
   const [editFlashSale, setEditFlashSale] = useState(false)
   const [editMysteryBox, setEditMysteryBox] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [editingPhoto, setEditingPhoto] = useState<string | null>(null)
 
   const openEditModal = () => {
     if (!product) return
@@ -161,20 +164,33 @@ export default function ProductDetailScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 0.5,
-      base64: true,
+      base64: true, // We still request base64 in case we need it, but PhotoEditor will generate a new URI
     })
 
-    if (!result.canceled && result.assets[0].base64) {
-      const ext = result.assets[0].uri.split('.').pop() || 'jpg'
+    if (!result.canceled) {
+      setEditingPhoto(result.assets[0].uri)
+    }
+  }
+
+  const handleFilteredPhotoSave = async (newUri: string) => {
+    setEditingPhoto(null)
+    setIsSaving(true)
+    try {
+      const base64 = await FileSystem.readAsStringAsync(newUri, { encoding: 'base64' })
+      const ext = newUri.split('.').pop() || 'jpg'
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`
       
-      const { error } = await supabase.storage.from('products').upload(fileName, decode(result.assets[0].base64), { contentType: `image/${ext}` })
+      const { error } = await supabase.storage.from('memes').upload(fileName, decode(base64), { contentType: `image/${ext}` })
       if (error) {
         Alert.alert('Upload Error', error.message)
         return
       }
-      const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(fileName)
+      const { data: { publicUrl } } = supabase.storage.from('memes').getPublicUrl(fileName)
       setEditImages(prev => [...prev, publicUrl])
+    } catch (e: any) {
+      Alert.alert('Error', e.message)
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -701,6 +717,13 @@ export default function ProductDetailScreen() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      <PhotoEditor
+        visible={!!editingPhoto}
+        imageUri={editingPhoto || ''}
+        onCancel={() => setEditingPhoto(null)}
+        onSave={handleFilteredPhotoSave}
+      />
     </View>
   )
 }

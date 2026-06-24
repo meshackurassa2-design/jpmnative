@@ -2,11 +2,15 @@
 import { useTheme } from '../../lib/theme';
 import React, { useEffect, useState } from 'react'
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Switch, ActivityIndicator
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Switch, ActivityIndicator, Image
 } from 'react-native'
 import { router } from 'expo-router'
 import { createClient } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import * as ImagePicker from 'expo-image-picker'
+import { decode } from 'base64-arraybuffer'
+import { Ionicons } from '@expo/vector-icons'
+import { getCdnUrl } from '../../lib/cdn'
 
 export default function () {
   const { colors } = useTheme();
@@ -27,6 +31,8 @@ export default function () {
   const [website, setWebsite] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
   const [verificationReason, setVerificationReason] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -46,6 +52,7 @@ export default function () {
         setFacebook(data.facebook_url || '')
         setWebsite(data.website || '')
         setIsPrivate(data.is_private || false)
+        setAvatarUrl(data.avatar_url || null)
       }
       setLoading(false)
     }
@@ -87,7 +94,8 @@ export default function () {
         tiktok_url: tiktok.trim(),
         instagram_url: instagram.trim(),
         facebook_url: facebook.trim(),
-        website: website.trim()
+        website: website.trim(),
+        avatar_url: avatarUrl,
       })
       .eq('id', user.id)
 
@@ -98,6 +106,33 @@ export default function () {
     } else {
       Alert.alert('Success', 'Your profile has been updated.')
       router.back()
+    }
+  }
+
+  const pickAvatar = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.6,
+      base64: true,
+    })
+    if (!result.canceled && result.assets[0].base64) {
+      setUploadingAvatar(true)
+      try {
+        const ext = result.assets[0].uri.split('.').pop() || 'jpg'
+        const path = `${user?.id}_${Date.now()}.${ext}`
+        const { error } = await supabase.storage
+          .from('avatars')
+          .upload(path, decode(result.assets[0].base64), { contentType: `image/${ext}`, upsert: true })
+        if (error) throw error
+        const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+        setAvatarUrl(urlData.publicUrl)
+      } catch (e: any) {
+        Alert.alert('Upload Failed', e.message)
+      } finally {
+        setUploadingAvatar(false)
+      }
     }
   }
 
@@ -150,6 +185,25 @@ export default function () {
         <Text style={styles.headerDesc}>
           Update your display name and username. Usernames must be unique and can only be changed once every 14 days.
         </Text>
+
+        {/* Avatar Upload */}
+        <TouchableOpacity style={styles.avatarSection} onPress={pickAvatar} activeOpacity={0.8}>
+          {avatarUrl ? (
+            <Image source={{ uri: getCdnUrl(avatarUrl) }} style={styles.avatarPreview} />
+          ) : (
+            <View style={[styles.avatarPreview, styles.avatarFallback]}>
+              <Text style={styles.avatarInitial}>{fullName?.[0] || '?'}</Text>
+            </View>
+          )}
+          <View style={styles.avatarEditBadge}>
+            {uploadingAvatar ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="camera" size={16} color="#fff" />
+            )}
+          </View>
+          <Text style={styles.changePhotoText}>{uploadingAvatar ? 'Uploading...' : 'Change Profile Photo'}</Text>
+        </TouchableOpacity>
 
         <View style={styles.sectionCard}>
           <View style={styles.inputRow}>
@@ -360,5 +414,45 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: colors.background,
     fontSize: 16,
     fontWeight: '600',
-  }
+  },
+  avatarSection: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    position: 'relative',
+  },
+  avatarPreview: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#333',
+  },
+  avatarFallback: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitial: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 44,
+    right: '50%',
+    marginRight: -40,
+    backgroundColor: '#2563eb',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#000',
+  },
+  changePhotoText: {
+    color: '#2563eb',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+  },
 })

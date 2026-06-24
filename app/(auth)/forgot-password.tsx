@@ -22,7 +22,7 @@ export default function ForgotPasswordScreen() {
     if (!email) { Alert.alert('Error', 'Please enter your email'); return }
     setLoading(true)
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'jpm://reset-password',
+      redirectTo: 'https://jpmtz.online/reset-password',
     })
     setLoading(false)
     if (error) { Alert.alert('Error', error.message); return }

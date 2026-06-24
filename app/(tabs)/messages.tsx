@@ -4,7 +4,7 @@ import { useTheme } from '../../lib/theme';
 import React, { useEffect, useState, useCallback } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  Image, ActivityIndicator, TextInput, ScrollView, Modal, TouchableWithoutFeedback, Alert
+  Image, ActivityIndicator, TextInput, ScrollView, Modal, TouchableWithoutFeedback, Alert, DeviceEventEmitter
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -73,13 +73,14 @@ export default function () {
     // Get unread counts
     const { data: unread } = await supabase
       .from('messages')
-      .select('sender_id')
+      .select('sender_id, is_shop_chat')
       .eq('receiver_id', user.id)
       .eq('is_read', false)
 
     const unreadMap = new Map<string, number>()
     ;(unread || []).forEach((m: any) => {
-      unreadMap.set(m.sender_id, (unreadMap.get(m.sender_id) || 0) + 1)
+      const key = `${m.sender_id}-${Boolean(m.is_shop_chat)}`
+      unreadMap.set(key, (unreadMap.get(key) || 0) + 1)
     })
 
     // Find the latest message for each partner
@@ -87,20 +88,19 @@ export default function () {
     allMessages.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     
     const latestMsgMap = new Map<string, any>()
-    const shopChatPartners = new Set<string>()
 
     for (const msg of allMessages) {
-      if (!latestMsgMap.has(msg.partner_id)) {
-        latestMsgMap.set(msg.partner_id, msg)
-      }
-      if (msg.is_shop_chat) {
-        shopChatPartners.add(msg.partner_id)
+      const key = `${msg.partner_id}-${Boolean(msg.is_shop_chat)}`
+      if (!latestMsgMap.has(key)) {
+        latestMsgMap.set(key, msg)
       }
     }
 
     console.log('Latest messages computed, starting decryption...')
-    const conversations = await Promise.all((profiles || []).map(async (p: any) => {
-      const latestMsg = latestMsgMap.get(p.id)
+    const conversations = await Promise.all(Array.from(latestMsgMap.values()).map(async (latestMsg: any) => {
+      const p = profiles?.find((prof: any) => prof.id === latestMsg.partner_id)
+      if (!p) return null
+
       let decryptedContent = ''
       if (latestMsg?.content) {
         try {
@@ -113,17 +113,20 @@ export default function () {
       }
 
       return {
+        id: `${p.id}-${Boolean(latestMsg.is_shop_chat)}`,
         profile: p,
-        unread: unreadMap.get(p.id) || 0,
+        unread: unreadMap.get(`${p.id}-${Boolean(latestMsg.is_shop_chat)}`) || 0,
         lastMessage: decryptedContent,
         lastMessageTime: latestMsg?.created_at,
         lastSenderId: latestMsg?.sender_id || latestMsg?.partner_id,
-        isShopChat: shopChatPartners.has(p.id)
+        isShopChat: Boolean(latestMsg.is_shop_chat)
       }
     }))
 
     console.log('All decrypted, setting convos')
-    setConvos(conversations)
+    const validConvos = conversations.filter(Boolean) as any[]
+    validConvos.sort((a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime())
+    setConvos(validConvos)
 
     // Fetch inbound requests
     const { data: reqData } = await supabase
@@ -156,17 +159,29 @@ export default function () {
     setInboundRequests(prev => prev.filter(r => r.sender_id !== senderId))
   }
 
-  useEffect(() => { fetchConversations() }, [fetchConversations])
+  useEffect(() => {
+    fetchConversations()
+  }, [fetchConversations])
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('refresh_messages', () => {
+      fetchConversations()
+    })
+    return () => sub.remove()
+  }, [fetchConversations])
 
   useEffect(() => {
     if (!user) return
 
-    const channel = supabase.channel('messages_inbox')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload: any) => {
-        const row = payload.new || payload.old
-        if (row && (row.receiver_id === user.id || row.sender_id === user.id)) {
-          fetchConversations()
-        }
+    const channel = supabase.channel(`messages_inbox_${user.id}_${Date.now()}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, () => {
+        fetchConversations()
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `sender_id=eq.${user.id}` }, () => {
+        fetchConversations()
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, () => {
+        fetchConversations()
       })
       .subscribe()
 
@@ -276,11 +291,11 @@ export default function () {
       {(activeTab === 'Inbox' || activeTab === 'Shop') ? (
         <FlatList
           data={filtered}
-          keyExtractor={item => item.profile.id}
+          keyExtractor={item => item.id}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.row}
-              onPress={() => router.push(`/chat?id=${item.profile.id}`)}
+              onPress={() => router.push(`/chat?id=${item.profile.id}&is_shop=${item.isShopChat}`)}
             >
               <View style={{ position: 'relative' }}>
                 {item.profile.avatar_url ? (

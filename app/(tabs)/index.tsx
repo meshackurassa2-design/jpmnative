@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   RefreshControl, ActivityIndicator, Image, Alert,
-  ScrollView, Animated, Dimensions, Platform, InteractionManager, useWindowDimensions
+  ScrollView, Animated, Dimensions, Platform, InteractionManager, useWindowDimensions, DeviceEventEmitter
 } from 'react-native'
 
 const { width } = Dimensions.get('window')
@@ -23,10 +23,12 @@ import { JobCard } from '../../components/JobCard'
 import { PostItem } from '../../components/PostItem'
 import { VibeBadge } from '../../components/VibeBadge'
 import { NativeAdCard } from '../../components/NativeAdCard'
+import { SuggestedAccounts } from '../../components/SuggestedAccounts'
 import { useTheme } from '../../lib/theme';
 import { useUI } from '../../lib/ui'
 import { BlurView } from 'expo-blur'
 import * as StoreReview from 'expo-store-review'
+import { useTranslation } from '../../lib/i18n'
 
 type Tab = 'for_you' | 'following' | 'tea'
 
@@ -92,17 +94,17 @@ function StoriesBar({
       .gt('expires_at', new Date().toISOString())
 
     if (user) {
-      // Get list of people the user follows
-      const { data: follows } = await supabase
-        .from('follows')
-        .select('following_id')
-        .eq('follower_id', user.id)
+      // Get list of best friends the user has chosen
+      const { data: bestFriends } = await supabase
+        .from('best_friends')
+        .select('friend_id')
+        .eq('user_id', user.id)
       
-      const followingIds = follows ? follows.map(f => f.following_id) : []
-      followingIds.push(user.id) // Always include user's own stories
+      const friendIds = bestFriends ? bestFriends.map(f => f.friend_id) : []
+      friendIds.push(user.id) // Always include user's own stories
       
-      if (followingIds.length > 0) {
-        query = query.in('creator_id', followingIds)
+      if (friendIds.length > 0) {
+        query = query.in('creator_id', friendIds)
       }
     }
 
@@ -132,6 +134,10 @@ function StoriesBar({
     setGroups(result)
   }, [user])
   useEffect(() => { fetchStories() }, [fetchStories])
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('refreshStories', fetchStories)
+    return () => sub.remove()
+  }, [fetchStories])
   if (groups.length === 0 && !user) return null
 
   return (
@@ -213,7 +219,23 @@ function StoriesBar({
         }}
         ListEmptyComponent={
           groups.length === 0 && user ? (
-            <Text style={{ fontSize: 12, color: colors.textDim, paddingVertical: 8, paddingHorizontal: 16 }}>No stories yet. Be first!</Text>
+            <Text style={{ fontSize: 13, color: colors.textDim, paddingVertical: 8, paddingHorizontal: 16, marginTop: 10 }}>Choose your Top 5 friends to see stories!</Text>
+          ) : null
+        }
+        ListFooterComponent={
+          user ? (
+            <TouchableOpacity 
+              style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, marginLeft: 8 }}
+              onPress={() => router.push('/best-friends')}
+            >
+              <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center', marginBottom: 4 }}>
+                <Ionicons name="people" size={24} color={colors.text} />
+                <View style={{ position: 'absolute', bottom: 0, right: -4, backgroundColor: colors.primary, borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: colors.background }}>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>5</Text>
+                </View>
+              </View>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textDim, textAlign: 'center' }}>Top 5</Text>
+            </TouchableOpacity>
           ) : null
         }
       />
@@ -261,6 +283,180 @@ function DirectAdCard({ ad, isAdmin, onDelete }: { ad: any, isAdmin?: boolean, o
           <Text style={styles.adCtaText}>LEARN MORE</Text>
         </TouchableOpacity>
       </View>
+    </View>
+  )
+}
+
+// ── Food Promo Card ────────────────────────────────────────────────────────────
+function FoodPromoCard({ onHideAll }: { onHideAll?: () => void }) {
+  const { colors } = useTheme()
+  const styles = useMemo(() => getStyles(colors), [colors])
+  const [showConfirm, setShowConfirm] = useState(false)
+  const { t } = useTranslation()
+  
+  if (showConfirm) {
+    return (
+      <View style={[styles.post, { padding: 24, alignItems: 'center', justifyContent: 'center', minHeight: 200 }]}>
+        <Ionicons name="eye-off-outline" size={32} color={colors.textDim} style={{ marginBottom: 12 }} />
+        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 16, textAlign: 'center' }}>
+          {t('stop_seeing_promos')}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <TouchableOpacity 
+            onPress={() => setShowConfirm(false)} 
+            style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.border }}
+          >
+            <Text style={{ color: colors.textDim, fontWeight: '600' }}>{t('cancel')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={onHideAll} 
+            style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#ea580c' }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600' }}>{t('yes_hide')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+  }
+
+  return (
+    <View style={[styles.post, { paddingBottom: 0 }]}>
+      <TouchableOpacity
+        style={styles.postHeader}
+        onPress={() => router.push('/food')}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: '#ea580c' }]}>
+          <Text style={styles.avatarText}>🍔</Text>
+        </View>
+        <View style={styles.postHeaderText}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text style={styles.fullName}>{t('food_delivery')}</Text>
+            <Ionicons name="checkmark-circle" size={14} color="#2563eb" />
+          </View>
+          <Text style={styles.username}>@food · {t('sponsored')}</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {onHideAll && (
+            <TouchableOpacity style={{ padding: 4 }} onPress={() => setShowConfirm(true)}>
+              <Ionicons name="close" size={22} color="#a1a1aa" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => router.push('/food')} activeOpacity={0.9}>
+        <Text style={styles.postContent}>
+          {t('food_promo_desc')}
+        </Text>
+        
+        <Image
+          source={{ uri: getCdnUrl('https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=1000&auto=format&fit=crop') }}
+          style={styles.postImage}
+          resizeMode="cover"
+        />
+        
+        <View style={{ 
+          backgroundColor: '#ea580c', 
+          padding: 12, 
+          flexDirection: 'row', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          gap: 6,
+          borderBottomLeftRadius: 16,
+          borderBottomRightRadius: 16
+        }}>
+          <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>{t('order_now')}</Text>
+          <Ionicons name="arrow-forward" size={16} color="#fff" />
+        </View>
+      </TouchableOpacity>
+    </View>
+  )
+}
+
+// ── Service Promo Card ─────────────────────────────────────────────────────────
+function ServicePromoCard({ onHideAll }: { onHideAll?: () => void }) {
+  const { colors } = useTheme()
+  const styles = useMemo(() => getStyles(colors), [colors])
+  const [showConfirm, setShowConfirm] = useState(false)
+  const { t } = useTranslation()
+
+  if (showConfirm) {
+    return (
+      <View style={[styles.post, { padding: 24, alignItems: 'center', justifyContent: 'center', minHeight: 200 }]}>
+        <Ionicons name="eye-off-outline" size={32} color={colors.textDim} style={{ marginBottom: 12 }} />
+        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 16, textAlign: 'center' }}>
+          {t('stop_seeing_promos')}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <TouchableOpacity 
+            onPress={() => setShowConfirm(false)} 
+            style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.border }}
+          >
+            <Text style={{ color: colors.textDim, fontWeight: '600' }}>{t('cancel')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={onHideAll} 
+            style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#2563eb' }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600' }}>{t('yes_hide')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+  }
+  
+  return (
+    <View style={[styles.post, { paddingBottom: 0 }]}>
+      <TouchableOpacity
+        style={styles.postHeader}
+        onPress={() => router.push('/services')}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: '#2563eb' }]}>
+          <Text style={styles.avatarText}>🛠️</Text>
+        </View>
+        <View style={styles.postHeaderText}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text style={styles.fullName}>{t('hire_pro')}</Text>
+            <Ionicons name="checkmark-circle" size={14} color="#2563eb" />
+          </View>
+          <Text style={styles.username}>@services · {t('sponsored')}</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {onHideAll && (
+            <TouchableOpacity style={{ padding: 4 }} onPress={() => setShowConfirm(true)}>
+              <Ionicons name="close" size={22} color="#a1a1aa" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => router.push('/services')} activeOpacity={0.9}>
+        <Text style={styles.postContent}>
+          {t('hire_promo_desc')}
+        </Text>
+        
+        <Image
+          source={{ uri: getCdnUrl('https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1000&auto=format&fit=crop') }}
+          style={styles.postImage}
+          resizeMode="cover"
+        />
+        
+        <View style={{ 
+          backgroundColor: '#2563eb', 
+          padding: 12, 
+          flexDirection: 'row', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          gap: 6,
+          borderBottomLeftRadius: 16,
+          borderBottomRightRadius: 16
+        }}>
+          <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>FIND EXPERTS</Text>
+          <Ionicons name="arrow-forward" size={16} color="#fff" />
+        </View>
+      </TouchableOpacity>
     </View>
   )
 }
@@ -336,6 +532,7 @@ function DailyVerseCard() {
 export default function HomeScreen() {
   const { colors } = useTheme()
   const styles = useMemo(() => getStyles(colors), [colors])
+  const { t } = useTranslation()
   const insets = useSafeAreaInsets()
   const { setTabBarVisible, showActionSheet, showToast } = useUI()
   const { user } = useAuth()
@@ -349,8 +546,11 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('for_you')
   const [myProfile, setMyProfile] = useState<any>(null)
+  const [hideAllSpecial, setHideAllSpecial] = useState(false)
   const underlineAnim = useRef(new Animated.Value(0)).current
   const fabAnim = useRef(new Animated.Value(1)).current
+  const flatListRef = useRef<FlatList>(null)
+
   const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([])
   const [storyViewer, setStoryViewer] = useState<{ groups: StoryGroup[]; index: number } | null>(null)
   const [showStoryCreator, setShowStoryCreator] = useState(false)
@@ -380,9 +580,36 @@ export default function HomeScreen() {
           ])
         }, 400)
       }},
-      { text: 'Cancel', style: 'cancel', onPress: () => {} }
     ])
   }
+
+  const confirmHideAllSpecialPosts = () => {
+    Alert.alert(
+      'Hide these posts?',
+      'Do you want to stop seeing Food Delivery and Job posts in your feed?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Yes, hide them', style: 'destructive', onPress: hideAllSpecialPosts }
+      ]
+    )
+  }
+
+  const hideAllSpecialPosts = async () => {
+    try {
+      await AsyncStorage.setItem('hide_food_hire_posts', 'true')
+      setHideAllSpecial(true)
+      setPosts(prev => prev.filter(p => !p.settings?.is_job && p.profiles?.settings?.shop_category !== 'Food & Restaurants'))
+      showToast('You will no longer see these promos and posts.', 'success')
+    } catch (e) {
+      console.error('Error saving preference', e)
+    }
+  }
+
+  useEffect(() => {
+    AsyncStorage.getItem('hide_food_hire_posts').then(val => {
+      if (val === 'true') setHideAllSpecial(true)
+    })
+  }, [])
 
   const lastScrollY = useRef(0)
   
@@ -473,7 +700,6 @@ export default function HomeScreen() {
         supabase
           .from('posts')
           .select('*, profiles:creator_id(id, full_name, username, avatar_url, is_verified, settings), likes(count), comments(count)')
-          .or('settings->is_job.is.null,settings->is_job.eq.false')
           .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
           .order('created_at', { ascending: false })
           .limit(100),
@@ -484,14 +710,36 @@ export default function HomeScreen() {
       const { data, error } = postsRes
 
       if (!error && data) {
-        // Filter out news posts
-        const nonNewsData = data.filter((p: any) => p.profiles?.settings?.account_type !== 'news');
+        // Filter out news posts, and auto-expire jobs & food posts quickly (3 hours) so the feed stays fresh
+        const hiddenStr = await AsyncStorage.getItem('hidden_posts')
+        const hiddenPosts = hiddenStr ? JSON.parse(hiddenStr) : []
+        const hideAllSpecial = await AsyncStorage.getItem('hide_food_hire_posts') === 'true'
+        
+        const filteredData = data.filter((p: any) => {
+          if (hiddenPosts.includes(p.id)) return false;
+          if (p.profiles?.settings?.account_type === 'news') return false;
 
-        // Algorithmic Sorting: (Likes * 1) + (Comments * 13)
-        const scoredPosts = nonNewsData.map((p: any) => {
+          const ageHours = (Date.now() - new Date(p.created_at).getTime()) / 3600000;
+          const isJob = p.settings?.is_job === true;
+          const isFood = p.profiles?.settings?.shop_category === 'Food & Restaurants';
+          
+          if (hideAllSpecial && (isJob || isFood)) return false;
+
+          // Hide if it's a job or food post and it's older than 3 hours
+          if ((isJob || isFood) && ageHours > 3) return false;
+          
+          return true;
+        });
+
+        // Algorithmic Sorting: (Likes * 1) + (Comments * 13) + Recency Boost
+        const scoredPosts = filteredData.map((p: any) => {
           const likesCount = p.likes?.[0]?.count || 0;
           const commentsCount = p.comments?.[0]?.count || 0;
-          const score = (likesCount * 1) + (commentsCount * 13);
+          // Calculate age in hours
+          const ageHours = (Date.now() - new Date(p.created_at).getTime()) / 3600000;
+          // Give up to 50 points for brand new posts, decaying over 24 hours
+          const recencyBoost = ageHours < 24 ? (24 - ageHours) * 2 : 0;
+          const score = (likesCount * 1) + (commentsCount * 13) + recencyBoost;
           return { ...p, score };
         });
         
@@ -573,6 +821,45 @@ export default function HomeScreen() {
     }, [fetchPosts])
   )
 
+  // Real-time Feed Updates
+  useEffect(() => {
+    if (!user) return
+    const channel = supabase.channel(`home_feed_updates_${user.id}_${Date.now()}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'likes' }, (payload) => {
+        setPosts(prev => prev.map(p => p.id === payload.new.post_id ? { ...p, likes_count: (p.likes_count || 0) + 1 } : p))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'likes' }, (payload) => {
+        setPosts(prev => prev.map(p => p.id === payload.old.post_id ? { ...p, likes_count: Math.max(0, (p.likes_count || 0) - 1) } : p))
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, (payload) => {
+        setPosts(prev => prev.map(p => p.id === payload.new.post_id ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'comments' }, (payload) => {
+        setPosts(prev => prev.map(p => p.id === payload.old.post_id ? { ...p, comments_count: Math.max(0, (p.comments_count || 0) - 1) } : p))
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reposts' }, (payload) => {
+        setPosts(prev => prev.map(p => p.id === payload.new.post_id ? { ...p, reposts_count: (p.reposts_count || 0) + 1 } : p))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'reposts' }, (payload) => {
+        setPosts(prev => prev.map(p => p.id === payload.old.post_id ? { ...p, reposts_count: Math.max(0, (p.reposts_count || 0) - 1) } : p))
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, async (payload) => {
+        const { data: newPost } = await supabase.from('posts').select('*, profiles:creator_id(id, full_name, username, avatar_url, is_verified, settings)').eq('id', payload.new.id).single()
+        if (newPost) {
+           newPost.likes_count = 0
+           newPost.comments_count = 0
+           newPost.reposts_count = 0
+           setPosts(prev => [newPost, ...prev])
+        }
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'posts' }, (payload) => {
+        setPosts(prev => prev.filter(p => p.id !== payload.old.id))
+      })
+      .subscribe()
+      
+    return () => { supabase.removeChannel(channel) }
+  }, [user])
+
   const switchTab = (tab: Tab, index: number) => {
     if (tab === activeTab) return
     setPosts([])
@@ -590,6 +877,18 @@ export default function HomeScreen() {
     setRefreshing(true)
     fetchPosts()
   }, [fetchPosts])
+
+
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('refresh_home', () => {
+      if (flatListRef.current) {
+        flatListRef.current.scrollToOffset({ offset: 0, animated: true })
+      }
+      onRefresh()
+    })
+    return () => sub.remove()
+  }, [onRefresh])
 
   const toggleLike = async (post: Post) => {
     if (!user) return
@@ -643,8 +942,17 @@ export default function HomeScreen() {
     if (loading) return []
     const data: any[] = []
     let directAdIndex = 0
+    let injectedCaughtUp = false
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
 
     posts.forEach((post, i) => {
+      // Instagram style: Inject exactly once when we reach posts older than 24 hours
+      if (!injectedCaughtUp && new Date(post.created_at).getTime() < oneDayAgo) {
+        data.push({ id: 'all-caught-up-header', isCaughtUpHeader: true })
+        data.push({ id: 'suggested-accounts-widget-caughtup', isSuggestedAccounts: true })
+        injectedCaughtUp = true
+      }
+
       data.push(post)
       
       // Inject Daily Verse Card every 100 posts
@@ -662,7 +970,24 @@ export default function HomeScreen() {
       if ((i + 1) % 3 === 0) {
         data.push({ id: `admob-native-${i}`, isAdMobNative: true })
       }
+
+      // Inject Food Promo every 7 posts
+      if (!hideAllSpecial && (i + 1) % 7 === 0) {
+        data.push({ id: `food-promo-${i}`, isFoodPromo: true })
+      }
+
+      // Inject Service Promo every 12 posts
+      if (!hideAllSpecial && (i + 1) % 12 === 0) {
+        data.push({ id: `service-promo-${i}`, isServicePromo: true })
+      }
     })
+
+    // If all fetched posts are within 24h but we've reached the end of the batch, show it at the bottom
+    if (!injectedCaughtUp && posts.length >= 3) {
+      data.push({ id: 'all-caught-up-header-end', isCaughtUpHeader: true })
+      data.push({ id: 'suggested-accounts-widget-end', isSuggestedAccounts: true })
+    }
+
     return data
   }, [posts, directAds, loading])
 
@@ -687,11 +1012,23 @@ export default function HomeScreen() {
   }
 
   const renderItem = ({ item }: { item: any }) => {
+    if (item.isCaughtUpHeader) {
+      return (
+        <View style={{ padding: 24, alignItems: 'center', borderBottomWidth: 4, borderBottomColor: 'rgba(0,0,0,0.05)' }}>
+          <Ionicons name="checkmark-circle" size={48} color="#10b981" style={{ marginBottom: 12 }} />
+          <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text, marginBottom: 8 }}>{t('you_caught_up')}</Text>
+          <Text style={{ fontSize: 14, color: colors.textDim, textAlign: 'center' }}>{t('seen_all_posts')}</Text>
+        </View>
+      )
+    }
+    if (item.isSuggestedAccounts) return <SuggestedAccounts />
     if (item.isVerseCard) return <DailyVerseCard />
     if (item.isAdMobNative) return <NativeAdCard />
+    if (item.isFoodPromo) return <FoodPromoCard onHideAll={hideAllSpecialPosts} />
+    if (item.isServicePromo) return <ServicePromoCard onHideAll={hideAllSpecialPosts} />
 
     if (item.isDirectAd) return <DirectAdCard ad={item} isAdmin={myProfile?.is_admin} onDelete={() => handleDeleteDirectAd(item.id)} />
-    if (item.settings?.is_job) return <JobCard post={item} isAdmin={myProfile?.is_admin} onDelete={() => handleDeleteJob(item.id)} />
+    if (item.settings?.is_job) return <JobCard post={item} isAdmin={myProfile?.is_admin} onDelete={() => handleDeleteJob(item.id)} onHideAll={confirmHideAllSpecialPosts} />
 
     const post = item as Post
 
@@ -716,15 +1053,25 @@ export default function HomeScreen() {
               {post.profiles?.is_verified && (
                 <Ionicons name="checkmark-circle" size={14} color="#2563eb" />
               )}
+              {post.profiles?.settings?.account_type === 'news' && (
+                <Ionicons name="newspaper" size={14} color="#eab308" />
+              )}
             </View>
             <Text style={styles.username}>
               @{post.profiles?.username} · {timeAgo(post.created_at)}
               {post.is_ghost && <Text style={{ color: '#f59e0b' }}>  👻 24h</Text>}
             </Text>
           </View>
-          <TouchableOpacity style={{ padding: 4 }} onPress={() => handlePostOptions(post)}>
-            <Ionicons name="ellipsis-horizontal" size={20} color="#a1a1aa" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {post.profiles?.settings?.shop_category === 'Food & Restaurants' && (
+              <TouchableOpacity style={{ padding: 4, marginRight: 4 }} onPress={confirmHideAllSpecialPosts}>
+                <Ionicons name="close" size={22} color="#a1a1aa" />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={{ padding: 4 }} onPress={() => handlePostOptions(post)}>
+              <Ionicons name="ellipsis-horizontal" size={20} color="#a1a1aa" />
+            </TouchableOpacity>
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push(`/post/${post.id}`)} activeOpacity={0.9}>
@@ -803,7 +1150,7 @@ export default function HomeScreen() {
 
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => toggleRepost(post)}>
             <Ionicons
-              name={post.is_reposted ? 'repeat' : 'repeat-outline'}
+              name={post.is_reposted ? 'sync' : 'sync-outline'}
               size={22}
               color={post.is_reposted ? '#16a34a' : '#71717a'}
             />
@@ -840,12 +1187,16 @@ export default function HomeScreen() {
 
       {/* Tab bar */}
       <View style={styles.tabBar}>
-        {TABS.map((tab, i) => (
+        {[
+          { key: 'for_you', label: t('for_you') },
+          { key: 'following', label: t('following') },
+          { key: 'tea', label: t('tea') }
+        ].map((tab, i) => (
           <TouchableOpacity
             key={tab.key}
             style={styles.tabItem}
             activeOpacity={1}
-            onPress={() => switchTab(tab.key, i)}
+            onPress={() => switchTab(tab.key as Tab, i)}
           >
             <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
               {tab.label}
@@ -919,10 +1270,10 @@ export default function HomeScreen() {
           <View style={[styles.emptyIcon, { backgroundColor: '#f3e8ff' }]}>
             <Ionicons name="person-add-outline" size={32} color="#a855f7" />
           </View>
-          <Text style={styles.emptyText}>Follow people to see their posts</Text>
-          <Text style={styles.emptySub}>When you follow someone, their posts appear here.</Text>
+          <Text style={styles.emptyText}>{t('follow_people')}</Text>
+          <Text style={styles.emptySub}>{t('follow_people_sub')}</Text>
           <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/search')}>
-            <Text style={styles.emptyBtnText}>Find people to follow</Text>
+            <Text style={styles.emptyBtnText}>{t('find_people')}</Text>
           </TouchableOpacity>
         </View>
       )
@@ -932,8 +1283,8 @@ export default function HomeScreen() {
         <View style={[styles.emptyIcon, { backgroundColor: colors.border }]}>
           <Ionicons name="sparkles-outline" size={32} color="#a1a1aa" />
         </View>
-        <Text style={styles.emptyText}>Nothing here yet</Text>
-        <Text style={styles.emptySub}>Be the first to share something!</Text>
+        <Text style={styles.emptyText}>{t('nothing_here')}</Text>
+        <Text style={styles.emptySub}>{t('be_first')}</Text>
       </View>
     )
   }
@@ -953,16 +1304,10 @@ export default function HomeScreen() {
       {showStoryCreator && (
         <StoryCreator
           onClose={() => setShowStoryCreator(false)}
-          onCreated={() => { setShowStoryCreator(false) }}
-        />
-      )}
-
-      {storyViewer && (
-        <StoryViewer
-          groups={storyViewer.groups}
-          initialIndex={storyViewer.index}
-          onClose={() => setStoryViewer(null)}
-          onRefresh={() => { /* Can trigger a fetchStories if needed */ }}
+          onCreated={() => {
+            setShowStoryCreator(false);
+            DeviceEventEmitter.emit('refreshStories');
+          }}
         />
       )}
 
@@ -975,6 +1320,7 @@ export default function HomeScreen() {
       </View>
 
       <FlatList
+        ref={flatListRef}
         data={loading ? [] : feedData}
         onScroll={handleScroll}
         scrollEventThrottle={16}
@@ -1106,7 +1452,17 @@ const getStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.primary, borderRadius: 8,
     paddingVertical: 12, alignItems: 'center', justifyContent: 'center',
   },
-  adCtaText: { color: '#ffffff', fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
+  adCtaText: { color: colors.primary, fontSize: 13, fontWeight: '800' },
+
+  // Food Promo
+  foodPromoContainer: { paddingHorizontal: 16, paddingVertical: 12 },
+  foodPromoBg: { backgroundColor: '#fff7ed', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#ffedd5' },
+  foodPromoContent: { flexDirection: 'row', padding: 16, alignItems: 'center' },
+  foodPromoEmoji: { fontSize: 40, marginRight: 16 },
+  foodPromoTitle: { fontSize: 18, fontWeight: '800', color: '#ea580c', marginBottom: 4 },
+  foodPromoSub: { fontSize: 13, color: '#9a3412', lineHeight: 18 },
+  foodPromoBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffedd5', paddingVertical: 12, gap: 4 },
+  foodPromoBtnText: { color: '#ea580c', fontSize: 14, fontWeight: '800' },
 
   // ── Empty states ──
   empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32, gap: 12 },

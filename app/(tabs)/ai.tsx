@@ -20,6 +20,7 @@ import { Audio } from 'expo-av'
 import { createClient } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { useTranslation } from '../../lib/i18n';
 
 const formatTokens = (num: any) => {
   const val = Number(num);
@@ -37,16 +38,24 @@ const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || 'PASTE_YOUR_GEM
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // The strict personality for the AI
-const SYSTEM_PROMPT = `
+const getSystemPrompt = (lang: string) => `
 CRITICAL IDENTITY INSTRUCTION: You are "Dapaz", an elite AI assistant, creative engine, and business mentor created exclusively by Dapaz Studio. Under NO circumstances should you ever refer to yourself as an AI made by Google, a large language model, Gemini, or any other identity. You are simply Dapaz.
 
 Your goals:
 1. Help Tanzanian entrepreneurs grow their businesses, negotiate deals, and market their products.
 2. Teach professional English, correcting grammar when asked.
 3. Be practical, direct, and incredibly useful.
-4. Use a friendly tone. You can mix in a tiny bit of Swahili (like "Karibu!", "Sawa") if it feels natural, but keep the core advice in excellent professional English to help them learn.
+4. Use a friendly tone.
+
+CRITICAL LANGUAGE INSTRUCTION: The user has selected the language code '${lang}'.
+If 'en': Reply entirely in English.
+If 'sw': Reply entirely in fluent Swahili.
+If 'suk': Reply entirely in the Sukuma language (Tanzania).
+If 'cha': Reply entirely in the Chagga language (Kichagga, Tanzania).
+You MUST speak in the specified language to accommodate the user.
 Keep your responses relatively concise so they are easy to read on a phone.
 `;
+
 
 // ==========================================
 // 💰 PRICING CONFIGURATION (in Tokens/Coins)
@@ -81,6 +90,7 @@ export default function AIScreen() {
   const supabase = createClient()
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  const { lang } = useTranslation();
   
   const [balance, setBalance] = useState<number>(0)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
@@ -165,8 +175,12 @@ export default function AIScreen() {
     const nameStr = nameOverride || userName || user?.user_metadata?.full_name?.split(' ')[0] || 'friend';
     
     let welcomeText = `${timeGreeting} ${nameStr}! I am Dapaz, your personal Business Mentor. How can I help you today?`;
+    if (lang === 'sw') welcomeText = `Habari ${nameStr}! Mimi ni Dapaz. Nikusaidie nini leo?`;
+    if (lang === 'suk') welcomeText = `Mhola ${nameStr}! Nene Dapaz. Nakusaidia nini lelo?`;
+    if (lang === 'cha') welcomeText = `Mbuya ${nameStr}! Ngi Dapaz. Nikuwie kiki lelo?`;
+    
     if (mode === 'image') welcomeText = `I am Dapaz Studio. Describe an image or flyer you would like me to generate for your business!`;
-    if (mode === 'translate') welcomeText = `Send me any English text and I will instantly translate it to professional Swahili for you.`;
+    if (mode === 'translate') welcomeText = `Send me any text and I will instantly translate it for you.`;
 
     setMessages([{ id: 'welcome', role: 'model', text: '' }]);
     
@@ -368,7 +382,7 @@ export default function AIScreen() {
     try {
       const base64Audio = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
       
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: SYSTEM_PROMPT });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: getSystemPrompt(lang) });
       
       const parts = [
         { inlineData: { mimeType: 'audio/m4a', data: base64Audio } },
@@ -447,7 +461,7 @@ export default function AIScreen() {
 
     try {
       // 4. Call Gemini API
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: SYSTEM_PROMPT });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: getSystemPrompt(lang) });
       
       const history = messages.slice(1).map(m => ({
         role: m.role,
@@ -461,8 +475,8 @@ export default function AIScreen() {
       if (mode === 'chat' || mode === 'translate') {
         const effectiveHistory = mode === 'translate' ? [] : history;
         const systemInstruction = mode === 'translate'
-          ? 'You are an expert English-Swahili translator. Detect the input language and translate it to the other language. Output ONLY the translated text, no explanations.'
-          : SYSTEM_PROMPT;
+          ? `You are an expert translator. Translate the given text into the language code: '${lang}' (en=English, sw=Swahili, suk=Sukuma, cha=Chagga). Output ONLY the translated text, no explanations.`
+          : getSystemPrompt(lang);
         const model2 = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction });
         const chat = model2.startChat({ history: effectiveHistory });
         const parts: any[] = []

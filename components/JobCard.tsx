@@ -5,7 +5,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { PostType as Post } from './PostItem'
 
-export function JobCard({ post, isAdmin, onDelete }: { post: Post, isAdmin?: boolean, onDelete?: () => void }) {
+export function JobCard({ post, isAdmin, onDelete, onHideAll }: { post: Post, isAdmin?: boolean, onDelete?: () => void, onHideAll?: () => void }) {
   const s = post.settings || {}
   return (
     <View style={styles.jobCard}>
@@ -21,11 +21,18 @@ export function JobCard({ post, isAdmin, onDelete }: { post: Post, isAdmin?: boo
           <Text style={styles.jobTitle}>{s.job_title || 'Job Opportunity'}</Text>
           <Text style={styles.jobCompany}>{s.company_name || post.profiles?.full_name}</Text>
         </View>
-        {isAdmin && onDelete && (
-          <TouchableOpacity onPress={onDelete} style={{ padding: 4 }}>
-            <Ionicons name="trash-outline" size={20} color="#dc2626" />
-          </TouchableOpacity>
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {onHideAll && (
+            <TouchableOpacity onPress={onHideAll} style={{ padding: 4, marginRight: isAdmin ? 4 : 0 }}>
+              <Ionicons name="close" size={22} color="#94a3b8" />
+            </TouchableOpacity>
+          )}
+          {isAdmin && onDelete && (
+            <TouchableOpacity onPress={onDelete} style={{ padding: 4 }}>
+              <Ionicons name="trash-outline" size={20} color="#dc2626" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
       
       <View style={styles.jobDetails}>

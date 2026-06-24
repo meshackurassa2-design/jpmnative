@@ -26,14 +26,17 @@ export default function WalletScreen() {
   const supabase = createClient()
   
   const [balance, setBalance] = useState<number>(0)
-  const [loading, setLoading] = useState(true)
   const [withdrawEmail, setWithdrawEmail] = useState('')
   const [showWithdraw, setShowWithdraw] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
   const [withdrawals, setWithdrawals] = useState<any[]>([])
   const [leaderboard, setLeaderboard] = useState<any[]>([])
-  const [voucherCode, setVoucherCode] = useState('')
+  const [loading, setLoading] = useState(true)
   const [redeeming, setRedeeming] = useState(false)
+  const [toppingUp, setToppingUp] = useState(false)
+  const [topupAmount, setTopupAmount] = useState('')
+  const [topupPhone, setTopupPhone] = useState('')
+  const [voucherCode, setVoucherCode] = useState('')
 
   useEffect(() => {
     if (user) fetchWallet()
@@ -112,6 +115,48 @@ export default function WalletScreen() {
     }
   }
 
+  const formatMpesaPhone = (phone: string): string => {
+    // Remove spaces, dashes, plus signs
+    let cleaned = phone.replace(/[\s\-\+]/g, '');
+    // Convert 0754... → 255754...
+    if (cleaned.startsWith('0')) cleaned = '255' + cleaned.slice(1);
+    // Already has country code without +
+    if (cleaned.startsWith('255') && cleaned.length === 12) return cleaned;
+    return cleaned;
+  }
+
+  const handleMpesaTopup = async () => {
+    if (!topupAmount || !topupPhone) {
+      Alert.alert('Missing Fields', 'Please enter both amount and M-Pesa phone number.');
+      return;
+    }
+    
+    const formattedPhone = formatMpesaPhone(topupPhone);
+    // Accept 12-digit numbers (covers both 255XXXXXXXXX real numbers and 000000000001 sandbox)
+    if (formattedPhone.length < 12) {
+      Alert.alert('Invalid Number', 'Please enter a valid phone number (e.g. 0754000000).');
+      return;
+    }
+
+    setToppingUp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('mpesa-topup', {
+        body: { amount: parseInt(topupAmount), phone_number: formattedPhone }
+      });
+      
+      if (error) throw error;
+      if (data && data.error) throw new Error(data.error);
+      
+      Alert.alert('Prompt Sent! 📱', 'Check your phone and enter your M-Pesa PIN to complete the top-up. Your Dapaz Coins will update automatically once paid.');
+      setTopupAmount('');
+      setTopupPhone('');
+    } catch (e: any) {
+      Alert.alert('Top-up Failed', e.message || 'An error occurred.');
+    } finally {
+      setToppingUp(false);
+    }
+  }
+
   const formatNumber = (num: number) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
     if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
@@ -135,7 +180,7 @@ export default function WalletScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Rewards Wallet</Text>
+        <Text style={styles.headerTitle}>Dapaz Coins</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -148,7 +193,7 @@ export default function WalletScreen() {
           end={{ x: 1, y: 1 }}
           style={[styles.balanceCard, { borderWidth: 1, borderColor: '#27272a' }]}
         >
-          <Text style={styles.balanceLabelPremium}>Total Balance</Text>
+          <Text style={styles.balanceLabelPremium}>Available Coins</Text>
           <View style={styles.balanceRow}>
             <Text style={styles.coinIcon}>🪙</Text>
             <Text style={styles.balanceAmountPremium} numberOfLines={1} adjustsFontSizeToFit>{formatNumber(balance)}</Text>
@@ -177,6 +222,41 @@ export default function WalletScreen() {
           </View>
         </View>
 
+        {/* Native M-Pesa Top-Up */}
+        <View style={styles.voucherSection}>
+          <Text style={styles.sectionTitle}>📲 Top Up via M-Pesa</Text>
+          <Text style={styles.withdrawSub}>Enter your amount and phone number to get an instant M-Pesa PIN prompt on your phone.</Text>
+          
+          <Text style={styles.formLabel}>Amount (TZS)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. 5000"
+            placeholderTextColor="#a1a1aa"
+            keyboardType="numeric"
+            value={topupAmount}
+            onChangeText={setTopupAmount}
+          />
+
+          <Text style={styles.formLabel}>M-Pesa Number</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. 0754000000"
+            placeholderTextColor="#a1a1aa"
+            keyboardType="phone-pad"
+            value={topupPhone}
+            onChangeText={setTopupPhone}
+          />
+          <Text style={{ color: '#71717a', fontSize: 11, marginTop: -8, marginBottom: 12 }}>Enter your Vodacom Tanzania number starting with 07...</Text>
+
+          <TouchableOpacity 
+            style={[styles.redeemBtn, { backgroundColor: '#e60000', height: 56 }, toppingUp && { opacity: 0.7 }]} 
+            onPress={handleMpesaTopup}
+            disabled={toppingUp}
+          >
+            {toppingUp ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.redeemBtnText}>Pay with M-Pesa</Text>}
+          </TouchableOpacity>
+        </View>
+
 
         {/* Coin Store Section */}
         <View style={{ marginBottom: 10 }}>
@@ -184,21 +264,36 @@ export default function WalletScreen() {
           <Text style={styles.withdrawSub}>Message the Admin on WhatsApp to buy a voucher code.</Text>
 
           <TouchableOpacity
-            style={{ backgroundColor: '#25D366', padding: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}
             onPress={() => {
               Alert.alert(
                 'Buy via WhatsApp',
                 'Send a message to +255765450573 indicating which package you want to buy.',
                 [
                   { text: 'Cancel', style: 'cancel' },
-                  { text: 'Open WhatsApp', onPress: () => { /* In a real app use Linking.openURL('https://wa.me/255765450573') */ Alert.alert('Notice', 'In a production build, this would open WhatsApp to +255765450573.') } }
+                  { text: 'Open WhatsApp', onPress: () => { Alert.alert('Notice', 'In a production build, this would open WhatsApp to +255765450573.') } }
                 ]
               )
             }}
             activeOpacity={0.8}
+            style={{ marginBottom: 24, borderRadius: 16, overflow: 'hidden', shadowColor: '#25D366', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 }}
           >
-            <Ionicons name="logo-whatsapp" size={24} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Contact Admin: +255765450573</Text>
+            <LinearGradient
+              colors={['#128C7E', '#25D366']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ padding: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 12, marginRight: 14 }}>
+                  <Ionicons name="logo-whatsapp" size={28} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#fff', fontSize: 17, fontWeight: '800', marginBottom: 2 }}>Get Vouchers Instantly</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, fontWeight: '500' }}>Chat with our 24/7 Support Team</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.8)" />
+            </LinearGradient>
           </TouchableOpacity>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
@@ -252,44 +347,34 @@ export default function WalletScreen() {
           </View>
         </View>
 
-        {/* How to Earn Info Card */}
-        <View style={{ marginTop: 10, marginBottom: 16, backgroundColor: '#18181b', borderRadius: 16, borderWidth: 1, borderColor: '#27272a', padding: 20 }}>
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 8 }}>💡 How to Earn Free Coins</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-            <Ionicons name="play-circle-outline" size={20} color="#a1a1aa" />
-            <Text style={{ color: '#a1a1aa', fontSize: 14, marginLeft: 10, flex: 1 }}>Watch <Text style={{ color: '#fff', fontWeight: '700' }}>5 short sponsor videos</Text> to earn enough for <Text style={{ color: '#fff', fontWeight: '700' }}>1 AI image</Text> (50 🪙).</Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-            <Ionicons name="chatbubble-ellipses-outline" size={20} color="#a1a1aa" />
-            <Text style={{ color: '#a1a1aa', fontSize: 14, marginLeft: 10, flex: 1 }}>Each ad gives <Text style={{ color: '#fff', fontWeight: '700' }}>10–50 coins</Text>. Lucky drops can give enough for <Text style={{ color: '#fff', fontWeight: '700' }}>a full image in one go!</Text></Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="storefront-outline" size={20} color="#a1a1aa" />
-            <Text style={{ color: '#a1a1aa', fontSize: 14, marginLeft: 10, flex: 1 }}>Or buy coins from the store to skip the ads entirely.</Text>
-          </View>
-        </View>
 
-        {/* Leaderboard */}
-        <View style={{ marginTop: 30, marginBottom: 40 }}>
-          <Text style={styles.sectionTitle}>🏆 Top Earners</Text>
-          {leaderboard.map((l, index) => (
-            <View key={l.id} style={styles.historyItem}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ fontSize: 16, fontWeight: '700', marginRight: 12, color: colors.textDim }}>#{index + 1}</Text>
-                {l.avatar_url ? (
-                  <View style={{ width: 32, height: 32, borderRadius: 16, overflow: 'hidden', backgroundColor: colors.border, marginRight: 12 }}>
-                    <Animated.Image source={{ uri: getCdnUrl(l.avatar_url) }} style={{ width: '100%', height: '100%' }} />
-                  </View>
-                ) : (
-                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.border, marginRight: 12, justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ color: colors.text, fontSize: 14 }}>{l.full_name?.[0] || '?'}</Text>
-                  </View>
-                )}
-                <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>{l.full_name}</Text>
-              </View>
-              <Text style={{ color: colors.text, fontSize: 16, fontWeight: '800' }}>{formatNumber(l.wallet_balance || 0)} 🪙</Text>
+
+        {/* Info Section */}
+        <View style={{ marginTop: 30, marginBottom: 40, paddingHorizontal: 4 }}>
+          <Text style={styles.sectionTitle}>💡 How to use Dapaz Coins?</Text>
+          <View style={styles.infoCard}>
+            <Ionicons name="storefront" size={24} color="#f97316" style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.infoTitle}>Open a Shop (2,000 🪙)</Text>
+              <Text style={styles.infoDesc}>Start selling your products directly on the marketplace to thousands of local buyers.</Text>
             </View>
-          ))}
+          </View>
+          
+          <View style={styles.infoCard}>
+            <Ionicons name="briefcase" size={24} color="#2563eb" style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.infoTitle}>Become a Pro (5,000 🪙)</Text>
+              <Text style={styles.infoDesc}>Get verified and listed on our elite Freelance directory to receive direct gigs.</Text>
+            </View>
+          </View>
+
+          <View style={styles.infoCard}>
+            <Ionicons name="sparkles" size={24} color="#8b5cf6" style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.infoTitle}>Dapaz AI Assistant</Text>
+              <Text style={styles.infoDesc}>Use coins to generate marketing text, AI images, or get instant support.</Text>
+            </View>
+          </View>
         </View>
 
       </ScrollView>
@@ -434,7 +519,11 @@ const getStyles = (colors: any) => StyleSheet.create({
   gridPackagePriceBtn: { backgroundColor: '#3f3f46', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, width: '100%', alignItems: 'center' },
   packagePriceText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800'
-  }
+  },
+  
+  infoCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, padding: 16, borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
+  infoTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 4 },
+  infoDesc: { fontSize: 13, color: colors.textDim, lineHeight: 18 }
 })

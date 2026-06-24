@@ -53,14 +53,19 @@ export default function PostDetail() {
       if (user) {
         const { data: likes } = await supabase.from('likes').select('id').eq('post_id', postId).eq('user_id', user.id).maybeSingle()
         postData.is_liked = !!likes
+
+        const { data: reposts } = await supabase.from('reposts').select('id').eq('post_id', postId).eq('user_id', user.id).maybeSingle()
+        postData.is_reposted = !!reposts
       }
 
       // Explicitly fetch true counts to ensure accuracy if triggers are missing
       const { count: likesCount } = await supabase.from('likes').select('*', { count: 'exact', head: true }).eq('post_id', postId)
       const { count: commentsCount } = await supabase.from('comments').select('*', { count: 'exact', head: true }).eq('post_id', postId)
+      const { count: repostsCount } = await supabase.from('reposts').select('*', { count: 'exact', head: true }).eq('post_id', postId)
       
       postData.likes_count = likesCount || 0
       postData.comments_count = commentsCount || 0
+      postData.reposts_count = repostsCount || 0
 
       setPost(postData)
     }
@@ -104,6 +109,48 @@ export default function PostDetail() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  useEffect(() => {
+    if (!id || !user) return
+    const postId = Array.isArray(id) ? id[0] : id
+
+    const channel = supabase.channel(`post_detail_${postId}_${Date.now()}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` }, async (payload) => {
+        if (payload.new.user_id === user.id) return; // Handled locally
+        const { data: cData } = await supabase.from('comments').select('*, profiles(id, full_name, username, avatar_url, is_verified, settings)').eq('id', payload.new.id).single()
+        if (cData) {
+          cData.likes_count = 0
+          cData.is_liked = false
+          setComments(prev => {
+            if (prev.some(c => c.id === cData.id)) return prev
+            return [...prev, cData]
+          })
+          setPost(p => p ? { ...p, comments_count: (p.comments_count || 0) + 1 } : null)
+        }
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` }, (payload) => {
+        setComments(prev => prev.filter(c => c.id !== payload.old.id))
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'likes', filter: `post_id=eq.${postId}` }, (payload) => {
+        if (payload.new.user_id !== user.id) {
+          setPost(p => p ? { ...p, likes_count: (p.likes_count || 0) + 1 } : null)
+        }
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'likes', filter: `post_id=eq.${postId}` }, (payload) => {
+        setPost(p => p ? { ...p, likes_count: Math.max(0, (p.likes_count || 0) - 1) } : null)
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comment_likes' }, (payload) => {
+        if (payload.new.user_id !== user.id) {
+          setComments(prev => prev.map(c => c.id === payload.new.comment_id ? { ...c, likes_count: (c.likes_count || 0) + 1 } : c))
+        }
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'comment_likes' }, (payload) => {
+        setComments(prev => prev.map(c => c.id === payload.old.comment_id ? { ...c, likes_count: Math.max(0, (c.likes_count || 0) - 1) } : c))
+      })
+      .subscribe()
+      
+    return () => { supabase.removeChannel(channel) }
+  }, [id, user])
+
   const toggleLike = async () => {
     if (!user || !post) return
     const isLiked = post.is_liked
@@ -114,6 +161,19 @@ export default function PostDetail() {
       await supabase.from('likes').delete().eq('post_id', post.id).eq('user_id', user.id)
     } else {
       await supabase.from('likes').insert({ post_id: post.id, user_id: user.id })
+    }
+  }
+
+  const toggleRepost = async () => {
+    if (!user || !post) return
+    const isReposted = post.is_reposted
+    
+    setPost({ ...post, is_reposted: !isReposted, reposts_count: (post.reposts_count || 0) + (isReposted ? -1 : 1) })
+
+    if (isReposted) {
+      await supabase.from('reposts').delete().eq('post_id', post.id).eq('user_id', user.id)
+    } else {
+      await supabase.from('reposts').insert({ post_id: post.id, user_id: user.id })
     }
   }
 
@@ -288,9 +348,9 @@ export default function PostDetail() {
       <View style={styles.actionBtn}>
         <Ionicons name="chatbubble-outline" size={24} color={colors.text} style={{ transform: [{ scaleX: -1 }] }} />
       </View>
-      <View style={styles.actionBtn}>
-        <Ionicons name="repeat-outline" size={26} color={colors.text} />
-      </View>
+      <TouchableOpacity style={styles.actionBtn} onPress={toggleRepost}>
+        <Ionicons name={post.is_reposted ? 'sync' : 'sync-outline'} size={26} color={post.is_reposted ? '#10b981' : colors.text} />
+      </TouchableOpacity>
       <View style={{ flex: 1 }} />
       <View style={styles.actionBtn}>
         <Ionicons name="bookmark-outline" size={24} color={colors.text} />
@@ -380,6 +440,7 @@ export default function PostDetail() {
         <FlatList
           data={comments}
           keyExtractor={item => item.id}
+          showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <>
               <View style={[styles.postContainer, { paddingTop: 0, paddingHorizontal: 0 }]}>
@@ -427,7 +488,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   webHeader: { padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: 0 },
   postAvatar: { width: 36, height: 36, borderRadius: 18 },
   postName: { fontSize: 14, fontWeight: '700', color: colors.text },
-  postImage: { height: 400, marginBottom: 12 },
+  postImage: { width: '100%', aspectRatio: 1 / 1.1, marginBottom: 12, backgroundColor: colors.border },
   webMediaContainer: { flex: 1, width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
   webMediaElement: { width: '100%', height: '100%' },
   postActions: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 8, gap: 16 },

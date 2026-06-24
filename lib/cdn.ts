@@ -2,20 +2,22 @@ import Constants from 'expo-constants';
 
 // The base Supabase URL that we want to replace
 const SUPABASE_URL = 'https://tgfuufsgkelgjjktbugg.supabase.co';
-// The new Cloudflare CDN domain
+// The Cloudflare CDN domain (zero egress fees)
 const CDN_URL = 'https://cdn.jpmtz.online';
 
 /**
  * Replaces the Supabase Storage URL with our Cloudflare CDN URL.
- * This ensures that images are served from the edge cache, 
- * avoiding Supabase egress quotas.
+ * This ensures images are served from Cloudflare's edge cache,
+ * avoiding Supabase egress quotas entirely.
  */
 export function getCdnUrl(originalUrl?: string | null): string {
   if (!originalUrl) return '';
-  // Bypass Cloudflare CDN temporarily because it seems to be timing out/failing
-  // which is causing images to show up as blank grey boxes.
+  // Route all Supabase storage URLs through our Cloudflare CDN
+  if (originalUrl.startsWith(SUPABASE_URL)) {
+    return originalUrl.replace(SUPABASE_URL, CDN_URL);
+  }
   return originalUrl;
 }
 
-// Alias for backwards compatibility where the old getCDNUrl was used
+// Alias for backwards compatibility
 export const getCDNUrl = getCdnUrl;

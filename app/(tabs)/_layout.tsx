@@ -1,7 +1,7 @@
 // app/(tabs)/_layout.tsx
 // Native bottom tab navigator — NO iOS home indicator conflicts
 import { Tabs, router } from 'expo-router'
-import { Platform, Animated, StyleSheet, TouchableOpacity, View, useWindowDimensions, Text } from 'react-native'
+import { Platform, Animated, StyleSheet, TouchableOpacity, View, useWindowDimensions, Text, DeviceEventEmitter } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../../lib/theme';
@@ -21,6 +21,7 @@ export default function TabLayout() {
   const { user } = useAuth()
   const [unreadMessages, setUnreadMessages] = useState(0)
   const supabase = createClient()
+  const lastTapRef = useRef({ home: 0, messages: 0 })
 
   const fetchUnread = useCallback(async () => {
     if (!user) return
@@ -34,15 +35,19 @@ export default function TabLayout() {
 
   useEffect(() => {
     fetchUnread()
+  }, [fetchUnread])
+
+  useEffect(() => {
     if (!user) return
     
     // Listen for new messages or reads
-    const sub = supabase.channel('public:messages')
+    const channelName = `tab-messages-${user.id}-${Date.now()}`
+    const sub = supabase.channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, fetchUnread)
       .subscribe()
       
     return () => { supabase.removeChannel(sub) }
-  }, [user, fetchUnread])
+  }, [user?.id])
 
   useEffect(() => {
     Animated.spring(anim, {
@@ -91,6 +96,15 @@ export default function TabLayout() {
             <Ionicons name={focused ? 'home' : 'home-outline'} size={26} color={color} />
           ),
         }}
+        listeners={{
+          tabPress: (e) => {
+            const now = Date.now()
+            if (now - lastTapRef.current.home < 300) {
+              DeviceEventEmitter.emit('refresh_home')
+            }
+            lastTapRef.current.home = now
+          }
+        }}
       />
       <Tabs.Screen
         name="search"
@@ -133,6 +147,15 @@ export default function TabLayout() {
               )}
             </View>
           ),
+        }}
+        listeners={{
+          tabPress: (e) => {
+            const now = Date.now()
+            if (now - lastTapRef.current.messages < 300) {
+              DeviceEventEmitter.emit('refresh_messages')
+            }
+            lastTapRef.current.messages = now
+          }
         }}
       />
       <Tabs.Screen

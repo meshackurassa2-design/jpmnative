@@ -25,17 +25,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
+    // Get initial session — if token is expired, clear it gracefully
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.log('Session error, signing out:', error.message)
+        supabase.auth.signOut()
+        setSession(null)
+        setUser(null)
+      } else {
+        setSession(session)
+        setUser(session?.user ?? null)
+      }
       setLoading(false)
     })
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
+    // Listen for auth changes (handles token refresh failures automatically)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'TOKEN_REFRESHED') {
+        setSession(session)
+        setUser(session?.user ?? null)
+      } else if (event === 'SIGNED_OUT') {
+        setSession(null)
+        setUser(null)
+      } else {
+        setSession(session)
+        setUser(session?.user ?? null)
+      }
       setLoading(false)
     })
 

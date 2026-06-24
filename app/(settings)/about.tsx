@@ -4,12 +4,15 @@ import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
+import { useTranslation } from '../../lib/i18n';
 
 const APP_VERSION = '1.0.0'
 
 export default function () {
   const { colors } = useTheme();
   const styles = React.useMemo(() => getStyles(colors), [colors]);
+  const { t } = useTranslation();
+  
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* App branding */}
@@ -38,7 +41,7 @@ export default function () {
             <Text style={[styles.iconLetter, { color: '#2563eb' }]}>@</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle}>Help & Support System</Text>
+            <Text style={styles.rowTitle}>{t('help_support')}</Text>
             <TouchableOpacity onPress={() => Linking.openURL('mailto:meshackurassa2@gmail.com')}>
               <Text style={styles.linkText}>meshackurassa2@gmail.com</Text>
             </TouchableOpacity>
@@ -49,8 +52,8 @@ export default function () {
       {/* Legal */}
       <View style={styles.card}>
         {[
-          { label: 'Terms of Service', icon: 'document-text-outline', onPress: () => router.push('/(settings)/terms') },
-          { label: 'Privacy Policy',   icon: 'lock-closed-outline',   onPress: () => router.push('/(settings)/privacy') },
+          { label: t('terms_of_service'), icon: 'document-text-outline', onPress: () => router.push('/(settings)/terms') },
+          { label: t('privacy_policy'),   icon: 'lock-closed-outline',   onPress: () => router.push('/(settings)/privacy') },
         ].map((item, i) => (
           <TouchableOpacity
             key={i}

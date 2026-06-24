@@ -207,7 +207,7 @@ export default function () {
     fetchProfile() 
     if (!id) return
 
-    const channel = supabase.channel(`public:follows:${id}`)
+    const channel = supabase.channel(`public:follows:${id}_${Date.now()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'follows', filter: `following_id=eq.${id}` }, () => {
         supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', id)
           .then(({ count }) => setFollowersCount(count || 0))
@@ -258,6 +258,21 @@ export default function () {
     const { error } = await supabase.from('profiles').update({ is_verified: newStatus }).eq('id', id)
     if (!error) {
       setProfile({ ...profile, is_verified: newStatus })
+    }
+  }
+
+  const handleToggleNews = async () => {
+    if (!id || !profile) return
+    const isNews = profile.settings?.account_type === 'news'
+    const newSettings = { ...profile.settings }
+    if (isNews) {
+      delete newSettings.account_type
+    } else {
+      newSettings.account_type = 'news'
+    }
+    const { error } = await supabase.from('profiles').update({ settings: newSettings }).eq('id', id)
+    if (!error) {
+      setProfile({ ...profile, settings: newSettings })
     }
   }
 
@@ -397,10 +412,18 @@ export default function () {
             {profile?.is_verified && (
               <Ionicons name="checkmark-circle" size={18} color="#2563eb" />
             )}
-            {currentUserProfile?.is_admin && (
-              <TouchableOpacity onPress={handleToggleVerify} style={styles.verifyBtnAdmin}>
-                <Text style={styles.verifyBtnAdminText}>{profile?.is_verified ? 'UNVERIFY' : 'VERIFY'}</Text>
-              </TouchableOpacity>
+            {profile?.settings?.account_type === 'news' && (
+              <Ionicons name="newspaper" size={18} color="#eab308" />
+            )}
+            {(currentUserProfile?.is_admin || user?.email === 'meshackurassa2@gmail.com') && (
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                <TouchableOpacity onPress={handleToggleVerify} style={styles.verifyBtnAdmin}>
+                  <Text style={styles.verifyBtnAdminText}>{profile?.is_verified ? 'UNVERIFY' : 'VERIFY'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleToggleNews} style={[styles.verifyBtnAdmin, { backgroundColor: '#fef08a' }]}>
+                  <Text style={[styles.verifyBtnAdminText, { color: '#ca8a04' }]}>{profile?.settings?.account_type === 'news' ? 'REMOVE NEWS' : 'MAKE NEWS'}</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
           <Text style={styles.username}>@{profile?.username || 'user'}</Text>

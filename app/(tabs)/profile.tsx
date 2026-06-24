@@ -50,7 +50,7 @@ export default function () {
   const [followersCount, setFollowersCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
   const [monthlyViews, setMonthlyViews] = useState(0)
-  const [activeTab, setActiveTab] = useState<'posts' | 'replies' | 'media' | 'reposts' | 'likes' | 'jobs' | 'archive'>('posts')
+  const [activeTab, setActiveTab] = useState<'posts' | 'replies' | 'media' | 'reposts' | 'likes' | 'archive'>('posts')
   const [unreadCount, setUnreadCount] = useState(0)
   const [vibeModalVisible, setVibeModalVisible] = useState(false)
   const [teamModalVisible, setTeamModalVisible] = useState(false)
@@ -167,7 +167,7 @@ export default function () {
       }
       fetch()
 
-      const channel = supabase.channel(`public:follows:${user.id}`)
+      const channel = supabase.channel(`public:follows:${user.id}_${Date.now()}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'follows', filter: `following_id=eq.${user.id}` }, () => {
           supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id)
             .then(({ count }) => isActive && setFollowersCount(count || 0))
@@ -178,7 +178,7 @@ export default function () {
         })
         .subscribe()
 
-      const postsChannel = supabase.channel(`public:posts:analytics:${user.id}`)
+      const postsChannel = supabase.channel(`public:posts:analytics:${user.id}_${Date.now()}`)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts', filter: `creator_id=eq.${user.id}` }, () => {
           const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
           supabase.from('posts').select('view_count').eq('creator_id', user.id).gte('created_at', startDate)
@@ -207,7 +207,7 @@ export default function () {
       setUnreadCount(count || 0)
     }
     fetchUnread()
-    const ch = supabase.channel(`notif_badge_${user.id}`)
+    const ch = supabase.channel(`notif_badge_${user.id}_${Date.now()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, fetchUnread)
       .subscribe()
     return () => { supabase.removeChannel(ch) }
@@ -314,6 +314,9 @@ export default function () {
               <Text style={styles.fullName}>{profile?.full_name}</Text>
               {profile?.is_verified && (
                 <Ionicons name="checkmark-circle" size={18} color="#2563eb" />
+              )}
+              {profile?.settings?.account_type === 'news' && (
+                <Ionicons name="newspaper" size={18} color="#eab308" />
               )}
             </View>
             <Text style={styles.username}>@{profile?.username || 'user'}</Text>
@@ -428,7 +431,7 @@ export default function () {
         ) : null}
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
-          {['posts', 'replies', 'media', 'reposts', 'likes', 'jobs', 'archive'].map(tab => (
+          {(['posts', 'replies', 'media', 'reposts', 'likes', 'archive'] as const).map(tab => (
             <TouchableOpacity
               key={tab}
               style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
@@ -444,7 +447,6 @@ export default function () {
         <View style={styles.feed}>
           {(() => {
             const displayPosts = posts.filter((post: any) => {
-              if (activeTab === 'jobs') return post.settings?.is_job === true
               if (post.settings?.is_job === true) return false
               if (activeTab === 'reposts') return post.is_repost
               if (activeTab === 'likes') return post.is_liked_tab

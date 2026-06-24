@@ -2,8 +2,9 @@
 import { useTheme } from '../../lib/theme';
 import React from 'react'
 import { ScrollView, View, Text, StyleSheet } from 'react-native'
+import { useTranslation } from '../../lib/i18n';
 
-const SECTIONS = [
+const PRIVACY_EN = [
   {
     title: '1. Introduction',
     body: 'Welcome to JPM ("we," "our," or "us"). We are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, and share information when you use our mobile application, website, and related services (collectively, the "Platform").',
@@ -64,9 +65,42 @@ const SECTIONS = [
   },
 ]
 
+const PRIVACY_SW = [
+  { title: '1. Utangulizi', body: 'Karibu JPM ("sisi", "yetu"). Tumejitolea kulinda taarifa zako binafsi na haki yako ya faragha. Sera hii ya faragha inaeleza jinsi tunavyokusanya, kutumia na kushiriki taarifa unapotumia programu yetu.' },
+  { title: '2. Taarifa Tunazokusanya', body: 'Tunakusanya taarifa unazotupa au zinazokusanywa kiotomatiki:', bullets: ['Taarifa za Akaunti: Jina, barua pepe, nenosiri, picha ya wasifu.', 'Data ya Soko: Ikiwa unanunua au kuuza, tunakusanya historia ya miamala.', 'Ujumbe na Mawasiliano: Ujumbe wa chati, machapisho, na hakiki.', 'Data ya Kifaa: Namba ya kifaa, anwani ya IP.', 'Data ya Eneo: Eneo lako kwa ujumla.'] },
+  { title: '3. Jinsi Tunavyotumia Taarifa', body: 'Tunatumia taarifa tulizokusanya kwa:', bullets: ['Kutoa na kuboresha huduma za soko na chati.', 'Kushughulikia miamala na kutoa zawadi za matangazo.', 'Kutuma ujumbe wa kiutawala na usalama.', 'Kubinafsisha uzoefu wako.'] },
+  { title: '4. Ushirikishwaji wa Data', body: 'Hatuuzi data yako binafsi. Tunaweza kushiriki taarifa zako kwa mambo haya:', bullets: ['Na Watumiaji Wengine: Unaponunua bidhaa, taarifa muhimu zinashirikiwa na muuzaji.', 'Na Watoa Huduma: Wahusika wa tatu wanaotusaidia kufanya kazi.', 'Kwa Sababu za Kisheria: Ikiwa inahitajika na sheria.'], subSection: { title: 'Matangazo (AdMob/AdSense)', body: 'Tunaweza kutumia washirika wa matangazo. Washirika hawa wanaweza kutumia namba za vifaa kutoa matangazo kulingana na mapendeleo yako.' } },
+  { title: '5. Uhifadhi na Ufutaji wa Data', body: 'Una haki ya kufikia, kurekebisha, au kufuta taarifa zako binafsi wakati wowote.', bullets: ['Kufuta Akaunti: Unaweza kufuta akaunti yako kupitia Mipangilio > Futa Akaunti.', 'Kuondoa Data: Ukifuta akaunti, data zako zote zitaondolewa.'] },
+  { title: '6. Sharti la Umri', body: 'Programu yetu inakusudiwa watu wenye umri wa miaka 13 na zaidi (18+ kwa kuuza). Hatukusanyi taarifa za watoto walio chini ya miaka 13 kwa makusudi.' },
+  { title: '7. Wasiliana Nasi', body: 'Ikiwa una maswali, wasiliana nasi kwa:', contact: 'meshackurassa2@gmail.com' }
+]
+
+const PRIVACY_SUK = [
+  { title: '1. Kwanda', body: 'Wamja JPM. Tuli tayari kulinda mhola yako. Sera iyi ieleza nhamba tukupata, kutumia na kupa banhu mhola yako.' },
+  { title: '2. Mhola Tukupata', body: 'Tukupata mhola utupa:', bullets: ['Mhola ja Akaunti: Zina, barua pepe.', 'Mhola ja Soko: Uko guza, tukupata historia ya shiguzilwe.', 'Mhola ja Chati: Mhola utuma.', 'Mhola ja Simu: Namba ya simu.', 'Mhola ja Kaya: Kaya yako.'] },
+  { title: '3. Nhamba Tukutumia Mhola', body: 'Tukutumia mhola kwa:', bullets: ['Kupa huduma za soko na chati.', 'Kushughulikia shiguzilwe.', 'Kutuma mhola za usalama.'] },
+  { title: '4. Kupa Banhu Mhola', body: 'Hatuuzi mhola yako. Tukupa mhola yako kwa:', bullets: ['Banhu Bangi: Uko guza, mhola yashila kwa mguza.', 'Batupa Huduma: Banhu batukusaidia.', 'Sheria: Kwa sababu za sheria.'], subSection: { title: 'Matangazo', body: 'Tukutumia banhu ba matangazo.' } },
+  { title: '5. Kubisa na Kufuta Mhola', body: 'Ulinga haki kufuta mhola yako.', bullets: ['Kufuta Akaunti: Ulinga kufuta akaunti yako.', 'Kufuta Mhola: Akaunti ishile, mhola jishila.'] },
+  { title: '6. Miaka', body: 'Programu iyi ya banhu bali na miaka 13 na kubanda. Hatupata mhola ya bana.' },
+  { title: '7. Longela Nasi', body: 'Ulinga masuuli, longela nasi kwa:', contact: 'meshackurassa2@gmail.com' }
+]
+
+const PRIVACY_CHA = [
+  { title: '1. Kwanda', body: 'Wamcha JPM. Tunalinda kindu kyako. Sera iyi ieleza tunapata, kutumia na kuwapa wandu.' },
+  { title: '2. Mhola Tunapata', body: 'Tunapata mhola utupa:', bullets: ['Akaunti: Zina, email.', 'Soko: Ukauza, tunapata kindu kyauzwa.', 'Chati: Meseji utuma.', 'Simu: Namba ya simu.', 'Kaya: Kaya yako.'] },
+  { title: '3. Kyotumiya Mhola', body: 'Tunatumia mhola kwa:', bullets: ['Kupa huduma za soko.', 'Miamala.', 'Kutuma mhola za usalama.'] },
+  { title: '4. Kuwapa Mhola', body: 'Hatuuzi mhola yako. Tunapa mhola kwa:', bullets: ['Wandu Wengi: Ukauza, muuza apata mhola.', 'Huduma: Wandu watukusaidia.', 'Sheria: Kwa sheria.'], subSection: { title: 'Matangazo', body: 'Tunatumia wandu wa matangazo.' } },
+  { title: '5. Kubisa na Kufuta Mhola', body: 'Una haki kufuta mhola yako.', bullets: ['Kufuta Akaunti: Futa akaunti yako.', 'Kufuta Mhola: Akaunti ifutwe, mhola ifutwa.'] },
+  { title: '6. Miaka', body: 'Programu ya wandu wana miaka 13+. Hatupata mhola ya wana.' },
+  { title: '7. Ocha Naswi', body: 'Una maswali, ocha kwa:', contact: 'meshackurassa2@gmail.com' }
+]
+
 export default function () {
   const { colors } = useTheme();
   const styles = React.useMemo(() => getStyles(colors), [colors]);
+  const { lang } = useTranslation();
+  
+  const SECTIONS = lang === 'sw' ? PRIVACY_SW : lang === 'suk' ? PRIVACY_SUK : lang === 'cha' ? PRIVACY_CHA : PRIVACY_EN;
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.date}>Last updated: March 26, 2026</Text>
@@ -81,15 +115,15 @@ export default function () {
               <Text style={styles.bulletText}>{bullet}</Text>
             </View>
           ))}
-          {section.subSection && (
+          {(section as any).subSection && (
             <View style={styles.subSection}>
-              <Text style={styles.subSectionTitle}>{section.subSection.title}</Text>
-              <Text style={styles.body}>{section.subSection.body}</Text>
+              <Text style={styles.subSectionTitle}>{(section as any).subSection.title}</Text>
+              <Text style={styles.body}>{(section as any).subSection.body}</Text>
             </View>
           )}
-          {section.contact && (
+          {(section as any).contact && (
             <View style={styles.contactBox}>
-              <Text style={styles.contactEmail}>{section.contact}</Text>
+              <Text style={styles.contactEmail}>{(section as any).contact}</Text>
             </View>
           )}
         </View>

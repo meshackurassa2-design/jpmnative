@@ -2,7 +2,7 @@ import { useTheme } from '../../lib/theme';
 import React, { useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator, Dimensions
+  KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator, Dimensions, Animated
 } from 'react-native'
 import { Link, router } from 'expo-router'
 import { createClient } from '../../lib/supabase'
@@ -11,13 +11,28 @@ import { Ionicons } from '@expo/vector-icons'
 const { width, height } = Dimensions.get('window')
 
 export default function LoginScreen() {
-  const { colors } = useTheme();
-  const styles = React.useMemo(() => getStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = React.useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const supabase = createClient()
+
+  const animValue = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.timing(animValue, {
+        toValue: 1,
+        duration: 25000,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, [animValue]);
+
+  const spin1 = animValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const spin2 = animValue.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -25,7 +40,32 @@ export default function LoginScreen() {
       return
     }
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+    let finalEmail = email.trim()
+    
+    // If they typed '@username', strip the @
+    if (finalEmail.startsWith('@')) {
+      finalEmail = finalEmail.substring(1)
+    }
+    
+    // If it doesn't look like an email, assume it's a username
+    if (!finalEmail.includes('@')) {
+      const cleanUsername = finalEmail.toLowerCase().replace(/[^a-z0-9_]/g, '')
+      const { data: resolvedEmail, error: rpcError } = await supabase.rpc('get_email_by_username', {
+        p_username: cleanUsername
+      })
+      
+      if (resolvedEmail) {
+        finalEmail = resolvedEmail
+      } else {
+        setLoading(false)
+        console.error("RPC Error:", rpcError)
+        Alert.alert('Login failed', rpcError ? `RPC Error: ${rpcError.message}` : 'Could not find a user with that username.')
+        return
+      }
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email: finalEmail, password })
     setLoading(false)
     if (error) {
       Alert.alert('Login failed', error.message)
@@ -40,11 +80,11 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Background Shapes */}
-      <View style={styles.bgShape1} />
-      <View style={styles.bgShape2} />
-      <View style={styles.bgShape3} />
+      <Animated.View style={[styles.bgShape1, { transform: [{ rotate: spin1 }] }]} />
+      <Animated.View style={[styles.bgShape2, { transform: [{ rotate: spin2 }] }]} />
+      <Animated.View style={[styles.bgShape3, { transform: [{ rotate: spin1 }] }]} />
 
-      <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={{ marginTop: 40, marginBottom: 40 }}>
           <Text style={styles.title}>Log in to your account</Text>
         </View>
@@ -52,12 +92,12 @@ export default function LoginScreen() {
         <View style={styles.formGroup}>
           <TextInput
             style={[styles.input, styles.inputTop]}
-            placeholder="Email address"
-            placeholderTextColor="#666"
+            placeholder="Email or Username"
+            placeholderTextColor={colors.textDim}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
-            keyboardType="email-address"
+            keyboardType="default"
             autoComplete="email"
           />
           <View style={styles.inputDivider} />
@@ -65,7 +105,7 @@ export default function LoginScreen() {
             <TextInput
               style={[styles.input, styles.inputBottom, { flex: 1, borderWidth: 0 }]}
               placeholder="Password"
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.textDim}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -78,7 +118,7 @@ export default function LoginScreen() {
               <Ionicons 
                 name={showPassword ? "eye-off-outline" : "eye-outline"} 
                 size={22} 
-                color="#666" 
+                color={colors.textDim} 
               />
             </TouchableOpacity>
           </View>
@@ -92,7 +132,7 @@ export default function LoginScreen() {
 
         <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} disabled={loading} activeOpacity={0.8}>
           {loading ? (
-            <ActivityIndicator color="#000" />
+            <ActivityIndicator color={isDark ? '#000' : '#fff'} />
           ) : (
             <Text style={styles.loginBtnText}>Log in</Text>
           )}
@@ -111,8 +151,8 @@ export default function LoginScreen() {
   )
 }
 
-const getStyles = (colors: any) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' }, // Force pitch black
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   bgShape1: {
     position: 'absolute',
     left: -80,
@@ -121,7 +161,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     height: 380,
     borderRadius: 140,
     borderWidth: 1,
-    borderColor: '#222',
+    borderColor: isDark ? '#222' : '#e5e7eb',
   },
   bgShape2: {
     position: 'absolute',
@@ -131,7 +171,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     height: 480,
     borderRadius: 180,
     borderWidth: 1,
-    borderColor: '#1a1a1a',
+    borderColor: isDark ? '#1a1a1a' : '#f3f4f6',
   },
   bgShape3: {
     position: 'absolute',
@@ -141,27 +181,28 @@ const getStyles = (colors: any) => StyleSheet.create({
     height: 500,
     borderRadius: 125,
     borderWidth: 1,
-    borderColor: '#222',
+    borderColor: isDark ? '#222' : '#e5e7eb',
   },
   inner: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 60, zIndex: 10 },
-  title: { fontSize: 26, fontWeight: '800', color: '#fff', textAlign: 'center' },
+  title: { fontSize: 26, fontWeight: '800', color: colors.text, textAlign: 'center' },
   formGroup: {
-    backgroundColor: '#0a0a0a',
+    backgroundColor: isDark ? '#0a0a0a' : '#fff',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#222',
+    borderColor: isDark ? '#222' : '#e5e7eb',
     overflow: 'hidden',
   },
   inputDivider: {
     height: 1,
-    backgroundColor: '#222',
+    backgroundColor: isDark ? '#222' : '#e5e7eb',
   },
   input: {
     height: 60,
     paddingHorizontal: 16, 
     fontSize: 16, 
-    color: '#fff', 
-    backgroundColor: '#0a0a0a',
+    color: colors.text, 
+    backgroundColor: isDark ? '#0a0a0a' : '#fff',
+    textAlign: 'center',
   },
   inputTop: {
     borderBottomWidth: 0,
@@ -172,19 +213,19 @@ const getStyles = (colors: any) => StyleSheet.create({
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0a0a0a',
+    backgroundColor: isDark ? '#0a0a0a' : '#fff',
   },
   eyeIcon: {
     padding: 16,
   },
   forgotBtn: { alignSelf: 'flex-end', marginTop: 16, marginBottom: 32 },
-  forgotText: { fontSize: 13, color: '#999', fontWeight: '500' },
+  forgotText: { fontSize: 13, color: colors.textDim, fontWeight: '500' },
   loginBtn: {
-    height: 56, backgroundColor: '#fff', borderRadius: 28,
+    height: 56, backgroundColor: colors.text, borderRadius: 28,
     justifyContent: 'center', alignItems: 'center',
   },
-  loginBtnText: { color: '#000', fontSize: 16, fontWeight: '800' },
+  loginBtnText: { color: colors.background, fontSize: 16, fontWeight: '800' },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 48 },
-  footerText: { fontSize: 14, color: '#888' },
-  footerLink: { fontSize: 14, color: '#fff', fontWeight: '700' },
+  footerText: { fontSize: 14, color: colors.textDim },
+  footerLink: { fontSize: 14, color: colors.text, fontWeight: '700' },
 });

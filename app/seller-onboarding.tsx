@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useTranslation } from '../lib/i18n';
 
 const { width, height } = Dimensions.get('window');
 
@@ -36,6 +37,7 @@ const SLIDES = [
 export default function SellerOnboarding() {
   const { colors } = useTheme();
   const styles = React.useMemo(() => getStyles(colors), [colors]);
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
   const slidesRef = useRef<FlatList>(null);
@@ -47,6 +49,30 @@ export default function SellerOnboarding() {
   }).current;
 
   const viewConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
+
+  const SLIDES = [
+    {
+      id: '1',
+      title: t('seller_1_title'),
+      description: t('seller_1_desc'),
+      icon: 'storefront-outline',
+      color: '#2563eb'
+    },
+    {
+      id: '2',
+      title: t('seller_2_title'),
+      description: t('seller_2_desc'),
+      icon: 'chatbubbles-outline',
+      color: '#eab308'
+    },
+    {
+      id: '3',
+      title: t('seller_3_title'),
+      description: t('seller_3_desc'),
+      icon: 'wallet-outline',
+      color: '#9333ea'
+    }
+  ];
 
   const handleNext = () => {
     if (currentIndex < SLIDES.length - 1) {
@@ -113,7 +139,7 @@ export default function SellerOnboarding() {
           activeOpacity={0.8}
         >
           <Text style={styles.buttonText}>
-            {currentIndex === SLIDES.length - 1 ? 'Go to Dashboard' : 'Next'}
+            {currentIndex === SLIDES.length - 1 ? t('go_to_dashboard') : t('next')}
           </Text>
         </TouchableOpacity>
       </View>

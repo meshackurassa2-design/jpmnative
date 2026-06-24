@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { AuthProvider, useAuth } from '../lib/auth'
 import { CartProvider } from '../lib/cart'
+import { LanguageProvider } from '../lib/i18n'
 import { createClient } from '../lib/supabase'
 import { router } from 'expo-router'
 import * as Notifications from 'expo-notifications'
@@ -16,7 +17,7 @@ import { UIProvider } from '../lib/ui'
 import { ThemeProvider, useTheme } from '../lib/theme'
 import { ThemeProvider as NavThemeProvider, DefaultTheme, DarkTheme } from '@react-navigation/native'
 import Constants from 'expo-constants'
-import mobileAds from 'react-native-google-mobile-ads'
+// import mobileAds from 'react-native-google-mobile-ads'
 // Configure how notifications appear when the app is in the foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -133,11 +134,13 @@ function AppStack() {
 }
 
 export default function RootLayout() {
+  /*
   useEffect(() => {
     mobileAds().initialize().then(adapterStatuses => {
       console.log('AdMob initialized', adapterStatuses);
     }).catch(e => console.log('AdMob init error', e));
   }, []);
+  */
 
   return (
     <ThemeProvider>
@@ -151,19 +154,21 @@ function ThemedRoot() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
       <KeyboardProvider>
-        <AuthProvider>
-          <CartProvider>
-            <UIProvider>
-              <PushNotificationSetup />
-              <AutoUpdateSetup />
-              <StatusBar style="auto" />
-            <WebLayoutWrapper>
-              <AppStack />
-              <SplashScreen />
-            </WebLayoutWrapper>
-            </UIProvider>
-          </CartProvider>
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <CartProvider>
+              <UIProvider>
+                <PushNotificationSetup />
+                <AutoUpdateSetup />
+                <StatusBar style="auto" />
+              <WebLayoutWrapper>
+                <AppStack />
+                <SplashScreen />
+              </WebLayoutWrapper>
+              </UIProvider>
+            </CartProvider>
+          </AuthProvider>
+        </LanguageProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>
   )

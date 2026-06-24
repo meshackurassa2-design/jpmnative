@@ -84,13 +84,16 @@ export default function ShopDetailScreen() {
       })
 
     const fetchReviews = async () => {
-      const { data } = await supabase.from('shop_reviews').select('*').eq('shop_id', id).order('created_at', { ascending: false })
+      const { data } = await supabase.from('shop_reviews')
+        .select('*, profiles(full_name, username)')
+        .eq('shop_id', id)
+        .order('created_at', { ascending: false })
       if (data) setShopReviews(data)
     }
     fetchReviews()
 
     // Real-time subscription to shops table for rating updates
-    const channel = supabase.channel(`shop_${id}`)
+    const channel = supabase.channel(`shop_${id}_${Date.now()}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'shops', filter: `id=eq.${id}` }, (payload) => {
         setShop(prev => prev ? { ...prev, ...payload.new } : null)
       })
@@ -127,8 +130,34 @@ export default function ShopDetailScreen() {
 
   const shopRating = shop?.rating || 0
 
+  const isFoodShop = shop?.category === 'Food & Restaurants'
+  const isServiceShop = shop?.category === 'Services & Freelance'
+  const isListLayout = isFoodShop || isServiceShop
+
   const renderProduct = ({ item }: { item: any }) => {
     const hasImage = item.image_urls && item.image_urls.length > 0
+    
+    if (isListLayout) {
+      return (
+        <TouchableOpacity
+          style={styles.foodItemCard}
+          onPress={() => router.push(`/product/${item.id}?shopId=${id}`)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.foodItemInfo}>
+            <Text style={styles.foodItemName} numberOfLines={2}>{item.name}</Text>
+            {item.description ? (
+              <Text style={styles.foodItemDesc} numberOfLines={2}>{item.description}</Text>
+            ) : null}
+            <Text style={styles.foodItemPrice}>{item.price}</Text>
+          </View>
+          {hasImage && (
+            <Image source={{ uri: getCdnUrl(item.image_urls[0]) }} style={styles.foodItemImage} resizeMode="cover" />
+          )}
+        </TouchableOpacity>
+      )
+    }
+
     return (
       <TouchableOpacity
         style={[styles.card, { width: CARD }]}
@@ -210,7 +239,7 @@ export default function ShopDetailScreen() {
         ) : (
           <TouchableOpacity
             style={styles.messageBtn}
-            onPress={() => shop.owner_id && router.push(`/chat?id=${shop.owner_id}`)}
+            onPress={() => shop.owner_id && router.push(`/chat?id=${shop.owner_id}&is_shop=true`)}
           >
             <Ionicons name="chatbubble-ellipses-outline" size={24} color="#fff" />
           </TouchableOpacity>
@@ -219,12 +248,13 @@ export default function ShopDetailScreen() {
 
       <FlatList
         data={shop.products || []}
+        key={isFoodShop ? 'food' : 'grid'}
         keyExtractor={(item, i) => item.id ?? String(i)}
-        numColumns={2}
+        numColumns={isFoodShop ? 1 : 2}
         renderItem={renderProduct}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
-        columnWrapperStyle={styles.columnWrapper}
+        columnWrapperStyle={isFoodShop ? undefined : styles.columnWrapper}
         ListHeaderComponent={
           <View style={{ paddingBottom: 16 }}>
             {/* Edge to Edge Cover Image */}
@@ -309,7 +339,9 @@ export default function ShopDetailScreen() {
             </View>
 
             <View style={styles.divider} />
-            <Text style={styles.sectionLabel}>Products</Text>
+            <Text style={styles.sectionLabel}>
+              {isServiceShop ? 'Services Provided' : (isFoodShop ? 'Menu' : 'Products')}
+            </Text>
 
             {/* Coming Soon Banner */}
             <View style={{ marginHorizontal: 16, marginBottom: 24, backgroundColor: '#f59e0b', borderRadius: 16, padding: 24, alignItems: 'center' }}>
@@ -332,7 +364,12 @@ export default function ShopDetailScreen() {
                       ))}
                     </View>
                     {rev.comment && <Text style={{ color: premiumColors.text, fontSize: 15, marginBottom: 8 }}>{rev.comment}</Text>}
-                    <Text style={{ color: premiumColors.textDim, fontSize: 12 }}>{new Date(rev.created_at).toLocaleDateString()}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text style={{ color: premiumColors.textDim, fontSize: 13, fontWeight: '600' }}>
+                        {rev.profiles?.full_name || rev.profiles?.username || 'Anonymous'}
+                      </Text>
+                      <Text style={{ color: premiumColors.textDim, fontSize: 12 }}>{new Date(rev.created_at).toLocaleDateString()}</Text>
+                    </View>
                   </View>
                 ))
               )}

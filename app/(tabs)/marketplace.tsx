@@ -47,7 +47,7 @@ export default function () {
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
 
-  const CATEGORIES = ['Clothing', 'Electronics', 'Food & Restaurants', 'Beauty', 'Books', 'Home', 'Sports', 'Toys', 'Other']
+  const CATEGORIES = ['Clothing', 'Electronics', 'Food & Restaurants', 'Services & Freelance', 'Beauty', 'Books', 'Home', 'Sports', 'Toys', 'Other']
   const hasActiveFilter = !!selectedCity || !!selectedCategory || !!minPrice || !!maxPrice
 
   useEffect(() => {
@@ -197,24 +197,6 @@ export default function () {
 
   const renderHeader = () => (
     <View>
-      {/* Discovery Mode Banner */}
-      {!loading && (
-        <TouchableOpacity 
-          style={styles.discoveryBanner} 
-          onPress={() => router.push('/discover')}
-          activeOpacity={0.8}
-        >
-          <View style={styles.discoveryBannerBg}>
-            <Ionicons name="sparkles" size={24} color="#fbbf24" />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.discoveryBannerTitle}>Discovery Mode</Text>
-              <Text style={styles.discoveryBannerSub}>Swipe to discover new products</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#fff" />
-          </View>
-        </TouchableOpacity>
-      )}
-
       {/* Promoted Carousel */}
       {!loading && promotedProducts.length > 0 && !search && !hasActiveFilter && (
         <View style={styles.promotedSection}>
@@ -256,9 +238,53 @@ export default function () {
           />
         </View>
       )}
-      
+      {/* Quick Hubs */}
+      {!loading && (
+        <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginBottom: 20, gap: 12 }}>
+          <TouchableOpacity 
+            style={{ 
+              flex: 1, 
+              backgroundColor: colors.card, 
+              borderRadius: 16, 
+              padding: 16, 
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(249, 115, 22, 0.3)',
+              flexDirection: 'row',
+              justifyContent: 'center',
+              gap: 8
+            }} 
+            onPress={() => router.push('/food')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="fast-food" size={22} color="#f97316" />
+            <Text style={{ color: colors.text, fontSize: 15, fontWeight: '800' }}>Food</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={{ 
+              flex: 1, 
+              backgroundColor: colors.card, 
+              borderRadius: 16, 
+              padding: 16, 
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(59, 130, 246, 0.3)',
+              flexDirection: 'row',
+              justifyContent: 'center',
+              gap: 8
+            }} 
+            onPress={() => router.push('/services')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="construct" size={22} color="#3b82f6" />
+            <Text style={{ color: colors.text, fontSize: 15, fontWeight: '800' }}>Hire Pro</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {!loading && regularProducts.length > 0 && (
-         <Text style={[styles.sectionTitle, { marginHorizontal: 16, marginTop: promotedProducts.length > 0 ? 10 : 0 }]}>All Products</Text>
+         <Text style={[styles.sectionTitle, { marginHorizontal: 16, marginTop: 10 }]}>All Products</Text>
       )}
     </View>
   )
@@ -284,6 +310,10 @@ export default function () {
           {/* Purchases shortcut */}
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/(settings)/purchases')}>
             <Ionicons name="receipt-outline" size={22} color={colors.text} />
+          </TouchableOpacity>
+          {/* Discovery mode shortcut */}
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/discover')}>
+            <Ionicons name="sparkles-outline" size={22} color={colors.text} />
           </TouchableOpacity>
         </View>
       </View>
@@ -495,28 +525,15 @@ const getStyles = (colors: any) => StyleSheet.create({
     backgroundColor: '#3b82f6',
     borderWidth: 1.5, borderColor: colors.text,
   },
-  discoveryBanner: {
-    marginHorizontal: 16,
-    marginBottom: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  discoveryBannerBg: {
-    backgroundColor: '#ec4899', 
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  discoveryBannerTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  discoveryBannerSub: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  foodBanner: { marginHorizontal: 16, marginBottom: 12, borderRadius: 16, overflow: 'hidden' },
+  foodBannerBg: { backgroundColor: '#f97316', padding: 16, flexDirection: 'row', alignItems: 'center' },
+  foodBannerTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  foodBannerSub: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '600' },
+
+  serviceBanner: { marginHorizontal: 16, marginBottom: 20, borderRadius: 16, overflow: 'hidden' },
+  serviceBannerBg: { backgroundColor: '#2563eb', padding: 16, flexDirection: 'row', alignItems: 'center' },
+  serviceBannerTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  serviceBannerSub: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '600' },
   
   // Promoted Section
   sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 12, paddingHorizontal: 16 },
