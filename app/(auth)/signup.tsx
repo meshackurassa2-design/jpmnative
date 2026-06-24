@@ -15,7 +15,8 @@ import { decode } from 'base64-arraybuffer'
 const { width, height } = Dimensions.get('window')
 
 export default function SignupScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
+  const isDark = colors.isDark;
   const styles = React.useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')

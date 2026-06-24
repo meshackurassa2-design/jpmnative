@@ -10,7 +10,8 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ width, height, borderRadius = 6, style }: SkeletonProps) {
-  const { colors, isDark } = useTheme()
+  const { colors } = useTheme()
+  const isDark = colors.isDark
   const anim = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
@@ -35,8 +36,8 @@ export function Skeleton({ width, height, borderRadius = 6, style }: SkeletonPro
     outputRange: isDark ? [0.3, 0.8] : [0.1, 0.4],
   })
 
-  const backgroundColor = isDark ? '#2a2a2a' : '#d4d4d8'
-  const baseColor = isDark ? '#111111' : '#e4e4e7'
+  const backgroundColor = isDark ? '#1a1a1a' : '#d4d4d8'
+  const baseColor = isDark ? '#0a0a0a' : '#e4e4e7'
 
   return (
     <View

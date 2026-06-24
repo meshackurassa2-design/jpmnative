@@ -11,7 +11,8 @@ import { Ionicons } from '@expo/vector-icons'
 const { width, height } = Dimensions.get('window')
 
 export default function LoginScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
+  const isDark = colors.isDark;
   const styles = React.useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
