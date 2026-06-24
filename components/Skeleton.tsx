@@ -36,8 +36,8 @@ export function Skeleton({ width, height, borderRadius = 6, style }: SkeletonPro
     outputRange: isDark ? [0.3, 0.8] : [0.1, 0.4],
   })
 
-  const backgroundColor = isDark ? '#1a1a1a' : '#d4d4d8'
-  const baseColor = isDark ? '#0a0a0a' : '#e4e4e7'
+  const backgroundColor = isDark ? '#111111' : '#d4d4d8'
+  const baseColor = isDark ? '#000000' : '#e4e4e7'
 
   return (
     <View
