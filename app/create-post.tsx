@@ -580,7 +580,7 @@ export default function CreatePostScreen() {
           <TouchableOpacity 
             style={[styles.bottomPostBtn, isEmpty && styles.bottomPostBtnDisabled]} 
             onPress={handlePost}
-            disabled={loading || isEmpty}
+            disabled={loading}
           >
             {loading ? <ActivityIndicator size="small" color={colors.background} /> : <Text style={styles.bottomPostText}>{tLocal('post')}</Text>}
           </TouchableOpacity>

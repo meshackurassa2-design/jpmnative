@@ -40,8 +40,8 @@ export default function () {
 
   const fetchReports = async () => {
     setLoading(true)
-    const { data } = await supabase
-      .from('reports')
+    const { data, error } = await supabase
+      .from('content_reports')
       .select(`
         id, reason, created_at,
         posts (
@@ -94,7 +94,7 @@ export default function () {
   useEffect(() => { fetchReports() }, [])
 
   const dismissReports = async (postId: string) => {
-    await supabase.from('reports').update({ status: 'dismissed' }).eq('post_id', postId).eq('status', 'pending')
+    await supabase.from('content_reports').update({ status: 'dismissed' }).eq('post_id', postId).eq('status', 'pending')
     await supabase.from('posts').update({ is_archived: false }).eq('id', postId)
     setReports(prev => prev.filter(r => r.post.id !== postId))
   }
@@ -107,8 +107,13 @@ export default function () {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete', style: 'destructive', onPress: async () => {
-            await supabase.from('posts').delete().eq('id', postId)
-            setReports(prev => prev.filter(r => r.post.id !== postId))
+            const { error } = await supabase.from('posts').delete().eq('id', postId)
+            if (error) {
+              Alert.alert('Delete Failed', error.message)
+            } else {
+              setReports(prev => prev.filter(r => r.post.id !== postId))
+              Alert.alert('Success', 'Post completely deleted.')
+            }
           }
         }
       ]

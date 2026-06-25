@@ -17,6 +17,7 @@ import { UIProvider } from '../lib/ui'
 import { ThemeProvider, useTheme } from '../lib/theme'
 import { ThemeProvider as NavThemeProvider, DefaultTheme, DarkTheme } from '@react-navigation/native'
 import Constants from 'expo-constants'
+import * as Updates from 'expo-updates'
 // import mobileAds from 'react-native-google-mobile-ads'
 // Configure how notifications appear when the app is in the foreground
 Notifications.setNotificationHandler({
@@ -71,7 +72,30 @@ function PushNotificationSetup() {
 }
 
 function AutoUpdateSetup() {
-  // expo-updates OTA is disabled in this build — skip update checks to prevent startup crash
+  useEffect(() => {
+    // Only run OTA updates in a real production build, never in Expo Go or dev mode
+    if (__DEV__ || !Updates.isEmbeddedLaunch === undefined) return
+
+    const checkForUpdate = async () => {
+      try {
+        const update = await Updates.checkForUpdateAsync()
+        if (update.isAvailable) {
+          // Silently download the update in the background
+          await Updates.fetchUpdateAsync()
+          // Apply on next app launch — no interruption to current session
+          await Updates.reloadAsync()
+        }
+      } catch (e) {
+        // Never crash — update failures are non-critical
+        console.log('[OTA] Update check skipped:', e)
+      }
+    }
+
+    // Wait 3 seconds after launch so the app is fully loaded before checking
+    const timer = setTimeout(checkForUpdate, 3000)
+    return () => clearTimeout(timer)
+  }, [])
+
   return null
 }
 

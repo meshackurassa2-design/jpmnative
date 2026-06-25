@@ -106,7 +106,18 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
     const { error } = await supabase.from('content_reports').insert({
       reporter_id: user.id, post_id: post.id, reason
     })
-    if (!error) showToast('Post reported for review.', 'success')
+    if (!error) {
+      showToast('Post reported for review.', 'success')
+      try {
+        const hiddenStr = await AsyncStorage.getItem('hidden_posts')
+        const hiddenPosts = hiddenStr ? JSON.parse(hiddenStr) : []
+        if (!hiddenPosts.includes(post.id)) {
+          hiddenPosts.push(post.id)
+          await AsyncStorage.setItem('hidden_posts', JSON.stringify(hiddenPosts))
+        }
+        setIsDeleted(true)
+      } catch (e) {}
+    }
     else showToast('Could not submit report.', 'error')
   }
 

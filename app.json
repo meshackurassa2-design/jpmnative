@@ -1,9 +1,17 @@
-{
   "expo": {
     "name": "JPM",
     "slug": "jpm-socialmarket",
     "version": "2.3.2",
     "orientation": "portrait",
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/cc0498f6-2882-418a-8467-17df2bfbf8d6"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",

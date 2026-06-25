@@ -294,33 +294,35 @@ function FoodPromoCard({ onHideAll }: { onHideAll?: () => void }) {
   const [showConfirm, setShowConfirm] = useState(false)
   const { t } = useTranslation()
   
-  if (showConfirm) {
-    return (
-      <View style={[styles.post, { padding: 24, alignItems: 'center', justifyContent: 'center', minHeight: 200 }]}>
-        <Ionicons name="eye-off-outline" size={32} color={colors.textDim} style={{ marginBottom: 12 }} />
-        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 16, textAlign: 'center' }}>
-          {t('stop_seeing_promos')}
-        </Text>
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <TouchableOpacity 
-            onPress={() => setShowConfirm(false)} 
-            style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.border }}
-          >
-            <Text style={{ color: colors.textDim, fontWeight: '600' }}>{t('cancel')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={onHideAll} 
-            style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#ea580c' }}
-          >
-            <Text style={{ color: '#fff', fontWeight: '600' }}>{t('yes_hide')}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    )
-  }
-
   return (
-    <View style={[styles.post, { paddingBottom: 0 }]}>
+    <View style={[styles.post, { paddingBottom: 0, overflow: 'hidden' }]}>
+      {showConfirm && (
+        <View style={{ 
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: colors.background,
+          padding: 24, alignItems: 'center', justifyContent: 'center',
+          zIndex: 10
+        }}>
+          <Ionicons name="eye-off-outline" size={32} color={colors.textDim} style={{ marginBottom: 12 }} />
+          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 16, textAlign: 'center' }}>
+            {t('stop_seeing_promos')}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity 
+              onPress={() => setShowConfirm(false)} 
+              style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.border }}
+            >
+              <Text style={{ color: colors.textDim, fontWeight: '600' }}>{t('cancel')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={onHideAll} 
+              style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#ea580c' }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '600' }}>{t('yes_hide')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
       <TouchableOpacity
         style={styles.postHeader}
         onPress={() => router.push('/food')}
@@ -381,33 +383,35 @@ function ServicePromoCard({ onHideAll }: { onHideAll?: () => void }) {
   const [showConfirm, setShowConfirm] = useState(false)
   const { t } = useTranslation()
 
-  if (showConfirm) {
-    return (
-      <View style={[styles.post, { padding: 24, alignItems: 'center', justifyContent: 'center', minHeight: 200 }]}>
-        <Ionicons name="eye-off-outline" size={32} color={colors.textDim} style={{ marginBottom: 12 }} />
-        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 16, textAlign: 'center' }}>
-          {t('stop_seeing_promos')}
-        </Text>
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <TouchableOpacity 
-            onPress={() => setShowConfirm(false)} 
-            style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.border }}
-          >
-            <Text style={{ color: colors.textDim, fontWeight: '600' }}>{t('cancel')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={onHideAll} 
-            style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#2563eb' }}
-          >
-            <Text style={{ color: '#fff', fontWeight: '600' }}>{t('yes_hide')}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    )
-  }
-  
   return (
-    <View style={[styles.post, { paddingBottom: 0 }]}>
+    <View style={[styles.post, { paddingBottom: 0, overflow: 'hidden' }]}>
+      {showConfirm && (
+        <View style={{ 
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: colors.background,
+          padding: 24, alignItems: 'center', justifyContent: 'center',
+          zIndex: 10
+        }}>
+          <Ionicons name="eye-off-outline" size={32} color={colors.textDim} style={{ marginBottom: 12 }} />
+          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 16, textAlign: 'center' }}>
+            {t('stop_seeing_promos')}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity 
+              onPress={() => setShowConfirm(false)} 
+              style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.border }}
+            >
+              <Text style={{ color: colors.textDim, fontWeight: '600' }}>{t('cancel')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={onHideAll} 
+              style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#2563eb' }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '600' }}>{t('yes_hide')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
       <TouchableOpacity
         style={styles.postHeader}
         onPress={() => router.push('/services')}
@@ -561,7 +565,18 @@ export default function HomeScreen() {
     const { error } = await supabase.from('content_reports').insert({
       reporter_id: user.id, post_id: post.id, reason
     })
-    if (!error) showToast('Post reported for review.', 'success')
+    if (!error) {
+      showToast('Post reported for review.', 'success')
+      try {
+        const hiddenStr = await AsyncStorage.getItem('hidden_posts')
+        const hiddenPosts = hiddenStr ? JSON.parse(hiddenStr) : []
+        if (!hiddenPosts.includes(post.id)) {
+          hiddenPosts.push(post.id)
+          await AsyncStorage.setItem('hidden_posts', JSON.stringify(hiddenPosts))
+        }
+        setPosts(prev => prev.filter(p => p.id !== post.id))
+      } catch (e) {}
+    }
     else showToast('Could not submit report.', 'error')
   }
 
@@ -1426,7 +1441,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   fullName: { fontSize: 15, fontWeight: '700', color: colors.text },
   username: { fontSize: 13, color: colors.textDim, marginTop: 1 },
   postContent: { fontSize: 15, lineHeight: 22, color: colors.text, marginBottom: 10, paddingHorizontal: 16 },
-  postImage: { width: '100%', aspectRatio: 1 / 1.1, marginBottom: 10 },
+  postImage: { width: '100%', height: width * 1.1, marginBottom: 10, backgroundColor: colors.border },
   actions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, paddingHorizontal: 16 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   actionCount: { fontSize: 14, color: colors.textDim, fontWeight: '600' },
