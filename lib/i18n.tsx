@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type Language = 'en' | 'sw' | 'suk' | 'cha';
+export type Language = string;
 
 const dictionaries = {
   en: {
@@ -94,7 +94,23 @@ const dictionaries = {
     eligibility_desc: 'Build an engaged audience to start earning. Progress is calculated based on the last 30 days.',
     followers_req: '10,000 Followers',
     views_req: '3,000,000 Views',
-    submit_application: 'Submit Application'
+    submit_application: 'Submit Application',
+    // Auth
+    select_language: 'Select language',
+    select_language_sub: 'You\'ll be able to see posts, people, and trends in any languages you choose.',
+    continue: 'Continue',
+    login_title: 'Welcome Back',
+    email: 'Email Address',
+    password: 'Password',
+    sign_in: 'Sign In',
+    create_account_prompt: 'Don\'t have an account?',
+    sign_up: 'Sign Up',
+    signup_title: 'Create Account',
+    full_name: 'Full Name',
+    username: 'Username',
+    forgot_password: 'Forgot Password?',
+    logging_in: 'Signing in...',
+    creating_account: 'Creating account...'
   },
   sw: {
     home: 'Mwanzo',
@@ -182,7 +198,23 @@ const dictionaries = {
     eligibility_desc: 'Jenga hadhira ili kuanza kulipwa.',
     followers_req: 'Wafuasi 10,000',
     views_req: 'Watazamaji 3,000,000',
-    submit_application: 'Tuma Maombi'
+    submit_application: 'Tuma Maombi',
+    // Auth
+    select_language: 'Chagua lugha',
+    select_language_sub: 'Utaweza kuona machapisho na watu kwa lugha unayochagua.',
+    continue: 'Endelea',
+    login_title: 'Karibu Tena',
+    email: 'Barua Pepe',
+    password: 'Nenosiri',
+    sign_in: 'Ingia',
+    create_account_prompt: 'Hauna akaunti?',
+    sign_up: 'Jisajili',
+    signup_title: 'Tengeneza Akaunti',
+    full_name: 'Jina Kamili',
+    username: 'Jina la Mtumiaji',
+    forgot_password: 'Umesahau Nenosiri?',
+    logging_in: 'Inaingia...',
+    creating_account: 'Inatengeneza...'
   },
   suk: {
     // Sukuma translations 
@@ -254,7 +286,23 @@ const dictionaries = {
     trust_center: 'Kituo cha Uaminifu 🏅',
     logout: 'Fuma',
     people_you_may_know: 'Banhu Uba Kumanya',
-    follow: 'Fuata'
+    follow: 'Fuata',
+    // Auth
+    select_language: 'Shagula lugha',
+    select_language_sub: 'Ukomanya kubona shinhu na banhu kwa lugha uyo unshagula.',
+    continue: 'Kumbele',
+    login_title: 'Karibu Kaya',
+    email: 'Barua Pepe',
+    password: 'Nenosiri',
+    sign_in: 'Ingila',
+    create_account_prompt: 'Oduhu akaunti?',
+    sign_up: 'Fungula',
+    signup_title: 'Fungula Akaunti',
+    full_name: 'Lina Lyako',
+    username: 'Lina lya Butumishi',
+    forgot_password: 'Wililwe Nenosiri?',
+    logging_in: 'Ukwingila...',
+    creating_account: 'Ukufungula...'
   },
   cha: {
     // Chagga translations (Kichagga)
@@ -326,7 +374,128 @@ const dictionaries = {
     trust_center: 'Kituo cha Uaminifu 🏅',
     logout: 'Lawa',
     people_you_may_know: 'Wandu Uwa Manya',
-    follow: 'Fuata'
+    follow: 'Fuata',
+    // Auth
+    select_language: 'Kundi lugha',
+    select_language_sub: 'Ukowona machapisho na wandu kwa lugha uya kundi.',
+    continue: 'Kimbele',
+    login_title: 'Mndu Wiza',
+    email: 'Barua Pepe',
+    password: 'Nenosiri',
+    sign_in: 'Ingia',
+    create_account_prompt: 'Mbe akaunti?',
+    sign_up: 'Tengeneza',
+    signup_title: 'Tengeneza Akaunti',
+    full_name: 'Mndu Jina',
+    username: 'Jina',
+    forgot_password: 'Uleke Nenosiri?',
+    logging_in: 'Ingia...',
+    creating_account: 'Tengeneza...'
+  },
+  maa: {
+    // Maasai translations
+    home: 'Ang',
+    food_delivery: 'Endaa',
+    food_promo_desc: 'Iyiolo endaa? Injo inkirasi. Todua endaa sidai kuleteelwa wamoto. 🍕🍔',
+    order_now: 'YAMU TATA',
+    hire_pro: 'Oshoo Mndu',
+    hire_promo_desc: 'Iyieu idia? Todua iltungani supati.',
+    sponsored: 'Eishora',
+    cancel: 'Pal',
+    yes_hide: 'Ee, isudoo',
+    stop_seeing_promos: 'Ipal todua Endaa?',
+    you_caught_up: 'Iidipate',
+    seen_all_posts: 'Iidipate todua pooki.',
+    for_you: 'Ino',
+    following: 'Isujaa',
+    tea: 'Ekae',
+    news: 'Oloip',
+    settings: 'Mpangilio',
+    language: 'Lugha',
+    find_people: 'Ingura iltungani',
+    follow_people: 'Sujaa iltungani',
+    follow_people_sub: 'Isiaja, todua pooki.',
+    nothing_here: 'Kuduhu kindu',
+    be_first: 'Iwa e dukuya!',
+    onboard_1_title: 'Todua',
+    onboard_1_desc: 'Todua pooki sidai.',
+    onboard_2_title: 'Iro',
+    onboard_2_desc: 'Iro ng\'eng\'we.',
+    onboard_3_title: 'Ita',
+    onboard_3_desc: 'Ita pooki.',
+    start_exploring: 'Andya',
+    next: 'Ayiok',
+    seller_1_title: 'Duka Ino',
+    seller_1_desc: 'Todua duka ino.',
+    seller_2_title: 'Meseji za Duka',
+    seller_2_desc: 'Meseji pooki.',
+    seller_3_title: 'Hela',
+    seller_3_desc: 'Todua hela.',
+    go_to_dashboard: 'Shila Dashibodi',
+    account: 'Akaunti',
+    edit_profile: 'Wika Wasifu',
+    get_verified: 'Pata Alama ya Bluu',
+    legacy: 'Urithi wa Magufuli',
+    privacy_policy: 'Sera',
+    terms_of_service: 'Mawio',
+    my_wishlist: 'Kundi',
+    saved_posts: 'Machapisho',
+    security: 'Usalama',
+    marketplace: 'Soko',
+    purchases: 'Manunuzi',
+    store_dashboard: 'Dashibodi',
+    creator: 'Mrukuvi',
+    monetization: 'Kupata Hela',
+    become_pro: 'Iwa Mtaalamu',
+    admin: 'Mkuu',
+    admin_dashboard: 'Dashibodi ya Mkuu',
+    marketplace_shops: 'Maduka',
+    ads_management: 'Matangazo',
+    preferences: 'Kyakundi',
+    appearance: 'Kuwona',
+    support_guides: 'Msaada',
+    app_tour: 'Programu',
+    seller_tour: 'Duka',
+    invite_friends: 'Ika Iltungani 🎁',
+    help_support: 'Msaada',
+    about_app: 'Kuhusu Programu',
+    trust_center: 'Uaminifu 🏅',
+    logout: 'Lawa',
+    people_you_may_know: 'Iltungani',
+    follow: 'Sujaa',
+    monetization_title: 'Kupata Hela',
+    monetization_subtitle: 'Tengeneza pesa kutokana.',
+    estimated_revenue: 'Mapato',
+    updated_every_24h: 'Kila masaa 24',
+    app_status: 'Hali',
+    status_approved: 'Imekubaliwa',
+    status_pending: 'Inakaguliwa',
+    status_not_eligible: 'Haustahiki',
+    status_desc_approved: 'Hongera!',
+    status_desc_pending: 'Inakaguliwa.',
+    status_desc_not_eligible: 'Fikisha viwango.',
+    request_payout: 'Omba Malipo',
+    eligibility_reqs: 'Viwango',
+    eligibility_desc: 'Jenga hadhira.',
+    followers_req: 'Iltungani 10,000',
+    views_req: 'Watazamaji 3,000,000',
+    submit_application: 'Tuma Maombi',
+    // Auth
+    select_language: 'Gelun lugha',
+    select_language_sub: 'Iyiolo todua pooki tiatwa lugha ino.',
+    continue: 'Ayiok',
+    login_title: 'Supa',
+    email: 'Barua Pepe',
+    password: 'Nenosiri',
+    sign_in: 'Ingia',
+    create_account_prompt: 'Mme akaunti?',
+    sign_up: 'Ita Akaunti',
+    signup_title: 'Ita Akaunti',
+    full_name: 'Karna',
+    username: 'Karna',
+    forgot_password: 'Nenosiri?',
+    logging_in: 'Ingia...',
+    creating_account: 'Ita...'
   }
 };
 
@@ -345,22 +514,39 @@ const LanguageContext = createContext<LanguageContextType>({
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Language>('en');
 
+  const isInitialized = React.useRef(false);
+
   useEffect(() => {
     AsyncStorage.getItem('app_language').then((val) => {
-      if (val === 'sw' || val === 'suk' || val === 'cha' || val === 'en') {
+      if (val && !isInitialized.current) {
         setLangState(val as Language);
       }
     });
   }, []);
 
   const setLang = async (l: Language) => {
+    isInitialized.current = true;
     setLangState(l);
     await AsyncStorage.setItem('app_language', l);
   };
 
   const t = (key: keyof typeof dictionaries.en) => {
-    const dict = dictionaries[lang] || dictionaries.en;
-    return dict[key] || dictionaries.en[key] || key;
+    // If the selected language starts with 'cha_', map it to 'cha'
+    const actualLang = lang.startsWith('cha_') ? 'cha' : lang;
+    const dict = (dictionaries as any)[actualLang];
+    
+    // If we have a dictionary for this language and the key exists
+    if (dict && dict[key]) {
+      return dict[key];
+    }
+    
+    // For Tanzanian dialects, default to Swahili if the key is missing
+    if (actualLang !== 'en' && dictionaries.sw[key]) {
+      return dictionaries.sw[key];
+    }
+    
+    // Ultimate fallback is English
+    return dictionaries.en[key] || key;
   };
 
   return (

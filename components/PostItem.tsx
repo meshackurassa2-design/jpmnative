@@ -1,7 +1,8 @@
 import { getCdnUrl } from '../lib/cdn';
 // components/PostItem.tsx — Reusable feed post component
 import React, { useState, useMemo, useEffect } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Image, Alert, Dimensions, ScrollView } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Dimensions, ScrollView } from 'react-native'
+import { Image } from 'expo-image'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
@@ -339,7 +340,7 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
           <Image
             source={{ uri: getCdnUrl(getCDNUrl(post.image_urls![0]) || '') }}
             style={styles.postImage}
-            resizeMode="cover"
+            contentFit="cover"
           />
         </TouchableOpacity>
       )}

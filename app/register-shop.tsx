@@ -3,7 +3,8 @@ import { useTheme } from '../lib/theme';
 import React, { useState } from 'react'
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, Alert, Modal, FlatList
+  ScrollView, ActivityIndicator, Alert, Modal, FlatList,
+  KeyboardAvoidingView, Platform
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -11,6 +12,8 @@ import { router } from 'expo-router'
 import { createClient } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { BackButton } from '../components/BackButton'
+import * as ImagePicker from 'expo-image-picker'
+import { decode } from 'base64-arraybuffer'
 
 const TANZANIA_CITIES = [
   'Arusha', 'Dar es Salaam', 'Dodoma', 'Geita', 'Iringa', 'Kagera', 'Katavi',
@@ -40,6 +43,21 @@ export default function () {
   const [done, setDone] = useState(false)
   const [showCityPicker, setShowCityPicker] = useState(false)
   const [showCategoryPicker, setShowCategoryPicker] = useState(false)
+  const [tinCertUri, setTinCertUri] = useState<string | null>(null)
+  const [tinCertBase64, setTinCertBase64] = useState<string | null>(null)
+
+  const handleUploadCert = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      base64: true
+    });
+
+    if (!result.canceled && result.assets[0].base64) {
+      setTinCertUri(result.assets[0].uri);
+      setTinCertBase64(result.assets[0].base64);
+    }
+  }
 
 
   const handleSubmit = async () => {
@@ -69,9 +87,21 @@ export default function () {
         description,
         category,
         location_city: city,
-        status: 'active'
+        status: 'pending',
+        is_paid: true
       })
       if (shopErr) throw shopErr
+      
+      // Upload TIN Certificate if selected
+      if (tinCertBase64) {
+        // Find the newly created shop ID by owner_id since we just inserted it
+        const { data: newShop } = await supabase.from('shops').select('id').eq('owner_id', user?.id).order('created_at', { ascending: false }).limit(1).single()
+        if (newShop) {
+          const ext = tinCertUri?.split('.').pop() || 'jpg'
+          const path = `shops/${newShop.id}/tin_cert_${Date.now()}.${ext}`
+          await supabase.storage.from('memes').upload(path, decode(tinCertBase64), { contentType: `image/${ext}` })
+        }
+      }
       
       // 3. Deduct Balance
       const { error: updateErr } = await supabase.from('profiles').update({ wallet_balance: balance - 2000 }).eq('id', user?.id)
@@ -102,23 +132,25 @@ export default function () {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <BackButton />
-        <Text style={styles.headerTitle}>Open a Shop</Text>
+        <BackButton style={styles.backBtn} />
+        <Text style={styles.headerTitle}>Open Your Shop</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Shop Name *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="E.g., Kariakoo Electronics"
-            value={shopName}
-            onChangeText={setShopName}
-          />
-        </View>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Shop Name *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="E.g., Kariakoo Electronics"
+              placeholderTextColor={colors.textDim}
+              value={shopName}
+              onChangeText={setShopName}
+            />
+          </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Category *</Text>
@@ -173,6 +205,17 @@ export default function () {
           />
         </View>
 
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>TIN Certificate Document</Text>
+          <TouchableOpacity style={[styles.uploadBox, tinCertUri && styles.uploadBoxSuccess]} onPress={handleUploadCert}>
+            <Ionicons name={tinCertUri ? "checkmark-circle" : "document-text-outline"} size={28} color={tinCertUri ? "#10b981" : colors.textDim} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[styles.uploadTitle, { color: colors.text }]}>Upload Certificate</Text>
+              <Text style={styles.uploadSub}>{tinCertUri ? 'Document attached' : 'Optional but highly recommended'}</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
         <View style={{ marginBottom: 20, marginTop: 10, backgroundColor: colors.border, padding: 16, borderRadius: 16 }}>
           <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 4 }}>Shop Opening Fee</Text>
           <Text style={{ fontSize: 14, color: colors.textDim, marginBottom: 12 }}>A one-time fee of 2,000 Dapaz Coins is required.</Text>
@@ -195,6 +238,7 @@ export default function () {
           )}
         </TouchableOpacity>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* City Picker Modal */}
       <Modal visible={showCityPicker} animationType="slide" transparent={true} onRequestClose={() => setShowCityPicker(false)}>
@@ -279,18 +323,19 @@ const getStyles = (colors: any) => StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     justifyContent: 'center', minHeight: 52,
+    color: colors.text, fontSize: 16
   },
   textArea: { height: 100, fontSize: 16, color: colors.text },
   
   primaryBtn: {
-    backgroundColor: colors.text,
+    backgroundColor: '#2563eb',
     borderRadius: 24,
     height: 56,
     justifyContent: 'center', alignItems: 'center',
     marginTop: 12, marginBottom: 40,
     width: '100%',
   },
-  primaryBtnText: { color: colors.background, fontSize: 16, fontWeight: '700' },
+  primaryBtnText: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
   
   successTitle: { fontSize: 24, fontWeight: '800', color: colors.text, marginTop: 16, marginBottom: 8 },
   successText: { fontSize: 16, color: colors.textDim, textAlign: 'center', marginBottom: 32 },
@@ -301,4 +346,16 @@ const getStyles = (colors: any) => StyleSheet.create({
   modalTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
   cityOption: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
   cityOptionText: { fontSize: 16, color: colors.text },
+  uploadBox: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.border,
+    borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed',
+    borderRadius: 12,
+    padding: 16,
+  },
+  uploadBoxSuccess: {
+    borderColor: '#10b981', borderStyle: 'solid', backgroundColor: 'rgba(16, 185, 129, 0.1)'
+  },
+  uploadTitle: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
+  uploadSub: { fontSize: 12, color: colors.textDim },
 })

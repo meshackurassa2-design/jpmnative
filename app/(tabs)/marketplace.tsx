@@ -7,7 +7,8 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import { router } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
+import { useCallback } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { createClient } from '../../lib/supabase'
 import { useCart } from '../../lib/cart'
@@ -60,15 +61,28 @@ export default function () {
     checkRules()
 
     const fetchShops = async () => {
+      // Get all active shops
       const { data: shops, error } = await supabase
         .from('shops')
         .select('*')
         .eq('status', 'active')
-        .eq('is_paid', true)
         .order('created_at', { ascending: false })
 
-      if (shops && !error) {
-        const allProds: Product[] = shops.flatMap((shop: any) => 
+      let allShops = shops || []
+
+      // Also include the current user's own shop even if pending
+      if (user) {
+        const { data: myShop } = await supabase
+          .from('shops')
+          .select('*')
+          .eq('owner_id', user.id)
+          .neq('status', 'active') // Only add if not already in the list
+          .maybeSingle()
+        if (myShop) allShops = [...allShops, myShop]
+      }
+
+      if (!error) {
+        const allProds: Product[] = allShops.flatMap((shop: any) => 
           (shop.products || []).map((p: any) => ({
             ...p,
             shopId: shop.id,
@@ -81,22 +95,25 @@ export default function () {
         setProducts(allProds)
       }
 
-      if (user) {
-        const { data: userShop } = await supabase
-          .from('shops')
-          .select('id')
-          .eq('owner_id', user.id)
-          .maybeSingle()
-        
-        setUserShopId(userShop?.id || null)
-      } else {
-        setUserShopId(null)
-      }
-
       setLoading(false)
     }
     fetchShops()
   }, [user])
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        supabase
+          .from('shops')
+          .select('id')
+          .eq('owner_id', user.id)
+          .maybeSingle()
+          .then(({ data }) => setUserShopId(data?.id || null))
+      } else {
+        setUserShopId(null)
+      }
+    }, [user])
+  )
 
   const cities = useMemo(() => {
     return Array.from(new Set(products.map(p => p.shopCity).filter(Boolean)))
@@ -146,45 +163,45 @@ export default function () {
 
   const renderProduct = ({ item }: { item: Product }) => {
     const hasImage = item.image_urls && item.image_urls.length > 0;
+    const rating = (item as any).rating || 0
     
     return (
       <TouchableOpacity 
         style={styles.productCard}
         onPress={() => router.push(`/product/${item.id}?shopId=${item.shopId}`)}
+        activeOpacity={0.88}
       >
+        {/* Image */}
         <View style={styles.imageContainer}>
           {hasImage ? (
-            <Image source={{ uri: getCdnUrl(item.image_urls![0]) }} style={styles.productImage} />
+            <Image source={{ uri: getCdnUrl(item.image_urls![0]) }} style={styles.productImage} resizeMode="cover" />
           ) : (
             <View style={[styles.productImage, styles.placeholderImg]}>
-              <Ionicons name="cart-outline" size={32} color="#a1a1aa" />
+              <Ionicons name="image-outline" size={36} color={colors.textDim} />
             </View>
           )}
           {item.is_promoted && (
             <View style={styles.promotedBadge}>
               <Ionicons name="flash" size={10} color="#fff" />
-              <Text style={styles.promotedBadgeText}>PROMOTED</Text>
+              <Text style={styles.promotedBadgeText}>HOT</Text>
             </View>
           )}
-          {(item as any).rating > 0 && (
+          {rating > 0 && (
             <View style={styles.ratingTag}>
               <Ionicons name="star" size={10} color="#fbbf24" />
-              <Text style={styles.ratingTagText}>{(item as any).rating.toFixed(1)}</Text>
+              <Text style={styles.ratingTagText}>{rating.toFixed(1)}</Text>
             </View>
           )}
-          <View style={styles.priceTag}>
-            <Text style={styles.priceText}>{item.price}</Text>
-          </View>
         </View>
+
+        {/* Info */}
         <View style={styles.productInfo}>
           <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-          <Text style={styles.shopName} numberOfLines={1}>{item.shopName}</Text>
-          {item.shopCity ? (
-            <View style={styles.locationRow}>
-              <Ionicons name="location" size={12} color="#71717a" />
-              <Text style={styles.locationText}>{item.shopCity}</Text>
-            </View>
-          ) : null}
+          <Text style={styles.productPrice}>{item.price || 'TZS —'}</Text>
+          <View style={styles.shopRow}>
+            <Ionicons name="storefront-outline" size={11} color={colors.textDim} />
+            <Text style={styles.shopNameText} numberOfLines={1}>{item.shopName}</Text>
+          </View>
         </View>
       </TouchableOpacity>
     )
@@ -601,54 +618,43 @@ const getStyles = (colors: any) => StyleSheet.create({
     marginTop: 4,
   },
   applyBtnText: { color: colors.background, fontSize: 16, fontWeight: '700' },
-  listContent: { paddingHorizontal: 16, paddingBottom: 24, paddingTop: 8 },
-  columnWrapper: { justifyContent: 'space-between', gap: 12 },
-  productCard: { flex: 1, maxWidth: '48.5%', marginBottom: 20 },
+  listContent: { paddingHorizontal: 12, paddingBottom: 100, paddingTop: 4 },
+  columnWrapper: { justifyContent: 'space-between', paddingHorizontal: 4, marginBottom: 16 },
+
+  productCard: {
+    flex: 1, maxWidth: '48.5%',
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1, borderColor: colors.border,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 6, elevation: 3,
+  },
   imageContainer: {
     width: '100%', aspectRatio: 1,
-    borderRadius: 16, overflow: 'hidden',
-    backgroundColor: colors.border, marginBottom: 8,
+    backgroundColor: colors.border, position: 'relative',
   },
   productImage: { width: '100%', height: '100%' },
   placeholderImg: { justifyContent: 'center', alignItems: 'center' },
   promotedBadge: {
-    position: 'absolute', top: 8, right: 8,
-    backgroundColor: '#ec4899', paddingHorizontal: 6, paddingVertical: 3,
-    borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4
+    position: 'absolute', top: 8, left: 8,
+    backgroundColor: '#ec4899', paddingHorizontal: 7, paddingVertical: 3,
+    borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 3
   },
-  promotedBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
-  priceTag: {
-    position: 'absolute', bottom: 8, left: 8,
-    backgroundColor: 'rgba(0,0,0,0.75)',
-    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
-  },
-  priceText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '800',
-  },
+  promotedBadgeText: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
   ratingTag: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4
+    position: 'absolute', top: 8, right: 8,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 3
   },
-  ratingTagText: {
-    color: '#fbbf24',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  productInfo: { paddingHorizontal: 4 },
-  productName: { fontSize: 14, fontWeight: '600', color: colors.text, lineHeight: 18, marginBottom: 4 },
-  shopName: { fontSize: 12, color: colors.textDim, marginBottom: 4 },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  locationText: { fontSize: 11, color: colors.textDim, fontWeight: '500' },
+  ratingTagText: { color: '#fbbf24', fontSize: 11, fontWeight: '800' },
+
+  productInfo: { padding: 12, gap: 4 },
+  productName: { fontSize: 14, fontWeight: '700', color: colors.text, lineHeight: 20 },
+  productPrice: { fontSize: 16, fontWeight: '900', color: colors.primary, marginTop: 2 },
+  shopRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  shopNameText: { fontSize: 11, color: colors.textDim, fontWeight: '500', flex: 1 },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 64 },
   emptyText: { fontSize: 16, fontWeight: '600', color: colors.textDim, marginTop: 12 },
   cartFab: {

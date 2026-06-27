@@ -32,15 +32,16 @@ export default function AnalyticsScreen() {
       const { data: shop } = await supabase.from('shops').select('views').eq('id', shopId).single()
       
       // 2. Get total orders and revenue
-      const { data: orders } = await supabase.from('orders').select('total_amount').eq('shop_id', shopId)
-      const totalRevenue = orders?.reduce((acc, o) => acc + (o.total_amount || 0), 0) || 0
+      const { data: orderItems } = await supabase.from('order_items').select('order_id, price, quantity').eq('shop_id', shopId)
+      const totalRevenue = orderItems?.reduce((acc, item) => acc + ((item.price || 0) * (item.quantity || 1)), 0) || 0
+      const uniqueOrders = new Set(orderItems?.map(item => item.order_id)).size
       
       // 3. Get total wishlists
       const { count: wishlistCount } = await supabase.from('wishlists').select('*', { count: 'exact', head: true }).eq('shop_id', shopId)
 
       setStats({
         views: shop?.views || 0,
-        orders: orders?.length || 0,
+        orders: uniqueOrders || 0,
         wishlisted: wishlistCount || 0,
         revenue: totalRevenue
       })

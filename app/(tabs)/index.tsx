@@ -3,9 +3,10 @@ import { getCdnUrl } from '../../lib/cdn';
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, Image, Alert,
+  RefreshControl, ActivityIndicator, Alert,
   ScrollView, Animated, Dimensions, Platform, InteractionManager, useWindowDimensions, DeviceEventEmitter
 } from 'react-native'
+import { Image } from 'expo-image'
 
 const { width } = Dimensions.get('window')
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -553,7 +554,25 @@ export default function HomeScreen() {
   const [hideAllSpecial, setHideAllSpecial] = useState(false)
   const underlineAnim = useRef(new Animated.Value(0)).current
   const fabAnim = useRef(new Animated.Value(1)).current
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const slideAnim = useRef(new Animated.Value(20)).current
   const flatListRef = useRef<FlatList>(null)
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      })
+    ]).start()
+  }, [fadeAnim, slideAnim])
 
   const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([])
   const [storyViewer, setStoryViewer] = useState<{ groups: StoryGroup[]; index: number } | null>(null)
@@ -1334,27 +1353,29 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        ref={flatListRef}
-        data={loading ? [] : feedData}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        keyExtractor={(item, index) => item.isDirectAd ? `directad-${item.id}-${index}` : item.id}
-        renderItem={renderItem}
-        ListHeaderComponent={listHeader}
-        ListEmptyComponent={ListEmpty}
-        showsVerticalScrollIndicator={false}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
-        initialNumToRender={5}
-        windowSize={5}
-        maxToRenderPerBatch={5}
-        removeClippedSubviews={Platform.OS === 'android'}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />
-        }
-      />
+      <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+        <FlatList
+          ref={flatListRef}
+          data={loading ? [] : feedData}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          keyExtractor={(item, index) => item.isDirectAd ? `directad-${item.id}-${index}` : item.id}
+          renderItem={renderItem}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={ListEmpty}
+          showsVerticalScrollIndicator={false}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+          initialNumToRender={5}
+          windowSize={5}
+          maxToRenderPerBatch={5}
+          removeClippedSubviews={Platform.OS === 'android'}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />
+          }
+        />
+      </Animated.View>
 
       {/* Floating Action Button */}
       <Animated.View style={[

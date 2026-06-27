@@ -85,8 +85,8 @@ export default function () {
   const fetchUnusedVouchers = async () => {
     const { data } = await supabase
       .from('vouchers')
-      .select('code, coin_value, created_at')
-      .eq('is_used', false)
+      .select('code, amount_tsh, created_at')
+      .eq('is_redeemed', false)
       .order('created_at', { ascending: false })
     if (data) setUnusedVouchers(data)
   }
@@ -129,18 +129,22 @@ export default function () {
     }
 
     setGeneratingVouchers(true)
-    const { data, error } = await supabase.rpc('generate_vouchers', {
-      p_value: val,
-      p_count: cnt
-    })
-    setGeneratingVouchers(false)
-
-    if (error) {
-      Alert.alert('Error', error.message)
-    } else if (data) {
+    
+    try {
+      const { data, error } = await supabase.rpc('generate_vouchers', {
+        p_value: val,
+        p_count: cnt
+      })
+      
+      if (error) throw error
+      
       Alert.alert('Success', `Generated ${data.length} vouchers!`)
       setRecentVouchers(data)
       fetchUnusedVouchers()
+    } catch (e: any) {
+      Alert.alert('Error', e.message)
+    } finally {
+      setGeneratingVouchers(false)
     }
   }
 
@@ -357,18 +361,8 @@ export default function () {
             <View style={styles.formCard}>
               <Text style={styles.formTitle}>Generate Vouchers</Text>
               
-              <Text style={styles.label}>Coin Value</Text>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                {['500', '2500', '10000'].map(val => (
-                  <TouchableOpacity 
-                    key={val} 
-                    style={[styles.btn, voucherAmount === val ? { borderColor: '#2563eb', backgroundColor: '#eff6ff' } : { backgroundColor: colors.border, borderColor: 'transparent' }]}
-                    onPress={() => setVoucherAmount(val)}
-                  >
-                    <Text style={{ fontWeight: '700', color: voucherAmount === val ? '#2563eb' : colors.textDim }}>{val} 🪙</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <Text style={styles.label}>TSH Value (Amount)</Text>
+              <TextInput style={styles.input} keyboardType="numeric" placeholder="e.g. 5000" value={voucherAmount} onChangeText={setVoucherAmount} />
 
               <Text style={styles.label}>Quantity to Generate</Text>
               <TextInput style={styles.input} keyboardType="numeric" value={voucherCount} onChangeText={setVoucherCount} />
@@ -388,13 +382,13 @@ export default function () {
                     key={i} 
                     style={{ flexDirection: 'row', justifyContent: 'space-between', backgroundColor: colors.border, padding: 12, borderRadius: 8, marginBottom: 8 }}
                     onPress={async () => {
-                      await Clipboard.setStringAsync(v.generated_code)
-                      Alert.alert('Copied!', `${v.generated_code} copied to clipboard!`)
+                      await Clipboard.setStringAsync(v.code)
+                      Alert.alert('Copied!', `${v.code} copied to clipboard!`)
                     }}
                     activeOpacity={0.7}
                   >
-                    <Text style={{ fontWeight: '700', color: colors.text, letterSpacing: 1 }}>{v.generated_code}</Text>
-                    <Text style={{ color: '#10b981', fontWeight: '800' }}>{v.value} 🪙</Text>
+                    <Text style={{ fontWeight: '700', color: colors.text, letterSpacing: 1 }}>{v.code}</Text>
+                    <Text style={{ color: '#10b981', fontWeight: '800' }}>{v.amount_tsh} TSH</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -419,7 +413,7 @@ export default function () {
                       <Text style={{ fontWeight: '700', color: colors.text, letterSpacing: 1 }}>{v.code}</Text>
                       <Text style={{ fontSize: 11, color: colors.textDim, marginTop: 4 }}>Created: {new Date(v.created_at).toLocaleDateString()}</Text>
                     </View>
-                    <Text style={{ color: '#10b981', fontWeight: '800' }}>{v.coin_value} 🪙</Text>
+                    <Text style={{ color: '#10b981', fontWeight: '800' }}>{v.amount_tsh} TSH</Text>
                   </TouchableOpacity>
                 ))}
               </View>

@@ -1,6 +1,5 @@
-// app/checkout.tsx
 import { useTheme } from '../lib/theme';
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, ActivityIndicator, Alert, Modal, FlatList
@@ -12,25 +11,11 @@ import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { createClient } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
-import { useCart } from '../lib/cart'
+import { useCart, CartItem } from '../lib/cart'
 import uuid from 'react-native-uuid'
-import { BackButton } from '../components/BackButton'
+import { encryptMessage, getSharedSecret } from '../lib/crypto'
 import * as Print from 'expo-print'
 import * as Sharing from 'expo-sharing'
-
-const PROVIDERS = [
-  { id: 'Mpesa', label: 'M-Pesa' },
-  { id: 'Tigo', label: 'Tigo Pesa' },
-  { id: 'Airtel', label: 'Airtel Money' },
-  { id: 'Halopesa', label: 'HaloPesa' },
-]
-
-const MNO_MAP: Record<string, string> = {
-  'M-Pesa': 'Mpesa',
-  'Tigo Pesa': 'Tigo',
-  'Airtel Money': 'Airtel',
-  'HaloPesa': 'Halopesa'
-}
 
 const TANZANIAN_CITIES = [
   'Dar es Salaam', 'Mwanza', 'Arusha', 'Dodoma', 'Mbeya', 'Morogoro', 'Tanga', 
@@ -39,7 +24,7 @@ const TANZANIAN_CITIES = [
   'Mtwara', 'Mpanda', 'Tunduma', 'Makambako', 'Babati', 'Handeni', 'Lindi', 'Korogwe'
 ].sort()
 
-export default function () {
+export default function CheckoutScreen() {
   const { colors } = useTheme();
   const styles = React.useMemo(() => getStyles(colors), [colors]);
   const { user } = useAuth()
@@ -49,43 +34,20 @@ export default function () {
   const topPadding = insets.top > 0 ? insets.top : (Platform.OS === 'ios' ? 54 : Constants.statusBarHeight)
 
   const [name, setName] = useState(user?.user_metadata?.full_name || '')
-  const [email, setEmail] = useState(user?.email || '')
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
   const [city, setCity] = useState('')
   const [showCityPicker, setShowCityPicker] = useState(false)
-  const [provider, setProvider] = useState('Mpesa')
-  
-  const [promoCodeInput, setPromoCodeInput] = useState('')
-  const [appliedPromo, setAppliedPromo] = useState<any>(null)
-  const [promoError, setPromoError] = useState('')
+  const [walletBalance, setWalletBalance] = useState(0)
 
-  const handleApplyPromo = async () => {
-    setPromoError('')
-    if (!promoCodeInput.trim()) return
-
-    const { data, error } = await supabase
-      .from('shop_promos')
-      .select('*')
-      .eq('code', promoCodeInput.trim().toUpperCase())
-      .eq('is_active', true)
-      .maybeSingle()
-      
-    if (error || !data) {
-      setPromoError('Invalid or expired promo code.')
-      return
+  useEffect(() => {
+    async function loadWallet() {
+      if (!user) return
+      const { data } = await supabase.from('profiles').select('wallet_balance').eq('id', user.id).single()
+      if (data) setWalletBalance(data.wallet_balance || 0)
     }
-
-    // Check if any items in cart belong to this shop
-    const hasItemsForShop = items.some(i => i.shopId === data.shop_id)
-    if (!hasItemsForShop) {
-      setPromoError('This promo code is not valid for any items in your cart.')
-      return
-    }
-
-    setAppliedPromo(data)
-    setPromoError('Promo code applied successfully!')
-  }
+    loadWallet()
+  }, [user])
 
   const deliveryFee = React.useMemo(() => {
     let fee = 0;
@@ -109,169 +71,78 @@ export default function () {
     return fee;
   }, [items, city]);
 
-  const discountAmount = React.useMemo(() => {
-    if (!appliedPromo) return 0
-    let discount = 0
-    items.forEach(item => {
-      if (item.shopId === appliedPromo.shop_id) {
-        // Assume quantity exists, fallback to 1
-        const qty = item.quantity || 1
-        discount += (item.price * qty) * (appliedPromo.discount_percent / 100)
-      }
-    })
-    return Math.round(discount)
-  }, [items, appliedPromo])
-
-  const finalTotal = Math.max(0, cartTotal + deliveryFee - discountAmount);
+  const finalTotal = Math.max(0, cartTotal + deliveryFee);
 
   const [isProcessing, setIsProcessing] = useState(false)
-  const [success, setSuccess] = useState<{ 
-    orderId: string, 
-    message: string,
-    items: any[],
-    total: number,
-    sellers: Record<string, any>
-  } | null>(null)
+  const [success, setSuccess] = useState(false)
+  const [paidAmount, setPaidAmount] = useState(0)
+  const [orderedItems, setOrderedItems] = useState<CartItem[]>([])
 
   const handleCheckout = async () => {
     if (!name.trim()) return Alert.alert('Error', 'Please enter your full name.')
-    if (!email || !email.includes('@')) return Alert.alert('Error', 'Please enter a valid email address.')
-    if (!phone || phone.replace(/\D/g, '').length < 9) return Alert.alert('Error', 'Please enter a valid phone number.')
+    if (!phone) return Alert.alert('Error', 'Please enter a valid phone number.')
     if (!address.trim()) return Alert.alert('Error', 'Please enter your delivery address.')
     if (!city.trim()) return Alert.alert('Error', 'Please enter your city.')
 
+    if (finalTotal > walletBalance) {
+      return Alert.alert(
+        'Insufficient TSH', 
+        `You need TSH ${finalTotal.toLocaleString()} but only have TSH ${walletBalance.toLocaleString()}. Please top up your wallet via Airtel Money.`
+      )
+    }
+
     setIsProcessing(true)
     try {
-      const { data, error } = await supabase.functions.invoke('checkout-initialize', {
-        body: {
-          email, name, phone, address, city,
-          amount: finalTotal, items, provider, buyerId: user?.id, deliveryFee,
-          promoCode: appliedPromo?.code, discountAmount
-        }
+      const p_items = items.map(item => ({
+        sellerId: item.sellerId,
+        productId: item.id,
+        name: item.name,
+        price: parseFloat(item.price.replace(/[^\d.]/g, '')) || 0,
+        quantity: item.quantity || 1,
+        commission: 0.05
+      }))
+
+      const { data: orderId, error: checkoutErr } = await supabase.rpc('process_checkout', {
+        p_buyer_id: user.id,
+        p_buyer_name: name,
+        p_buyer_email: user.email || '',
+        p_buyer_phone: phone,
+        p_buyer_address: address,
+        p_buyer_city: city,
+        p_total_amount: finalTotal,
+        p_items: p_items
       })
 
-      if (error) {
-        let errMessage = error.message;
-        if (error.context) {
-          try {
-            const errBody = await error.context.json();
-            errMessage = errBody.error || errBody.message || errMessage;
-          } catch(e) {}
-        }
-        throw new Error(errMessage || 'Failed to initialize payment.')
-      }
-      if (!data) throw new Error('No data returned from payment initialization.')
+      if (checkoutErr) throw checkoutErr
 
-
-
-      const sellerIds = Array.from(new Set(items.map(i => i.sellerId).filter(Boolean)))
-      let sellersMap: Record<string, any> = {}
-      if (sellerIds.length > 0) {
-        const { data: sellers } = await supabase
-          .from('profiles')
-          .select('id, full_name, username')
-          .in('id', sellerIds as string[])
-        
-        if (sellers) {
-          sellers.forEach(s => { sellersMap[s.id] = s })
-        }
+      // 3. Notify sellers via chat
+      for (const item of items) {
+         if (item.sellerId) {
+           try {
+             const content = `🛒 New Order!\n\nBuyer Name: ${name}\n\nI just ordered ${item.quantity || 1}x ${item.name} for TSH ${((parseFloat(item.price.replace(/[^\d.]/g, '')) || 0) * (item.quantity || 1)).toLocaleString()}.\n\nDelivery Address: ${address}, ${city}\nPhone: +255${phone}\n\nPlease prepare it for delivery!`;
+             const secret = getSharedSecret(user.id, item.sellerId);
+             const encrypted = await encryptMessage(content, secret);
+             await supabase.from('messages').insert({
+               sender_id: user.id,
+               receiver_id: item.sellerId,
+               content: encrypted,
+               is_shop_chat: true,
+             } as any);
+           } catch (err) {
+             console.error('Failed to send order notification', err);
+           }
+         }
       }
 
-      setSuccess({ 
-        orderId: data.orderId, 
-        message: data.message || 'A payment prompt has been sent to your phone.',
-        items: [...items],
-        total: finalTotal,
-        deliveryFee,
-        discountAmount,
-        promoCode: appliedPromo?.code,
-        sellers: sellersMap
-      })
+      setPaidAmount(finalTotal)
+      setOrderedItems([...items])
+      setSuccess(true)
       clearCart()
       
     } catch (e: any) {
-      Alert.alert('Checkout Failed', e.message)
+      Alert.alert('Checkout Failed', e.message || 'An error occurred during payment.')
     } finally {
       setIsProcessing(false)
-    }
-  }
-
-  const downloadReceipt = async () => {
-    try {
-      if (!success) return
-      
-      let itemsHtml = ''
-      success.items.forEach(item => {
-        const seller = success.sellers[item.sellerId]
-        itemsHtml += `
-          <div style="margin-bottom: 12px; border-bottom: 1px dashed #ccc; padding-bottom: 12px;">
-            <div style="font-weight: bold; font-size: 16px;">${item.name}</div>
-            <div style="color: #666;">Shop: ${item.shopName}</div>
-            <div style="display: flex; justify-content: space-between;">
-              <span>Qty: ${item.quantity || 1}</span>
-              <span style="font-weight: bold;">TZS ${item.price.toLocaleString()}</span>
-            </div>
-            ${seller ? `<div style="color: #3b82f6; font-size: 14px; margin-top: 4px;">Seller Contact: @${seller.username} (${seller.full_name})</div>` : ''}
-          </div>
-        `
-      })
-
-      const html = `
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-          </head>
-          <body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #333;">
-            <div style="text-align: center; margin-bottom: 20px;">
-              <h1 style="color: #22c55e; margin-bottom: 4px;">Payment Initiated</h1>
-              <div style="color: #666; font-family: monospace;">Order ID: ${success.orderId}</div>
-            </div>
-            
-            <h3 style="color: #999; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Buyer Details</h3>
-            <div style="margin-bottom: 20px;">
-              <div>${name}</div>
-              <div>${phone}</div>
-              <div>${email}</div>
-            </div>
-            
-            <h3 style="color: #999; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Order Items</h3>
-            <div style="margin-bottom: 20px;">
-              ${itemsHtml}
-            </div>
-            
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; font-size: 16px;">
-              <span>Subtotal</span>
-              <span>TZS ${cartTotal.toLocaleString()}</span>
-            </div>
-            ${(success as any).discountAmount > 0 ? `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 16px; color: #16a34a;">
-              <span>Discount (${(success as any).promoCode})</span>
-              <span>- TZS ${(success as any).discountAmount.toLocaleString()}</span>
-            </div>
-            ` : ''}
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 16px;">
-              <span>Delivery Fee</span>
-              <span>TZS ${(success as any).deliveryFee?.toLocaleString() || 0}</span>
-            </div>
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 2px solid #333; font-size: 20px; font-weight: bold;">
-              <span>Total Paid</span>
-              <span>TZS ${success.total.toLocaleString()}</span>
-            </div>
-            
-            <div style="margin-top: 40px; padding: 16px; background-color: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; color: #b91c1c; font-weight: bold;">
-              WARNING: To protect yourself from fraud, all payments MUST be completed within the app. Do not send money directly to sellers.
-            </div>
-          </body>
-        </html>
-      `
-
-      const { uri } = await Print.printToFileAsync({ html })
-      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' })
-    } catch (e) {
-      console.error(e)
-      Alert.alert('Error', 'Could not generate or share PDF.')
     }
   }
 
@@ -279,96 +150,86 @@ export default function () {
     return (
       <View style={{ flex: 1, backgroundColor: '#000000', paddingTop: topPadding, paddingBottom: insets.bottom || 24 }}>
         <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>Digital Receipt</Text>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>Order Complete</Text>
+          <View style={{ width: 40 }} />
         </View>
         <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
-          <View style={[styles.receiptPaper, { backgroundColor: '#0A0A0A', borderColor: '#222222' }]}>
-            <View style={styles.receiptHeader}>
-              <Ionicons name="checkmark-circle" size={48} color="#22c55e" />
-              <Text style={[styles.receiptTitle, { color: '#FFFFFF' }]}>Payment Initiated</Text>
-              <Text style={[styles.receiptOrder, { color: '#888888' }]}>Order ID: {success.orderId}</Text>
-            </View>
-
-            <View style={[styles.receiptDivider, { borderColor: '#333333' }]} />
-
-            <View style={styles.receiptSection}>
-              <Text style={[styles.receiptSectionTitle, { color: '#888888' }]}>Buyer Details</Text>
-              <Text style={[styles.receiptText, { color: '#DDDDDD' }]}>{name}</Text>
-              <Text style={[styles.receiptText, { color: '#DDDDDD' }]}>{phone}</Text>
-              <Text style={[styles.receiptText, { color: '#DDDDDD' }]}>{email}</Text>
-            </View>
-
-            <View style={[styles.receiptDivider, { borderColor: '#333333' }]} />
-
-            <View style={styles.receiptSection}>
-              <Text style={[styles.receiptSectionTitle, { color: '#888888' }]}>Order Items</Text>
-              {success.items.map((item, idx) => {
-                const seller = success.sellers[item.sellerId]
-                return (
-                  <View key={idx} style={{ marginBottom: 12 }}>
-                    <Text style={[styles.receiptItemName, { color: '#FFFFFF' }]}>{item.name}</Text>
-                    <Text style={[styles.receiptText, { color: '#AAAAAA' }]}>Shop: {item.shopName}</Text>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={[styles.receiptText, { color: '#AAAAAA' }]}>Qty: {item.quantity || 1}</Text>
-                      <Text style={[styles.receiptItemPrice, { color: '#FFFFFF' }]}>TZS {item.price.toLocaleString()}</Text>
-                    </View>
-                    {seller && (
-                      <Text style={[styles.receiptSellerContact, { color: '#3b82f6' }]}>
-                        Seller Contact: @{seller.username} ({seller.full_name})
-                      </Text>
-                    )}
-                  </View>
-                )
-              })}
-            </View>
-
-            <View style={[styles.receiptDivider, { borderColor: '#333333' }]} />
-
-            <View style={styles.receiptTotalRow}>
-              <Text style={[styles.receiptText, { color: '#AAAAAA' }]}>Subtotal</Text>
-              <Text style={[styles.receiptItemPrice, { color: '#FFFFFF' }]}>TZS {cartTotal.toLocaleString()}</Text>
-            </View>
-            {(success as any).discountAmount > 0 && (
-              <View style={[styles.receiptTotalRow, { marginTop: 8 }]}>
-                <Text style={[styles.receiptText, { color: '#16a34a' }]}>Discount</Text>
-                <Text style={[styles.receiptItemPrice, { color: '#16a34a' }]}>- TZS {((success as any).discountAmount).toLocaleString()}</Text>
-              </View>
-            )}
-            <View style={[styles.receiptTotalRow, { marginTop: 8 }]}>
-              <Text style={[styles.receiptText, { color: '#AAAAAA' }]}>Delivery Fee</Text>
-              <Text style={[styles.receiptItemPrice, { color: '#FFFFFF' }]}>TZS {((success as any).deliveryFee || 0).toLocaleString()}</Text>
-            </View>
-
-            <View style={[styles.receiptDivider, { borderColor: '#333333', borderStyle: 'solid', borderWidth: 2 }]} />
-
-            <View style={styles.receiptTotalRow}>
-              <Text style={[styles.receiptTotalLabel, { color: '#FFFFFF' }]}>Total Paid</Text>
-              <Text style={[styles.receiptTotalValue, { color: '#FFFFFF' }]}>TZS {success.total.toLocaleString()}</Text>
-            </View>
-          </View>
-
-          <View style={[styles.warningBox, { backgroundColor: '#3f0f0f', borderColor: '#ef4444' }]}>
-            <Ionicons name="warning" size={24} color="#f87171" />
-            <Text style={[styles.warningText, { color: '#fca5a5' }]}>
-              WARNING: To protect yourself from fraud, all payments MUST be completed within the app. Do not send money directly to sellers.
+          <View style={[styles.receiptPaper, { backgroundColor: '#0A0A0A', borderColor: '#222222', alignItems: 'center', width: '100%', marginBottom: 24 }]}>
+            <Ionicons name="checkmark-circle" size={80} color="#22c55e" style={{ marginBottom: 20 }} />
+            <Text style={{ fontSize: 24, fontWeight: '900', color: '#FFFFFF', marginBottom: 10 }}>Payment Successful</Text>
+            <Text style={{ fontSize: 16, color: '#AAAAAA', textAlign: 'center', marginBottom: 20 }}>
+              Your order has been placed. TSH {paidAmount.toLocaleString()} was deducted from your wallet.
             </Text>
+            
+            <View style={{ width: '100%', borderTopWidth: 1, borderTopColor: '#333', paddingTop: 20 }}>
+              <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>Order Receipt</Text>
+              {orderedItems.map((item, idx) => (
+                <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <Text style={{ color: '#aaa', flex: 1, paddingRight: 10 }}>{item.quantity || 1}x {item.name}</Text>
+                  <Text style={{ color: '#fff', fontWeight: '600' }}>TSH {((parseFloat(item.price.replace(/[^\d.]/g, '')) || 0) * (item.quantity || 1)).toLocaleString()}</Text>
+                </View>
+              ))}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#333' }}>
+                 <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Total Paid</Text>
+                 <Text style={{ color: '#22c55e', fontWeight: 'bold', fontSize: 16 }}>TSH {paidAmount.toLocaleString()}</Text>
+              </View>
+            </View>
           </View>
 
           <TouchableOpacity 
-            style={[styles.primaryBtn, { backgroundColor: '#FFFFFF', marginBottom: 12 }]} 
-            onPress={downloadReceipt}
+            style={[styles.primaryBtn, { backgroundColor: '#3b82f6', marginBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]} 
+            onPress={async () => {
+              try {
+                const html = `
+                  <html>
+                    <head>
+                      <style>
+                        body { font-family: 'Helvetica', sans-serif; padding: 40px; color: #111; }
+                        h1 { color: #22c55e; text-align: center; }
+                        .header { text-align: center; margin-bottom: 40px; }
+                        .item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }
+                        .total { font-size: 1.2em; font-weight: bold; margin-top: 20px; color: #22c55e; }
+                      </style>
+                    </head>
+                    <body>
+                      <div class="header">
+                        <h1>Payment Successful</h1>
+                        <p>Thank you for your order!</p>
+                      </div>
+                      <h3>Order Receipt</h3>
+                      ${orderedItems.map(item => `
+                        <div class="item">
+                          <span>${item.quantity || 1}x ${item.name}</span>
+                          <span>TSH ${((parseFloat(item.price.replace(/[^\d.]/g, '')) || 0) * (item.quantity || 1)).toLocaleString()}</span>
+                        </div>
+                      `).join('')}
+                      <div class="item total">
+                        <span>Total Paid</span>
+                        <span>TSH ${paidAmount.toLocaleString()}</span>
+                      </div>
+                      <p style="text-align: center; margin-top: 40px; color: #888;">Generated by JPM App</p>
+                    </body>
+                  </html>
+                `;
+                const { uri } = await Print.printToFileAsync({ html });
+                await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+              } catch (err) {
+                Alert.alert('Error', 'Failed to generate receipt');
+              }
+            }}
           >
-            <Text style={[styles.primaryBtnText, { color: '#000000' }]}>Download PDF Receipt</Text>
+            <Ionicons name="print-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={[styles.primaryBtnText, { color: '#FFFFFF' }]}>Print / Download Receipt</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.primaryBtn, { backgroundColor: '#333333' }]} 
-            onPress={() => {
-              clearCart()
-              router.push('/(tabs)')
-            }}
+            style={[styles.primaryBtn, { backgroundColor: '#c026d3' }]} 
+            onPress={() => router.push(orderedItems.length > 0 ? `/shop/${orderedItems[0].shopId}` : '/(tabs)')}
           >
-            <Text style={[styles.primaryBtnText, { color: '#FFFFFF' }]}>Return to Home</Text>
+            <Text style={[styles.primaryBtnText, { color: '#FFFFFF' }]}>Continue Shopping</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -386,46 +247,27 @@ export default function () {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <Text style={styles.sectionTitle}>Your Details</Text>
+        
+        <View style={styles.walletBox}>
+          <Text style={styles.walletLabel}>Your Wallet Balance</Text>
+          <Text style={styles.walletValue}>TSH {walletBalance.toLocaleString()}</Text>
+          {walletBalance < finalTotal && (
+             <TouchableOpacity style={styles.topUpBtn} onPress={() => router.push('/(settings)/wallet')}>
+                <Text style={styles.topUpText}>Top Up Wallet</Text>
+             </TouchableOpacity>
+          )}
+        </View>
+
+        <Text style={styles.sectionTitle}>Delivery Details</Text>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Full Name</Text>
+          <Text style={styles.label}>Full Name (3 Names)</Text>
           <TextInput
             style={styles.input}
-            placeholder="e.g. Meshack Urassa"
+            placeholder="e.g. Meshack John Urassa"
             value={name}
             onChangeText={setName}
           />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Email Address</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="john@example.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-          />
-          <Text style={styles.helperText}>Your receipt will be sent to this address.</Text>
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Mobile Payment Provider</Text>
-          <View style={styles.providersGrid}>
-            {PROVIDERS.map(p => (
-              <TouchableOpacity
-                key={p.id}
-                style={[styles.providerBtn, provider === p.id && styles.providerBtnActive]}
-                onPress={() => setProvider(p.id)}
-              >
-                <Text style={[styles.providerText, provider === p.id && styles.providerTextActive]}>
-                  {p.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </View>
 
         <View style={styles.inputGroup}>
@@ -440,7 +282,6 @@ export default function () {
               onChangeText={setPhone}
             />
           </View>
-          <Text style={styles.helperText}>You'll receive a payment prompt on this number.</Text>
         </View>
 
         <View style={styles.inputGroup}>
@@ -463,51 +304,21 @@ export default function () {
           </View>
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Promo Code (Optional)</Text>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="e.g. SUMMER20"
-              autoCapitalize="characters"
-              value={promoCodeInput}
-              onChangeText={setPromoCodeInput}
-            />
-            <TouchableOpacity 
-              style={{ backgroundColor: colors.text, paddingHorizontal: 20, justifyContent: 'center', borderRadius: 12 }}
-              onPress={handleApplyPromo}
-            >
-              <Text style={{ color: colors.background, fontWeight: '700' }}>Apply</Text>
-            </TouchableOpacity>
-          </View>
-          {promoError ? (
-            <Text style={{ color: promoError.includes('successfully') ? '#16a34a' : '#ef4444', marginTop: 8, fontSize: 13, fontWeight: '600' }}>
-              {promoError}
-            </Text>
-          ) : null}
-        </View>
-
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>TZS {cartTotal.toLocaleString()}</Text>
+            <Text style={styles.summaryValue}>TSH {cartTotal.toLocaleString()}</Text>
           </View>
-          {appliedPromo && (
-            <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { color: '#16a34a' }]}>Discount ({appliedPromo.code})</Text>
-              <Text style={[styles.summaryValue, { color: '#16a34a' }]}>- TZS {discountAmount.toLocaleString()}</Text>
-            </View>
-          )}
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Delivery</Text>
             <Text style={styles.summaryValue}>
-              {city ? `TZS ${deliveryFee.toLocaleString()}` : 'Select city'}
+              {city ? `TSH ${deliveryFee.toLocaleString()}` : 'Select city'}
             </Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>TZS {finalTotal.toLocaleString()}</Text>
+            <Text style={styles.totalValue}>TSH {finalTotal.toLocaleString()}</Text>
           </View>
         </View>
       </ScrollView>
@@ -538,14 +349,16 @@ export default function () {
 
       <View style={styles.footer}>
         <TouchableOpacity 
-          style={styles.checkoutBtn} 
+          style={[styles.checkoutBtn, walletBalance < finalTotal && { backgroundColor: colors.border }]} 
           onPress={handleCheckout}
-          disabled={isProcessing}
+          disabled={isProcessing || walletBalance < finalTotal}
           >
           {isProcessing ? (
             <ActivityIndicator color={colors.background} />
           ) : (
-            <Text style={styles.checkoutBtnText}>Pay TZS {finalTotal.toLocaleString()}</Text>
+            <Text style={[styles.checkoutBtnText, walletBalance < finalTotal && { color: colors.textDim }]}>
+               {walletBalance >= finalTotal ? `Pay TSH ${finalTotal.toLocaleString()}` : 'Insufficient Balance'}
+            </Text>
           )}
         </TouchableOpacity>
       </View>
@@ -564,6 +377,12 @@ const getStyles = (colors: any) => StyleSheet.create({
   backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
   
+  walletBox: { backgroundColor: '#1a0a2e', padding: 20, borderRadius: 16, marginBottom: 20, borderWidth: 1, borderColor: '#c026d355', alignItems: 'center' },
+  walletLabel: { color: '#a855f7', fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  walletValue: { color: '#fff', fontSize: 32, fontWeight: '900' },
+  topUpBtn: { marginTop: 12, backgroundColor: '#c026d3', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8 },
+  topUpText: { color: '#fff', fontWeight: '800' },
+
   scrollContent: { padding: 20 },
   sectionTitle: { fontSize: 20, fontWeight: '800', color: colors.text, marginBottom: 20 },
   
@@ -575,19 +394,6 @@ const getStyles = (colors: any) => StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 14,
     fontSize: 16, fontWeight: '600', color: colors.text,
   },
-  helperText: { fontSize: 12, color: colors.textDim, fontWeight: '500', marginTop: 6 },
-  
-  providersGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  providerBtn: {
-    flex: 1, minWidth: '45%',
-    paddingVertical: 12, paddingHorizontal: 16,
-    borderRadius: 12, borderWidth: 2, borderColor: 'transparent',
-    backgroundColor: colors.border,
-    alignItems: 'center',
-  },
-  providerBtnActive: { borderColor: '#3b82f6', backgroundColor: '#eff6ff' },
-  providerText: { fontSize: 14, fontWeight: '700', color: '#52525b' },
-  providerTextActive: { color: '#2563eb' },
   
   phoneInputContainer: {
     flexDirection: 'row', alignItems: 'center',
@@ -617,15 +423,6 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   checkoutBtnText: { color: colors.background, fontSize: 16, fontWeight: '800' },
 
-  successTitle: { fontSize: 24, fontWeight: '900', color: colors.text, marginTop: 20, marginBottom: 12 },
-  successText: { fontSize: 15, color: colors.textDim, textAlign: 'center', lineHeight: 22, marginBottom: 24 },
-  orderCard: {
-    backgroundColor: colors.background, borderRadius: 16, padding: 16,
-    width: '100%', alignItems: 'center', marginBottom: 32,
-    borderWidth: 1, borderColor: colors.border,
-  },
-  orderCardLabel: { fontSize: 12, color: colors.textDim, fontWeight: '600', marginBottom: 4 },
-  orderCardValue: { fontSize: 16, fontWeight: '900', color: colors.text },
   primaryBtn: {
     backgroundColor: colors.text, borderRadius: 20, width: '100%',
     paddingVertical: 16, alignItems: 'center',
@@ -644,27 +441,6 @@ const getStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  receiptHeader: { alignItems: 'center', marginBottom: 16 },
-  receiptTitle: { fontSize: 20, fontWeight: '800', color: colors.text, marginTop: 8, marginBottom: 4 },
-  receiptOrder: { fontSize: 13, color: colors.textDim },
-  receiptDivider: { height: 1, borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed', marginVertical: 16 },
-  receiptSection: {},
-  receiptSectionTitle: { fontSize: 12, fontWeight: '700', color: colors.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
-  receiptText: { fontSize: 14, color: colors.textDim, marginBottom: 2 },
-  receiptItemName: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 2 },
-  receiptItemPrice: { fontSize: 14, fontWeight: '700', color: colors.text },
-  receiptSellerContact: { fontSize: 12, color: '#3b82f6', marginTop: 4, fontWeight: '500' },
-  receiptTotalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  receiptTotalLabel: { fontSize: 18, fontWeight: '800', color: colors.text },
-  receiptTotalValue: { fontSize: 18, fontWeight: '900', color: colors.text },
-  warningBox: {
-    backgroundColor: '#fef2f2',
-    borderWidth: 1, borderColor: '#fca5a5',
-    borderRadius: 12, padding: 16,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    marginBottom: 24,
-  },
-  warningText: { flex: 1, fontSize: 13, fontWeight: '600', color: '#b91c1c', lineHeight: 18 },
   
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   modalSheet: {

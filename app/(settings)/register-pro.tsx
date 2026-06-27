@@ -127,9 +127,7 @@ export default function RegisterProScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
-          <Ionicons name="close" size={28} color="#fff" />
-        </TouchableOpacity>
+        <View style={{ padding: 8, width: 44 }} />
         <Text style={styles.headerTitle}>Pro Application</Text>
         <View style={{ width: 44 }} />
       </View>

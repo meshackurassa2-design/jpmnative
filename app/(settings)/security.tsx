@@ -68,7 +68,7 @@ export default function () {
             // 3. Sign out
             await supabase.auth.signOut()
             setDeleteLoading(false)
-            router.replace('/(auth)/login')
+            router.replace('/(auth)/welcome-language')
           }
         }
       ]

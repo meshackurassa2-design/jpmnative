@@ -38,7 +38,7 @@ const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || 'PASTE_YOUR_GEM
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // The strict personality for the AI
-const getSystemPrompt = (lang: string) => `
+const getSystemPrompt = (lang: string, context: string = '') => `
 CRITICAL IDENTITY INSTRUCTION: You are "Dapaz", an elite AI assistant, creative engine, and business mentor created exclusively by Dapaz Studio. Under NO circumstances should you ever refer to yourself as an AI made by Google, a large language model, Gemini, or any other identity. You are simply Dapaz.
 
 Your goals:
@@ -46,6 +46,8 @@ Your goals:
 2. Teach professional English, correcting grammar when asked.
 3. Be practical, direct, and incredibly useful.
 4. Use a friendly tone.
+
+${context ? `USER BUSINESS MEMORY & DATA (CRITICAL): \n${context}\nUse this real-time data to answer questions about their marketing, sales, and business performance accurately.` : ''}
 
 CRITICAL LANGUAGE INSTRUCTION: The user has selected the language code '${lang}'.
 If 'en': Reply entirely in English.
@@ -95,6 +97,8 @@ export default function AIScreen() {
   const [balance, setBalance] = useState<number>(0)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [isPremium, setIsPremium] = useState<boolean>(false)
+  const [hasSubscription, setHasSubscription] = useState<boolean>(true)
+  const [daysRemaining, setDaysRemaining] = useState<number>(0)
   const [userName, setUserName] = useState<string>('')
   const [inputText, setInputText] = useState('')
   const [attachedImage, setAttachedImage] = useState<string | null>(null)
@@ -258,11 +262,22 @@ export default function AIScreen() {
   }, [])
 
   const fetchBalance = async () => {
-    const { data, error } = await supabase.from('profiles').select('full_name, wallet_balance, avatar_url, is_premium').eq('id', user?.id).single()
+    const { data, error } = await supabase.from('profiles').select('full_name, wallet_balance, avatar_url, is_premium, ai_subscription_ends_at').eq('id', user?.id).single()
     if (data) {
       setBalance(data.wallet_balance || 0)
       setAvatarUrl(data.avatar_url || null)
       setIsPremium(data.is_premium || false)
+      
+      if (data.ai_subscription_ends_at) {
+        const expiry = new Date(data.ai_subscription_ends_at)
+        const now = new Date()
+        setHasSubscription(expiry > now)
+        setDaysRemaining(Math.max(0, Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 3600 * 24))))
+      } else {
+        setHasSubscription(false)
+        setDaysRemaining(0)
+      }
+
       const firstName = data.full_name?.split(' ')[0] || ''
       setUserName(firstName)
       // Re-run the welcome animation now that we have the name
@@ -443,18 +458,9 @@ export default function AIScreen() {
     setInputText('')
     setAttachedImage(null)
 
-    // 1. Instantly deduct coins from local UI
-    setBalance(b => b - cost)
+    // No longer charging coins per message. It is now unlimited via the subscription!
 
-    // 2. Charge the user securely 
-    const { error: chargeError } = await supabase.rpc('spend_coins', { p_user_id: user?.id, p_amount: cost })
-    let isMockFallback = false;
-    if (chargeError) {
-      console.warn('Backend spend_coins missing. Bypassing for UI testing.', chargeError.message)
-      isMockFallback = true;
-    }
-
-    // 3. Add user message to UI
+    // Add user message to UI
     const userMsg: Message = { id: Date.now().toString(), role: 'user', text: userMsgText || '[Image Attached]' }
     setMessages(prev => [...prev, userMsg])
     setIsTyping(true)
@@ -474,9 +480,47 @@ export default function AIScreen() {
 
       if (mode === 'chat' || mode === 'translate') {
         const effectiveHistory = mode === 'translate' ? [] : history;
+        
+        let businessContext = '';
+        if (mode === 'chat' && userMsgText) {
+          try {
+            // 1. Convert user question to vector embedding
+            const embedRes = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_API_KEY}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  model: "models/text-embedding-004",
+                  content: { parts: [{ text: userMsgText }] }
+                })
+              }
+            );
+            const embedData = await embedRes.json();
+            const queryEmbedding = embedData.embedding?.values;
+
+            if (queryEmbedding) {
+              // 2. Search Supabase memory
+              const { data: memories } = await supabase.rpc('match_memory', {
+                query_embedding: queryEmbedding,
+                match_threshold: 0.7, // Only strongly related memory
+                match_count: 5,
+                p_user_id: user?.id
+              });
+
+              if (memories && memories.length > 0) {
+                businessContext = memories.map((m: any) => m.content).join('\\n');
+                console.log('Injected AI Memory:', businessContext);
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to retrieve AI memory:', e);
+          }
+        }
+
         const systemInstruction = mode === 'translate'
           ? `You are an expert translator. Translate the given text into the language code: '${lang}' (en=English, sw=Swahili, suk=Sukuma, cha=Chagga). Output ONLY the translated text, no explanations.`
-          : getSystemPrompt(lang);
+          : getSystemPrompt(lang, businessContext);
         const model2 = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction });
         const chat = model2.startChat({ history: effectiveHistory });
         const parts: any[] = []
@@ -538,9 +582,6 @@ export default function AIScreen() {
       Alert.alert('AI Error', 'The AI is currently busy. Please try again later.');
     } finally {
       setIsTyping(false)
-      if (!isMockFallback) {
-        fetchBalance()
-      }
     }
   }
 
@@ -661,127 +702,148 @@ export default function AIScreen() {
           </View>
         )}
 
+
         {/* Wrap inputContainer with a View that adds EXACT tab bar padding ONLY when keyboard is hidden */}
         <View style={{ paddingBottom: isKeyboardVisible ? 12 : (insets.bottom + 56 + 8) }}>
           
-          {showControls && (
-            <View>
-              {/* Horizontal Action Cards */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionCardsContainer}>
-                <TouchableOpacity 
-                  style={[styles.actionCard, mode === 'image' ? styles.actionCardActive : styles.actionCardInactive]} 
-                  onPress={() => { if (mode !== 'image') startNewConversation('image'); Haptics.selectionAsync(); }}>
-                  <Ionicons name="images-outline" size={16} color={mode === 'image' ? '#000' : '#fff'} />
-                  <Text style={[styles.actionCardText, mode === 'image' && { color: '#000' }]}>Create Images</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.actionCard, mode === 'chat' ? styles.actionCardActive : styles.actionCardInactive]} 
-                  onPress={() => { if (mode !== 'chat') startNewConversation('chat'); Haptics.selectionAsync(); }}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={16} color={mode === 'chat' ? '#000' : '#fff'} />
-                  <Text style={[styles.actionCardText, mode === 'chat' && { color: '#000' }]}>Chat</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.actionCard, mode === 'translate' ? styles.actionCardActive : styles.actionCardInactive]} 
-                  onPress={() => { if (mode !== 'translate') startNewConversation('translate'); Haptics.selectionAsync(); }}>
-                  <Ionicons name="language-outline" size={16} color={mode === 'translate' ? '#000' : '#fff'} />
-                  <Text style={[styles.actionCardText, mode === 'translate' && { color: '#000' }]}>Translate</Text>
-                </TouchableOpacity>
-              </ScrollView>
-
-              {/* Aspect Ratio Picker (Only for Image modes) */}
-              {mode === 'image' && (
-                <View style={styles.arContainer}>
-                  <TouchableOpacity onPress={() => setAspectRatio('1:1')} style={[styles.arPill, aspectRatio === '1:1' && styles.arPillActive]}>
-                    <Ionicons name="square-outline" size={14} color={aspectRatio === '1:1' ? '#000' : '#fff'} />
-                    <Text style={[styles.arText, aspectRatio === '1:1' && { color: '#000' }]}>1:1 Square</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setAspectRatio('16:9')} style={[styles.arPill, aspectRatio === '16:9' && styles.arPillActive]}>
-                    <Ionicons name="phone-landscape-outline" size={14} color={aspectRatio === '16:9' ? '#000' : '#fff'} />
-                    <Text style={[styles.arText, aspectRatio === '16:9' && { color: '#000' }]}>16:9 Landscape</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setAspectRatio('9:16')} style={[styles.arPill, aspectRatio === '9:16' && styles.arPillActive]}>
-                    <Ionicons name="phone-portrait-outline" size={14} color={aspectRatio === '9:16' ? '#000' : '#fff'} />
-                    <Text style={[styles.arText, aspectRatio === '9:16' && { color: '#000' }]}>9:16 Portrait</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* Flyer Templates (Image mode only) */}
-              {mode === 'image' && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 6, gap: 8 }}>
-                  {['Business Sale', 'Event Invite', 'Restaurant Menu', 'Job Vacancy', 'Announcement'].map(t => (
-                    <TouchableOpacity key={t} onPress={() => { setInputText(`Create a professional business flyer for: ${t}. Make it vibrant, bold, and modern.`); Haptics.selectionAsync(); }}
-                      style={{ backgroundColor: '#1e1e2e', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: '#3f3f5a' }}>
-                      <Text style={{ color: '#a78bfa', fontSize: 12, fontWeight: '600' }}>✨ {t}</Text>
+          {hasSubscription ? (
+            <>
+              {showControls && (
+                <View>
+                  {/* Horizontal Action Cards */}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionCardsContainer}>
+                    <TouchableOpacity 
+                      style={[styles.actionCard, mode === 'image' ? styles.actionCardActive : styles.actionCardInactive]} 
+                      onPress={() => { if (mode !== 'image') startNewConversation('image'); Haptics.selectionAsync(); }}>
+                      <Ionicons name="images-outline" size={16} color={mode === 'image' ? '#000' : '#fff'} />
+                      <Text style={[styles.actionCardText, mode === 'image' && { color: '#000' }]}>Create Images</Text>
                     </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              )}
+                    <TouchableOpacity 
+                      style={[styles.actionCard, mode === 'chat' ? styles.actionCardActive : styles.actionCardInactive]} 
+                      onPress={() => { if (mode !== 'chat') startNewConversation('chat'); Haptics.selectionAsync(); }}>
+                      <Ionicons name="chatbubble-ellipses-outline" size={16} color={mode === 'chat' ? '#000' : '#fff'} />
+                      <Text style={[styles.actionCardText, mode === 'chat' && { color: '#000' }]}>Chat</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.actionCard, mode === 'translate' ? styles.actionCardActive : styles.actionCardInactive]} 
+                      onPress={() => { if (mode !== 'translate') startNewConversation('translate'); Haptics.selectionAsync(); }}>
+                      <Ionicons name="language-outline" size={16} color={mode === 'translate' ? '#000' : '#fff'} />
+                      <Text style={[styles.actionCardText, mode === 'translate' && { color: '#000' }]}>Translate</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
 
-              {/* Translate language indicator */}
-              {mode === 'translate' && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 4, gap: 8 }}>
-                  <Text style={{ color: '#a1a1aa', fontSize: 13, fontWeight: '600' }}>English</Text>
-                  <Ionicons name="swap-horizontal" size={18} color="#8b5cf6" />
-                  <Text style={{ color: '#a1a1aa', fontSize: 13, fontWeight: '600' }}>Swahili</Text>
-                  <Text style={{ color: '#52525b', fontSize: 12 }}>(auto-detect)</Text>
+                  {/* Aspect Ratio Picker (Only for Image modes) */}
+                  {mode === 'image' && (
+                    <View style={styles.arContainer}>
+                      <TouchableOpacity onPress={() => setAspectRatio('1:1')} style={[styles.arPill, aspectRatio === '1:1' && styles.arPillActive]}>
+                        <Ionicons name="square-outline" size={14} color={aspectRatio === '1:1' ? '#000' : '#fff'} />
+                        <Text style={[styles.arText, aspectRatio === '1:1' && { color: '#000' }]}>1:1 Square</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setAspectRatio('16:9')} style={[styles.arPill, aspectRatio === '16:9' && styles.arPillActive]}>
+                        <Ionicons name="phone-landscape-outline" size={14} color={aspectRatio === '16:9' ? '#000' : '#fff'} />
+                        <Text style={[styles.arText, aspectRatio === '16:9' && { color: '#000' }]}>16:9 Landscape</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setAspectRatio('9:16')} style={[styles.arPill, aspectRatio === '9:16' && styles.arPillActive]}>
+                        <Ionicons name="phone-portrait-outline" size={14} color={aspectRatio === '9:16' ? '#000' : '#fff'} />
+                        <Text style={[styles.arText, aspectRatio === '9:16' && { color: '#000' }]}>9:16 Portrait</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {/* Flyer Templates (Image mode only) */}
+                  {mode === 'image' && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 6, gap: 8 }}>
+                      {['Business Sale', 'Event Invite', 'Restaurant Menu', 'Job Vacancy', 'Announcement'].map(t => (
+                        <TouchableOpacity key={t} onPress={() => { setInputText(`Create a professional business flyer for: ${t}. Make it vibrant, bold, and modern.`); Haptics.selectionAsync(); }}
+                          style={{ backgroundColor: '#1e1e2e', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: '#3f3f5a' }}>
+                          <Text style={{ color: '#a78bfa', fontSize: 12, fontWeight: '600' }}>✨ {t}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  )}
+
+                  {/* Translate language indicator */}
+                  {mode === 'translate' && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 4, gap: 8 }}>
+                      <Text style={{ color: '#a1a1aa', fontSize: 13, fontWeight: '600' }}>English</Text>
+                      <Ionicons name="swap-horizontal" size={18} color="#8b5cf6" />
+                      <Text style={{ color: '#a1a1aa', fontSize: 13, fontWeight: '600' }}>Swahili</Text>
+                      <Text style={{ color: '#52525b', fontSize: 12 }}>(auto-detect)</Text>
+                    </View>
+                  )}
                 </View>
               )}
+
+              <View style={styles.inputContainerOuter}>
+                {attachedImage && (
+                  <View style={styles.attachedImageContainer}>
+                    <Image source={{ uri: getCdnUrl(attachedImage) }} style={styles.attachedImage} />
+                    <TouchableOpacity style={styles.removeImageBtn} onPress={() => setAttachedImage(null)}>
+                      <Ionicons name="close" size={16} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <View style={styles.inputContainerInner}>
+                  <TouchableOpacity style={styles.attachBtn} onPress={() => setShowControls(!showControls)}>
+                    <Ionicons name={showControls ? "grid" : "menu"} size={20} color={showControls ? "#fff" : "#71717a"} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.attachBtn} onPress={mode === 'chat' ? pickDocument : pickImage}>
+                    <Ionicons name={mode === 'chat' ? 'attach-outline' : 'add'} size={24} color="#71717a" />
+                  </TouchableOpacity>
+
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder={
+                      mode === 'chat' ? "Ask anything" :
+                      mode === 'image' ? "Describe a flyer..." :
+                      "Type text to translate..."
+                    }
+                    placeholderTextColor="#71717a"
+                    value={inputText}
+                    onChangeText={setInputText}
+                    multiline
+                    maxLength={500}
+                  />
+                  
+                  {inputText.trim() || attachedImage ? (
+                    <TouchableOpacity 
+                      style={[styles.sendBtn, { backgroundColor: '#fff' }]} 
+                      onPress={sendMessage}
+                      disabled={isTyping}
+                    >
+                      <Ionicons name="arrow-up" size={18} color="#000" />
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity 
+                      style={[styles.sendBtn, { backgroundColor: isRecording ? '#ef4444' : '#1a1b1f' }]} 
+                      onPressIn={startRecording}
+                      onPressOut={stopRecording}
+                      delayPressIn={0}
+                    >
+                      <Ionicons name="mic" size={18} color={isRecording ? "#fff" : "#71717a"} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            </>
+          ) : (
+            <View style={{ paddingHorizontal: 16 }}>
+              <LinearGradient colors={['#ec4899', '#8b5cf6']} style={{ padding: 20, borderRadius: 24, alignItems: 'center' }}>
+                <Ionicons name="sparkles" size={32} color="#fff" style={{ marginBottom: 8 }} />
+                <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800', marginBottom: 6, textAlign: 'center' }}>Dapaz AI Pro</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, textAlign: 'center', marginBottom: 16, lineHeight: 18 }}>
+                  Your subscription has expired. Subscribe to unlock unlimited Chatting and Image Generation.
+                </Text>
+                <TouchableOpacity 
+                  style={{ backgroundColor: '#fff', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 16, width: '100%', alignItems: 'center' }}
+                  onPress={() => router.push('/(settings)/integrations')}
+                >
+                  <Text style={{ color: '#000', fontSize: 15, fontWeight: '800' }}>Subscribe Now</Text>
+                </TouchableOpacity>
+              </LinearGradient>
             </View>
           )}
-
-          <View style={styles.inputContainerOuter}>
-            {attachedImage && (
-              <View style={styles.attachedImageContainer}>
-                <Image source={{ uri: getCdnUrl(attachedImage) }} style={styles.attachedImage} />
-                <TouchableOpacity style={styles.removeImageBtn} onPress={() => setAttachedImage(null)}>
-                  <Ionicons name="close" size={16} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <View style={styles.inputContainerInner}>
-              <TouchableOpacity style={styles.attachBtn} onPress={() => setShowControls(!showControls)}>
-                <Ionicons name={showControls ? "grid" : "menu"} size={20} color={showControls ? "#fff" : "#71717a"} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.attachBtn} onPress={mode === 'chat' ? pickDocument : pickImage}>
-                <Ionicons name={mode === 'chat' ? 'attach-outline' : 'add'} size={24} color="#71717a" />
-              </TouchableOpacity>
-
-              <TextInput
-                style={styles.textInput}
-                placeholder={
-                  mode === 'chat' ? "Ask anything" :
-                  mode === 'image' ? "Describe a flyer..." :
-                  "Type text to translate..."
-                }
-                placeholderTextColor="#71717a"
-                value={inputText}
-                onChangeText={setInputText}
-                multiline
-                maxLength={500}
-              />
-              
-              {inputText.trim() || attachedImage ? (
-                <TouchableOpacity 
-                  style={[styles.sendBtn, { backgroundColor: '#fff' }]} 
-                  onPress={sendMessage}
-                  disabled={isTyping}
-                >
-                  <Ionicons name="arrow-up" size={18} color="#000" />
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity 
-                  style={[styles.sendBtn, { backgroundColor: isRecording ? '#ef4444' : '#1a1b1f' }]} 
-                  onPressIn={startRecording}
-                  onPressOut={stopRecording}
-                  delayPressIn={0}
-                >
-                  <Ionicons name="mic" size={18} color={isRecording ? "#fff" : "#71717a"} />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
         </View>
       </KeyboardAvoidingView>
 

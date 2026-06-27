@@ -63,6 +63,16 @@ export default function () {
       }
     }
     fetchSales()
+
+    const subscription = supabase.channel('store_dashboard_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items', filter: `shop_id=eq.${user?.id}` }, payload => {
+        fetchSales()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(subscription)
+    }
   }, [user])
 
   const handleUpdateStatus = async (itemId: string, newStatus: string) => {

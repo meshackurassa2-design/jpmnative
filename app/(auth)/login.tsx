@@ -7,11 +7,13 @@ import {
 import { Link, router } from 'expo-router'
 import { createClient } from '../../lib/supabase'
 import { Ionicons } from '@expo/vector-icons'
+import { useTranslation } from '../../lib/i18n';
 
 const { width, height } = Dimensions.get('window')
 
 export default function LoginScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const isDark = colors.isDark;
   const styles = React.useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const [email, setEmail] = useState('')
@@ -21,8 +23,24 @@ export default function LoginScreen() {
   const supabase = createClient()
 
   const animValue = React.useRef(new Animated.Value(0)).current;
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const slideAnim = React.useRef(new Animated.Value(30)).current;
 
   React.useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      })
+    ]).start();
+
     Animated.loop(
       Animated.timing(animValue, {
         toValue: 1,
@@ -30,7 +48,7 @@ export default function LoginScreen() {
         useNativeDriver: true,
       })
     ).start();
-  }, [animValue]);
+  }, [animValue, fadeAnim, slideAnim]);
 
   const spin1 = animValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const spin2 = animValue.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
@@ -85,15 +103,20 @@ export default function LoginScreen() {
       <Animated.View style={[styles.bgShape2, { transform: [{ rotate: spin2 }] }]} />
       <Animated.View style={[styles.bgShape3, { transform: [{ rotate: spin1 }] }]} />
 
-      <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView 
+        contentContainerStyle={styles.inner} 
+        keyboardShouldPersistTaps="handled" 
+        showsVerticalScrollIndicator={false}
+        style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
+      >
         <View style={{ marginTop: 40, marginBottom: 40 }}>
-          <Text style={styles.title}>Log in to your account</Text>
+          <Text style={styles.title}>{t('login_title')}</Text>
         </View>
 
-        <View style={styles.formGroup}>
+        <View style={{ gap: 16 }}>
           <TextInput
-            style={[styles.input, styles.inputTop]}
-            placeholder="Email or Username"
+            style={styles.input}
+            placeholder={t('email')}
             placeholderTextColor={colors.textDim}
             value={email}
             onChangeText={setEmail}
@@ -101,11 +124,10 @@ export default function LoginScreen() {
             keyboardType="default"
             autoComplete="email"
           />
-          <View style={styles.inputDivider} />
           <View style={styles.passwordContainer}>
             <TextInput
-              style={[styles.input, styles.inputBottom, { flex: 1, borderWidth: 0 }]}
-              placeholder="Password"
+              style={[styles.input, { flex: 1, borderWidth: 0 }]}
+              placeholder={t('password')}
               placeholderTextColor={colors.textDim}
               value={password}
               onChangeText={setPassword}
@@ -118,36 +140,37 @@ export default function LoginScreen() {
             >
               <Ionicons 
                 name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                size={22} 
+                size={20} 
                 color={colors.textDim} 
               />
             </TouchableOpacity>
           </View>
         </View>
 
-        <Link href="/(auth)/forgot-password" asChild>
-          <TouchableOpacity style={styles.forgotBtn}>
-            <Text style={styles.forgotText}>Forgot your password?</Text>
-          </TouchableOpacity>
-        </Link>
+        <TouchableOpacity 
+          style={styles.forgotBtn}
+          onPress={() => router.push('/(auth)/forgot-password')}
+        >
+          <Text style={styles.forgotText}>{t('forgot_password')}</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} disabled={loading} activeOpacity={0.8}>
           {loading ? (
-            <ActivityIndicator color={isDark ? '#000' : '#fff'} />
+            <ActivityIndicator color={colors.background} />
           ) : (
-            <Text style={styles.loginBtnText}>Log in</Text>
+            <Text style={styles.loginBtnText}>{t('sign_in')}</Text>
           )}
         </TouchableOpacity>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Don't have an account? </Text>
+          <Text style={styles.footerText}>{t('create_account_prompt')} </Text>
           <Link href="/(auth)/signup" asChild>
-            <TouchableOpacity>
-              <Text style={styles.footerLink}>Sign up</Text>
+            <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Text style={styles.footerLink}>{t('sign_up')}</Text>
             </TouchableOpacity>
           </Link>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </KeyboardAvoidingView>
   )
 }
@@ -186,35 +209,25 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   },
   inner: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 60, zIndex: 10 },
   title: { fontSize: 26, fontWeight: '800', color: colors.text, textAlign: 'center' },
-  formGroup: {
-    backgroundColor: isDark ? '#0a0a0a' : '#fff',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: isDark ? '#222' : '#e5e7eb',
-    overflow: 'hidden',
-  },
-  inputDivider: {
-    height: 1,
-    backgroundColor: isDark ? '#222' : '#e5e7eb',
-  },
   input: {
     height: 60,
     paddingHorizontal: 16, 
     fontSize: 16, 
     color: colors.text, 
     backgroundColor: isDark ? '#0a0a0a' : '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: isDark ? '#222' : '#e5e7eb',
     textAlign: 'center',
-  },
-  inputTop: {
-    borderBottomWidth: 0,
-  },
-  inputBottom: {
-    borderTopWidth: 0,
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: isDark ? '#0a0a0a' : '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: isDark ? '#222' : '#e5e7eb',
+    overflow: 'hidden',
   },
   eyeIcon: {
     padding: 16,

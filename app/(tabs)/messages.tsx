@@ -222,7 +222,7 @@ export default function () {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <Text style={styles.title}>Messages</Text>
-          <TouchableOpacity onPress={() => Alert.alert('New Message', 'Feature coming soon!')}>
+          <TouchableOpacity onPress={() => Alert.alert('New Message', 'To start a new chat, visit a user or shop profile and tap Message.')}>
             <Ionicons name="create-outline" size={26} color="#000" />
           </TouchableOpacity>
         </View>
@@ -245,7 +245,7 @@ export default function () {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Messages</Text>
-        <TouchableOpacity onPress={() => Alert.alert('New Message', 'Feature coming soon!')}>
+        <TouchableOpacity onPress={() => Alert.alert('New Message', 'To start a new chat, visit a user or shop profile and tap Message.')}>
           <Ionicons name="create-outline" size={26} color="#000" />
         </TouchableOpacity>
       </View>

@@ -1,10 +1,10 @@
 import { getCdnUrl } from '../../lib/cdn';
-// app/product/[id].tsx
 import { useTheme } from '../../lib/theme';
 import React, { useEffect, useState } from 'react'
 import {
   View, Text, StyleSheet, Image, ScrollView, TouchableOpacity,
-  ActivityIndicator, Dimensions, Alert, Platform, useWindowDimensions
+  ActivityIndicator, Dimensions, Alert, Platform, useWindowDimensions,
+  Modal, TextInput, Switch
 } from 'react-native'
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, router } from 'expo-router'
@@ -14,8 +14,8 @@ import { createClient } from '../../lib/supabase'
 import { BackButton } from '../../components/BackButton'
 import { useAuth } from '../../lib/auth'
 import * as ImagePicker from 'expo-image-picker'
-import { decode } from 'base64-arraybuffer'
-import { Modal, TextInput, Switch } from 'react-native'
+import { BlurView } from 'expo-blur'
+import { LinearGradient } from 'expo-linear-gradient'
 import { PhotoEditor } from '../../components/PhotoEditor'
 import * as FileSystem from 'expo-file-system/legacy'
 
@@ -44,6 +44,32 @@ interface Review {
   rating: number
   comment: string
   created_at: string
+}
+
+const FlashSaleCountdown = () => {
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const now = new Date()
+    const end = new Date(now)
+    end.setHours(23, 59, 59, 999) // Flash sale ends at midnight
+    return Math.floor((end.getTime() - now.getTime()) / 1000)
+  })
+
+  useEffect(() => {
+    if (timeLeft <= 0) return
+    const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000)
+    return () => clearInterval(timer)
+  }, [timeLeft])
+
+  const h = Math.floor(timeLeft / 3600)
+  const m = Math.floor((timeLeft % 3600) / 60)
+  const s = timeLeft % 60
+  const format = (n: number) => n.toString().padStart(2, '0')
+
+  return (
+    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600' }}>
+      Ends in {format(h)}:{format(m)}:{format(s)}
+    </Text>
+  )
 }
 
 export default function ProductDetailScreen() {
@@ -385,31 +411,47 @@ export default function ProductDetailScreen() {
 
   const hasImages = product.image_urls && product.image_urls.length > 0;
 
+  const formatPrice = (priceStr: string | number) => {
+    if (priceStr === undefined || priceStr === null) return 'TZS —';
+    const str = String(priceStr);
+    // If it's just a raw number (like "20000"), format it
+    if (/^\d+(\.\d+)?$/.test(str.trim())) {
+      return `TZS ${Number(str).toLocaleString()}`;
+    }
+    return str;
+  };
+
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* Image Carousel */}
-        <View style={[styles.imageCarousel, { width: feedWidth, height: feedWidth * 1.2 }]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        {/* Modern Image Header */}
+        <View style={[styles.imageCarousel, { width: width, height: width * 1.3 }]}>
           {hasImages ? (
             <ScrollView
               horizontal
               pagingEnabled
-              snapToInterval={feedWidth}
+              snapToInterval={width}
               snapToAlignment="center"
               decelerationRate="fast"
               showsHorizontalScrollIndicator={false}
               onMomentumScrollEnd={(e) => {
-                const idx = Math.round(e.nativeEvent.contentOffset.x / feedWidth)
+                const idx = Math.round(e.nativeEvent.contentOffset.x / width)
                 setActiveImageIndex(idx)
               }}
             >
               {product.image_urls!.map((url, idx) => (
-                <Image key={idx} source={{ uri: getCdnUrl(url) }} style={[styles.carouselImage, { width: feedWidth, height: feedWidth * 1.2 }]} resizeMode="cover" />
+                <View key={idx} style={{ width: width, height: width * 1.3 }}>
+                  <Image source={{ uri: getCdnUrl(url) }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.6)']}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+                </View>
               ))}
             </ScrollView>
           ) : (
-            <View style={[styles.carouselImage, styles.placeholderImg, { width: feedWidth, height: feedWidth * 1.2 }]}>
-              <Ionicons name="cart-outline" size={64} color="#a1a1aa" />
+            <View style={[styles.placeholderImg, { width: width, height: width * 1.3 }]}>
+              <Ionicons name="image-outline" size={80} color={colors.textDim} />
             </View>
           )}
 
@@ -425,52 +467,56 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
-          {/* Close Button overlay */}
-          <BackButton style={[styles.closeBtnOverlay, { top: insets.top + 10 }]} />
+          {/* Top Actions Overlay */}
+          <View style={[styles.topActionsOverlay, { top: Math.max(insets.top, 16) }]}>
+            <BlurView intensity={30} tint="dark" style={styles.glassBtn}>
+              <BackButton style={{ backgroundColor: 'transparent', shadowOpacity: 0 }} iconColor="#fff" />
+            </BlurView>
 
-          {/* Edit Button overlay */}
-          {isOwner && (
-            <>
-              <TouchableOpacity 
-                style={[styles.editBtnOverlay, { top: insets.top + 10, right: 60, backgroundColor: '#3b82f6' }]} 
-                onPress={handlePromote}
-              >
-                <Ionicons name="rocket" size={20} color={colors.background} />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.editBtnOverlay, { top: insets.top + 10 }]} 
-                onPress={openEditModal}
-              >
-                <Ionicons name="pencil" size={20} color={colors.background} />
-              </TouchableOpacity>
-            </>
-          )}
+            {isOwner && (
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TouchableOpacity onPress={handlePromote}>
+                  <BlurView intensity={30} tint="dark" style={[styles.glassBtn, { backgroundColor: 'rgba(59, 130, 246, 0.4)' }]}>
+                    <Ionicons name="rocket" size={20} color="#fff" />
+                  </BlurView>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={openEditModal}>
+                  <BlurView intensity={30} tint="dark" style={styles.glassBtn}>
+                    <Ionicons name="pencil" size={20} color="#fff" />
+                  </BlurView>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
 
-        {/* Product Details */}
+        {/* Product Details Content */}
         <View style={styles.detailsContainer}>
-          <Text style={styles.price}>{product.price}</Text>
+          <Text style={styles.price}>{formatPrice(product.price)}</Text>
           <Text style={styles.name}>{product.name}</Text>
           
           {(product as any).is_flash_sale && (
-            <View style={{ backgroundColor: '#ec4899', padding: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', marginVertical: 8 }}>
-              <Ionicons name="flash" size={20} color="#fff" />
-              <View style={{ marginLeft: 8 }}>
-                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>FLASH SALE</Text>
-                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600' }}>Ends in 02:45:10</Text>
+            <LinearGradient colors={['#ec4899', '#f43f5e']} style={styles.flashSaleBanner} start={{x: 0, y: 0}} end={{x: 1, y: 0}}>
+              <View style={styles.flashSaleIconBg}>
+                <Ionicons name="flash" size={20} color="#ec4899" />
               </View>
-            </View>
+              <View style={{ marginLeft: 12 }}>
+                <Text style={{ color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: 0.5 }}>FLASH SALE</Text>
+                <FlashSaleCountdown />
+              </View>
+            </LinearGradient>
           )}
 
-
           {(product as any).is_mystery_box && (
-            <View style={{ backgroundColor: '#8b5cf6', padding: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', marginVertical: 8 }}>
-              <Ionicons name="cube" size={24} color="#fff" />
-              <View style={{ marginLeft: 8, flex: 1 }}>
-                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Mystery Box</Text>
-                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600' }}>Contents revealed after purchase!</Text>
+            <LinearGradient colors={['#8b5cf6', '#6366f1']} style={styles.flashSaleBanner} start={{x: 0, y: 0}} end={{x: 1, y: 0}}>
+              <View style={styles.flashSaleIconBg}>
+                <Ionicons name="cube" size={24} color="#8b5cf6" />
               </View>
-            </View>
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <Text style={{ color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: 0.5 }}>MYSTERY BOX</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: '600' }}>Contents revealed after purchase!</Text>
+              </View>
+            </LinearGradient>
           )}
 
           <View style={styles.tagsRow}>
@@ -495,20 +541,26 @@ export default function ProductDetailScreen() {
             <Text style={styles.description}>{product.description}</Text>
           )}
 
-          {/* Shop Card */}
+          {/* Premium Shop Card */}
           <TouchableOpacity
             style={styles.shopCard}
             onPress={() => router.push(`/shop/${product.shopId}`)}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
             <View style={styles.shopIcon}>
-              <Ionicons name="storefront-outline" size={24} color="#2563eb" />
+              <Ionicons name="storefront" size={26} color="#3b82f6" />
             </View>
             <View style={styles.shopInfo}>
               <Text style={styles.shopName}>{product.shopName}</Text>
-              <Text style={styles.shopCity}>{product.shopCity}</Text>
+              <View style={styles.shopCityRow}>
+                <Ionicons name="location" size={12} color={colors.textDim} />
+                <Text style={styles.shopCity}>{product.shopCity}</Text>
+              </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#a1a1aa" />
+            <View style={styles.shopVisitBtn}>
+              <Text style={styles.shopVisitText}>Visit</Text>
+              <Ionicons name="chevron-forward" size={14} color="#fff" />
+            </View>
           </TouchableOpacity>
 
           {/* Reviews Section */}
@@ -548,20 +600,25 @@ export default function ProductDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Floating Bottom Bar */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.messageBtn} onPress={handleWishlistToggle}>
-          <Ionicons name={isWishlisted ? "heart" : "heart-outline"} size={24} color={isWishlisted ? "#ef4444" : colors.text} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.messageBtn} onPress={handleMessageSeller}>
-          <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.offerBtn} onPress={() => setIsMakingOffer(true)}>
-          <Text style={styles.offerBtnText}>Offer</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.addCartBtn} onPress={handleAddToCart}>
-          <Text style={styles.addCartText}>Add to Cart</Text>
-        </TouchableOpacity>
+      {/* Floating Bottom Bar (Minimalist) */}
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom > 0 ? insets.bottom : 32 }]}>
+        <View style={styles.bottomBarActions}>
+          <TouchableOpacity style={styles.iconBtn} onPress={handleWishlistToggle}>
+            <Ionicons name={isWishlisted ? "heart" : "heart-outline"} size={26} color={isWishlisted ? "#ef4444" : colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={handleMessageSeller}>
+            <Ionicons name="chatbubble-ellipses-outline" size={26} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+        
+        <View style={{ flex: 1, flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity style={styles.offerBtn} onPress={() => setIsMakingOffer(true)} activeOpacity={0.7}>
+            <Text style={styles.offerBtnText}>Offer</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addCartBtn} onPress={handleAddToCart} activeOpacity={0.8}>
+            <Text style={styles.addCartText}>Add to Cart</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Floating Cart Button */}
@@ -737,43 +794,28 @@ const getStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.border,
     position: 'relative',
   },
-  carouselImage: {
-  },
   placeholderImg: {
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.border,
   },
-  closeBtnOverlay: {
+  topActionsOverlay: {
     position: 'absolute',
-    right: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    justifyContent: 'center',
+    left: 16, right: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
   },
-  editBtnOverlay: {
-    position: 'absolute',
-    left: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.text,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+  glassBtn: {
+    width: 44, height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center', alignItems: 'center',
+    overflow: 'hidden',
   },
   dotsContainer: {
     position: 'absolute',
-    bottom: 16,
+    bottom: 24,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -782,49 +824,65 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   dot: {
     width: 8, height: 8, borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.4)',
   },
   activeDot: {
-    backgroundColor: colors.background,
+    backgroundColor: '#fff',
     width: 24,
   },
 
   detailsContainer: {
-    padding: 20,
+    padding: 24,
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 32, borderTopRightRadius: 32,
+    marginTop: -32, // overlap the image
   },
   price: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: colors.text,
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#3b82f6', // Nice vibrant blue
     marginBottom: 8,
+    letterSpacing: -0.5,
   },
   name: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '800',
     color: colors.text,
-    lineHeight: 28,
-    marginBottom: 16,
+    lineHeight: 30,
+    marginBottom: 20,
+    letterSpacing: -0.5,
+  },
+  flashSaleBanner: {
+    padding: 16, borderRadius: 20,
+    flexDirection: 'row', alignItems: 'center',
+    marginVertical: 12,
+  },
+  flashSaleIconBg: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#fff',
+    justifyContent: 'center', alignItems: 'center',
   },
   tagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 20,
+    gap: 10,
+    marginBottom: 24,
   },
   tag: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: colors.border,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1, borderColor: colors.border,
   },
   tagText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: colors.textDim,
   },
   description: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 26,
     color: colors.textDim,
     marginBottom: 32,
   },
@@ -833,16 +891,18 @@ const getStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: colors.background,
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 16,
+    borderRadius: 24,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05, shadowRadius: 12, elevation: 2,
   },
   shopIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.border,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -851,73 +911,75 @@ const getStyles = (colors: any) => StyleSheet.create({
     flex: 1,
   },
   shopName: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
     color: colors.text,
+    marginBottom: 4,
   },
+  shopCityRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   shopCity: {
     fontSize: 13,
     color: colors.textDim,
-    marginTop: 2,
+    fontWeight: '600',
   },
+  shopVisitBtn: {
+    backgroundColor: '#3b82f6',
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 16, paddingVertical: 10,
+    borderRadius: 20,
+  },
+  shopVisitText: { color: '#fff', fontWeight: '800', fontSize: 13 },
 
   bottomBar: {
     position: 'absolute',
     bottom: 0, left: 0, right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    paddingBottom: 32,
-    backgroundColor: colors.background,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    backgroundColor: colors.background, // changed from black to themed
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    gap: 12,
   },
-  messageBtn: {
-    width: 56, height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.border,
-    justifyContent: 'center', alignItems: 'center',
+  bottomBarActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginRight: 16,
+  },
+  iconBtn: {
+    width: 52, height: 52,
+    borderRadius: 16,
+    backgroundColor: colors.card,
+    borderWidth: 1, borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   offerBtn: {
-    height: 56, paddingHorizontal: 20,
-    borderRadius: 28,
-    backgroundColor: colors.border,
+    flex: 0.8, height: 52,
+    borderRadius: 16,
+    backgroundColor: colors.card,
+    borderWidth: 1, borderColor: colors.border,
     justifyContent: 'center', alignItems: 'center',
   },
   offerBtnText: {
-    color: colors.text, fontWeight: '800', fontSize: 15,
+    color: colors.text, fontWeight: '800', fontSize: 16,
   },
   addCartBtn: {
-    flex: 1, height: 56,
-    borderRadius: 28,
+    flex: 1.2, height: 52,
+    borderRadius: 16,
     backgroundColor: colors.text,
     justifyContent: 'center', alignItems: 'center',
+    shadowColor: colors.text, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2, shadowRadius: 8, elevation: 4,
   },
   addCartText: {
     color: colors.background,
     fontSize: 16,
-    fontWeight: '700',
-  },
-  cartFab: {
-    position: 'absolute', bottom: 100, right: 24,
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: colors.text,
-    justifyContent: 'center', alignItems: 'center',
-    shadowColor: colors.text, shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3, shadowRadius: 12, elevation: 8,
-  },
-  cartFabBadge: {
-    position: 'absolute', top: 12, right: 12,
-    backgroundColor: '#ef4444', minWidth: 20, height: 20,
-    borderRadius: 10, justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: colors.text,
-    paddingHorizontal: 4,
-  },
-  cartFabBadgeText: {
-    color: colors.background, fontSize: 10, fontWeight: '800',
+    fontWeight: '800',
   },
 
+  /* Modals and Forms below (kept relatively identical) */
   modalHeaderBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border,
@@ -941,17 +1003,17 @@ const getStyles = (colors: any) => StyleSheet.create({
   removeImgBtn: { position: 'absolute', top: -8, right: -8, backgroundColor: colors.background, borderRadius: 12 },
   addImgBtn: { width: 80, height: 80, borderRadius: 12, backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: colors.textDim, borderStyle: 'dashed' },
 
-  reviewsSection: { marginTop: 24, paddingTop: 24, borderTopWidth: 1, borderTopColor: colors.border },
-  reviewsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  reviewsTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
-  ratingBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, gap: 4 },
-  ratingText: { color: '#92400e', fontWeight: '800', fontSize: 14 },
-  writeReviewBtn: { backgroundColor: colors.text, paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginBottom: 16 },
-  writeReviewText: { color: colors.background, fontWeight: '700', fontSize: 15 },
-  noReviews: { color: colors.textDim, fontStyle: 'italic', marginTop: 8 },
-  reviewCard: { backgroundColor: colors.border, padding: 16, borderRadius: 16, marginBottom: 12 },
-  reviewStars: { flexDirection: 'row', marginBottom: 8, gap: 2 },
-  reviewComment: { color: colors.text, fontSize: 15, lineHeight: 22, marginBottom: 8 },
-  reviewDate: { color: colors.textDim, fontSize: 12 },
-  starSelectRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginVertical: 16 },
+  reviewsSection: { marginTop: 32, paddingTop: 32, borderTopWidth: 1, borderTopColor: colors.border },
+  reviewsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  reviewsTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
+  ratingBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef3c7', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, gap: 4 },
+  ratingText: { color: '#d97706', fontWeight: '900', fontSize: 15 },
+  writeReviewBtn: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, paddingVertical: 14, borderRadius: 16, alignItems: 'center', marginBottom: 20 },
+  writeReviewText: { color: colors.text, fontWeight: '800', fontSize: 15 },
+  noReviews: { color: colors.textDim, fontStyle: 'italic', marginTop: 8, fontSize: 15 },
+  reviewCard: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, padding: 20, borderRadius: 20, marginBottom: 12 },
+  reviewStars: { flexDirection: 'row', marginBottom: 12, gap: 2 },
+  reviewComment: { color: colors.text, fontSize: 16, lineHeight: 24, marginBottom: 12 },
+  reviewDate: { color: colors.textDim, fontSize: 13, fontWeight: '600' },
+  starSelectRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginVertical: 20 },
 })

@@ -304,6 +304,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.border, borderRadius: 12,
     paddingHorizontal: 16, paddingVertical: 14,
     justifyContent: 'center', minHeight: 52,
+    color: colors.text, fontSize: 16
   },
   textArea: { height: 100, fontSize: 16, color: colors.text },
   

@@ -11,11 +11,13 @@ import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { createClient } from '../../lib/supabase'
 import { decode } from 'base64-arraybuffer'
+import { useTranslation } from '../../lib/i18n';
 
 const { width, height } = Dimensions.get('window')
 
 export default function SignupScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const isDark = colors.isDark;
   const styles = React.useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const [firstName, setFirstName] = useState('')
@@ -166,7 +168,7 @@ export default function SignupScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={{ marginTop: 20, marginBottom: 24, alignItems: 'center' }}>
-          <Text style={styles.title}>Create your account</Text>
+          <Text style={styles.title}>{t('signup_title')}</Text>
         </View>
 
         {/* Avatar Upload */}
@@ -217,7 +219,7 @@ export default function SignupScreen() {
             <View style={styles.inputDivider} />
             <TextInput
               style={styles.input}
-              placeholder="Email address"
+              placeholder={t('email')}
               placeholderTextColor="#666"
               autoCapitalize="none"
               keyboardType="email-address"
@@ -228,7 +230,7 @@ export default function SignupScreen() {
             <View style={styles.passwordContainer}>
               <TextInput
                 style={[styles.input, { flex: 1, borderWidth: 0 }]}
-                placeholder="Password"
+                placeholder={t('password')}
                 placeholderTextColor={colors.textDim}
                 secureTextEntry={!showPassword}
                 value={password}
@@ -294,7 +296,7 @@ export default function SignupScreen() {
           </View>
 
           <TouchableOpacity style={styles.submitBtn} onPress={handleSignup} disabled={loading} activeOpacity={0.8}>
-            {loading ? <ActivityIndicator color={isDark ? '#000' : '#fff'} /> : <Text style={styles.submitBtnText}>Create account</Text>}
+            {loading ? <ActivityIndicator color={isDark ? '#000' : '#fff'} /> : <Text style={styles.submitBtnText}>{t('sign_up')}</Text>}
           </TouchableOpacity>
         </View>
 
@@ -302,7 +304,7 @@ export default function SignupScreen() {
           <Text style={styles.footerText}>Already have an account? </Text>
           <Link href="/(auth)/login" asChild>
             <TouchableOpacity>
-              <Text style={styles.footerLink}>Log in</Text>
+              <Text style={styles.footerLink}>{t('sign_in')}</Text>
             </TouchableOpacity>
           </Link>
         </View>

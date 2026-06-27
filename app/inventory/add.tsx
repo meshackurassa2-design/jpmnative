@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, ActivityIndicator, Alert, Modal, FlatList,
-  Platform, KeyboardAvoidingView, Switch
+  Platform, KeyboardAvoidingView, Switch, Image
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -13,6 +13,10 @@ import { useAuth } from '../../lib/auth'
 import { useTheme } from '../../lib/theme'
 import { useUI } from '../../lib/ui'
 import DateTimePicker from '@react-native-community/datetimepicker'
+import * as ImagePicker from 'expo-image-picker'
+import * as FileSystem from 'expo-file-system'
+import { decode } from 'base64-arraybuffer'
+import { getCdnUrl } from '../../lib/cdn'
 
 const PRODUCT_CATEGORIES = [
   'Food & Beverages', 'Dairy', 'Meat & Poultry', 'Fruits & Vegetables',
@@ -50,6 +54,8 @@ export default function AddInventoryScreen() {
   )
   const [isFlashSale, setIsFlashSale] = useState(existingItem?.is_flash_sale || false)
   const [isMysteryBox, setIsMysteryBox] = useState(existingItem?.is_mystery_box || false)
+  const [imageUris, setImageUris] = useState<string[]>(existingItem?.image_urls || [])
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   const [loading, setLoading] = useState(false)
   const [showCategoryPicker, setShowCategoryPicker] = useState(false)
@@ -72,6 +78,7 @@ export default function AddInventoryScreen() {
     }
 
     setLoading(true)
+    // Core payload — does NOT include image_urls to avoid DB column errors
     const payload = {
       shop_id: shopId,
       name: name.trim(),
@@ -95,11 +102,19 @@ export default function AddInventoryScreen() {
           .update(payload)
           .eq('id', existingItem.id)
         if (error) throw error
-        
+
+        // Try to also save images (column may not exist yet — silently skip if so)
+        if (imageUris.length > 0) {
+          await supabase.from('shop_inventory').update({ image_urls: imageUris }).eq('id', existingItem.id)
+        }
+
         // Sync with shops.products JSON
         const { data: shop } = await supabase.from('shops').select('products').eq('id', shopId).single()
         const prods = shop?.products || []
-        const updated = prods.map((p: any) => p.id === existingItem.id ? { ...p, name: payload.name, price: payload.selling_price || 0, description: payload.notes || p.description } : p)
+        const updated = prods.map((p: any) => p.id === existingItem.id
+          ? { ...p, name: payload.name, price: payload.selling_price ? `TZS ${Number(payload.selling_price).toLocaleString()}` : p.price, description: payload.notes || p.description, image_urls: imageUris, category: category || p.category }
+          : p
+        )
         await supabase.from('shops').update({ products: updated }).eq('id', shopId)
 
         showToast('Product updated successfully', 'success')
@@ -110,16 +125,22 @@ export default function AddInventoryScreen() {
           .select()
           .single()
         if (error) throw error
-        
+
+        // Try to also save images (column may not exist yet — silently skip if so)
+        if (imageUris.length > 0) {
+          await supabase.from('shop_inventory').update({ image_urls: imageUris }).eq('id', newInv.id)
+        }
+
         // Sync with shops.products JSON
         const { data: shop } = await supabase.from('shops').select('products').eq('id', shopId).single()
         const prods = shop?.products || []
         const newProduct = {
           id: newInv.id,
           name: newInv.name,
-          price: newInv.selling_price || 0,
+          price: newInv.selling_price ? `TZS ${Number(newInv.selling_price).toLocaleString()}` : 'TZS 0',
           description: newInv.notes || '',
-          image_urls: []
+          image_urls: imageUris,
+          category: category || null,
         }
         await supabase.from('shops').update({ products: [...prods, newProduct] }).eq('id', shopId)
 
@@ -130,6 +151,66 @@ export default function AddInventoryScreen() {
       showToast(e.message || 'Failed to save product', 'error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePickImage = async (useCamera = false) => {
+    setUploadingImage(true)
+    try {
+      let result
+      if (useCamera) {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync()
+        if (status !== 'granted') {
+          showToast('Camera permission is required', 'error')
+          setUploadingImage(false)
+          return
+        }
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.8,
+          base64: true
+        })
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+        if (status !== 'granted') {
+          showToast('Gallery permission is required', 'error')
+          setUploadingImage(false)
+          return
+        }
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.8,
+          allowsMultipleSelection: true,
+          base64: true
+        })
+      }
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        for (const asset of result.assets) {
+          const ext = (asset.uri.split('.').pop() || 'jpg').toLowerCase().replace('jpg', 'jpeg')
+          const fileName = `inventory/${shopId}/${Date.now()}_${Math.random().toString(36).substr(2, 6)}.${ext}`
+
+          // Use base64 + decode — this is the pattern that works in this app
+          let base64Data = asset.base64
+          if (!base64Data) {
+            base64Data = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 })
+          }
+
+          const { error } = await supabase.storage
+            .from('memes')
+            .upload(fileName, decode(base64Data), { contentType: `image/${ext}`, upsert: true })
+
+          if (error) throw error
+
+          const { data: urlData } = supabase.storage.from('memes').getPublicUrl(fileName)
+          setImageUris(prev => [...prev, urlData.publicUrl])
+        }
+        showToast('Image uploaded!', 'success')
+      }
+    } catch (e: any) {
+      showToast('Image upload failed: ' + e.message, 'error')
+    } finally {
+      setUploadingImage(false)
     }
   }
 
@@ -187,6 +268,47 @@ export default function AddInventoryScreen() {
         </View>
 
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+
+          {/* Product Images */}
+          <View style={s.section}>
+            <View style={s.sectionHeader}>
+              <Ionicons name="images-outline" size={16} color={colors.textDim} />
+              <Text style={s.sectionTitle}>Product Images</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                {imageUris.map((uri, idx) => (
+                  <View key={idx} style={{ position: 'relative' }}>
+                    <Image source={{ uri: getCdnUrl(uri) }} style={s.thumbImage} />
+                    <TouchableOpacity
+                      style={s.removeImgBtn}
+                      onPress={() => setImageUris(prev => prev.filter((_, i) => i !== idx))}
+                    >
+                      <Ionicons name="close" size={14} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                <TouchableOpacity
+                  style={s.addImageBtn}
+                  onPress={() => Alert.alert('Add Image', 'Choose source', [
+                    { text: 'Camera', onPress: () => handlePickImage(true) },
+                    { text: 'Gallery', onPress: () => handlePickImage(false) },
+                    { text: 'Cancel', style: 'cancel' },
+                  ])}
+                  disabled={uploadingImage}
+                >
+                  {uploadingImage ? (
+                    <ActivityIndicator color={colors.primary} />
+                  ) : (
+                    <>
+                      <Ionicons name="add" size={28} color={colors.primary} />
+                      <Text style={{ color: colors.textDim, fontSize: 11, marginTop: 4 }}>Add Photo</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
 
           {/* Product Name */}
           <View style={s.section}>
@@ -628,4 +750,21 @@ const getStyles = (colors: any) => StyleSheet.create({
     padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   pickerOptionText: { fontSize: 15, color: colors.text },
+
+  // Image picker
+  thumbImage: {
+    width: 90, height: 90, borderRadius: 12,
+    backgroundColor: colors.border,
+  },
+  removeImgBtn: {
+    position: 'absolute', top: 4, right: 4,
+    backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 10,
+    width: 20, height: 20, alignItems: 'center', justifyContent: 'center',
+  },
+  addImageBtn: {
+    width: 90, height: 90, borderRadius: 12,
+    borderWidth: 2, borderColor: colors.primary, borderStyle: 'dashed',
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
 })

@@ -78,6 +78,7 @@ export default function InventoryScreen() {
   const { showToast, showActionSheet } = useUI()
 
   const [shopId, setShopId] = useState<string | null>(null)
+  const [shopStatus, setShopStatus] = useState<string | null>(null)
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -110,10 +111,13 @@ export default function InventoryScreen() {
     if (!user) return
     const { data } = await supabase
       .from('shops')
-      .select('id')
+      .select('id, status')
       .eq('owner_id', user.id)
       .single()
-    if (data) setShopId(data.id)
+    if (data) {
+      setShopId(data.id)
+      setShopStatus(data.status)
+    }
   }, [user])
 
   const fetchInventory = useCallback(async (sid?: string) => {
@@ -398,6 +402,25 @@ export default function InventoryScreen() {
     )
   }
 
+  if (!loading && shopStatus === 'pending') {
+    return (
+      <SafeAreaView style={s.container}>
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={s.headerTitle}>Inventory</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={s.empty}>
+          <Ionicons name="time-outline" size={52} color="#f59e0b" />
+          <Text style={s.emptyTitle}>Shop Pending Verification</Text>
+          <Text style={s.emptySubtitle}>Your shop is currently being reviewed by an admin. You will be able to manage inventory once it's approved.</Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
   return (
     <SafeAreaView style={s.container}>
       {/* Header */}
@@ -418,6 +441,12 @@ export default function InventoryScreen() {
           </TouchableOpacity>
           {!isSelectionMode && (
             <>
+              <TouchableOpacity
+                style={s.headerIconBtn}
+                onPress={() => router.push({ pathname: '/inventory/pos', params: { shopId: shopId! } })}
+              >
+                <Ionicons name="barcode-outline" size={22} color={colors.text} />
+              </TouchableOpacity>
               <TouchableOpacity
                 style={s.headerIconBtn}
                 onPress={() => router.push({ pathname: '/inventory/ai-scan', params: { shopId: shopId! } })}

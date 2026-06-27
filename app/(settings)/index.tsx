@@ -1,7 +1,7 @@
 import { getCdnUrl } from '../../lib/cdn';
 import { useTheme } from '../../lib/theme';
 import React from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, Share } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, Share, Alert } from 'react-native'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../lib/auth'
@@ -26,6 +26,7 @@ export default function SettingsScreen() {
       { text: 'Kiswahili', onPress: () => setLang('sw') },
       { text: 'Kisukuma (Sukuma)', onPress: () => setLang('suk') },
       { text: 'Kichagga (Chagga)', onPress: () => setLang('cha') },
+      { text: 'Maa (Maasai)', onPress: () => setLang('maa') },
       { text: 'Cancel', style: 'cancel', onPress: () => {} }
     ])
   }
@@ -40,13 +41,21 @@ export default function SettingsScreen() {
   }, [user])
 
   const handleSignOut = () => {
-    showActionSheet(t('logout_confirm') || 'Are you sure you want to log out?', [
-      { text: t('logout') || 'Log out', style: 'destructive', icon: 'log-out', onPress: async () => {
-        await signOut()
-        router.replace('/(auth)/login')
-      }},
-      { text: t('cancel') || 'Cancel', style: 'cancel', onPress: () => {} }
-    ])
+    Alert.alert(
+      t('logout_confirm') || 'Are you sure you want to log out?',
+      '',
+      [
+        { text: t('cancel') || 'Cancel', style: 'cancel' },
+        { 
+          text: t('logout') || 'Log out', 
+          style: 'destructive',
+          onPress: async () => {
+            await signOut()
+            router.replace('/(auth)/welcome-language')
+          }
+        }
+      ]
+    )
   }
 
   const SettingsItem = ({ icon, title, onPress, danger }: { icon: any, title: string, onPress?: () => void, danger?: boolean }) => (
@@ -59,7 +68,6 @@ export default function SettingsScreen() {
         <Ionicons name={icon} size={22} color={danger ? '#ef4444' : colors.text} style={{ width: 28 }} />
         <Text style={[styles.itemTitle, danger && { color: '#ef4444' }]}>{title}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
     </TouchableOpacity>
   )
 
@@ -143,7 +151,7 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('preferences')}</Text>
         <View style={styles.sectionCard}>
-          <SettingsItem icon="language-outline" title={t('language') || 'App Language'} onPress={handleLanguageChange} />
+          <SettingsItem icon="language-outline" title={t('language') || 'App Language'} onPress={() => router.push('/(settings)/language')} />
           <SettingsItem icon="sunny-outline" title={t('appearance')} onPress={() => router.push('/(settings)/appearance')} />
         </View>
       </View>
