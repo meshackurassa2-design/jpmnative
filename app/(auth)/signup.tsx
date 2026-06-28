@@ -324,7 +324,15 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   bgShape3: {
     position: 'absolute', right: -80, bottom: -150, width: 250, height: 500, borderRadius: 125, borderWidth: 1, borderColor: isDark ? '#222' : '#e5e7eb',
   },
-  scrollContent: { flexGrow: 1, paddingHorizontal: 28, paddingVertical: 40, zIndex: 10 },
+  scrollContent: { 
+    flexGrow: 1, 
+    paddingHorizontal: 28, 
+    paddingVertical: 40, 
+    zIndex: 10,
+    width: '100%',
+    maxWidth: 450,
+    alignSelf: 'center'
+  },
   title: { fontSize: 26, fontWeight: '800', color: colors.text, textAlign: 'center' },
   
   avatarContainer: { alignItems: 'center', marginBottom: 24 },

@@ -23,23 +23,25 @@ export default function LoginScreen() {
   const supabase = createClient()
 
   const animValue = React.useRef(new Animated.Value(0)).current;
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
-  const slideAnim = React.useRef(new Animated.Value(30)).current;
+  const fadeAnim = React.useRef(new Animated.Value(Platform.OS === 'web' ? 1 : 0)).current;
+  const slideAnim = React.useRef(new Animated.Value(Platform.OS === 'web' ? 0 : 30)).current;
 
   React.useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      })
-    ]).start();
+    if (Platform.OS !== 'web') {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        })
+      ]).start();
+    }
 
     Animated.loop(
       Animated.timing(animValue, {
@@ -207,7 +209,16 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     borderWidth: 1,
     borderColor: isDark ? '#222' : '#e5e7eb',
   },
-  inner: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 60, zIndex: 10 },
+  inner: { 
+    flexGrow: 1, 
+    justifyContent: 'center', 
+    paddingHorizontal: 28, 
+    paddingVertical: 60, 
+    zIndex: 10,
+    width: '100%',
+    maxWidth: 450,
+    alignSelf: 'center'
+  },
   title: { fontSize: 26, fontWeight: '800', color: colors.text, textAlign: 'center' },
   input: {
     height: 60,

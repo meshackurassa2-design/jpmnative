@@ -123,7 +123,14 @@ export default function WelcomeLanguageScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 40, paddingBottom: 100 },
+  scrollContent: { 
+    paddingHorizontal: 20, 
+    paddingTop: 40, 
+    paddingBottom: 100,
+    width: '100%',
+    maxWidth: 450,
+    alignSelf: 'center'
+  },
   title: { color: '#fff', fontSize: 24, fontWeight: '800', marginBottom: 8 },
   subtitle: { color: '#888', fontSize: 15, lineHeight: 20, marginBottom: 24 },
   list: { flex: 1 },

@@ -3,7 +3,7 @@ import { useTheme } from '../../lib/theme';
 import React, { useEffect, useState, useMemo } from 'react'
 import {
   View, Text, TextInput, StyleSheet, FlatList, Image,
-  TouchableOpacity, ScrollView, Modal, Dimensions
+  TouchableOpacity, ScrollView, Modal, Dimensions, Platform
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -570,12 +570,24 @@ const getStyles = (colors: any) => StyleSheet.create({
     flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', padding: 20
   },
   modalContent: {
-    backgroundColor: colors.background, borderRadius: 24, padding: 20
+    backgroundColor: colors.background, 
+    borderRadius: 24, 
+    padding: 20,
+    width: '100%',
+    maxWidth: 500,
+    alignSelf: 'center'
   },
   modalSheet: {
     backgroundColor: colors.background,
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
     paddingHorizontal: 20, paddingBottom: 36, paddingTop: 12,
+    width: '100%',
+    maxWidth: 500,
+    alignSelf: 'center',
+    borderBottomLeftRadius: Platform.OS === 'web' ? 24 : 0,
+    borderBottomRightRadius: Platform.OS === 'web' ? 24 : 0,
+    marginTop: Platform.OS === 'web' ? 'auto' : undefined,
+    marginBottom: Platform.OS === 'web' ? 'auto' : 0,
   },
   modalHandle: {
     width: 36, height: 4, borderRadius: 2,

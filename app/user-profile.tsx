@@ -64,7 +64,7 @@ export default function () {
   const [isFollowing, setIsFollowing] = useState(false)
   const [isFollowsMe, setIsFollowsMe] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'posts' | 'replies' | 'media' | 'reposts' | 'likes' | 'jobs' | 'archive'>('posts')
+  const [activeTab, setActiveTab] = useState<'posts' | 'replies' | 'media' | 'reposts' | 'likes' | 'jobs' | 'archive' | 'codes'>('posts')
   const [vibeModalVisible, setVibeModalVisible] = useState(false)
   const [teamModalVisible, setTeamModalVisible] = useState(false)
   const [customVibeText, setCustomVibeText] = useState('')
@@ -596,7 +596,7 @@ export default function () {
       {isOwnProfile || !profile?.is_private || isFollowing ? (
         <View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
-            {['posts', 'replies', 'media', 'reposts', 'likes', 'jobs', 'archive'].map(tab => (
+            {['posts', 'replies', 'media', 'reposts', 'likes', 'jobs', 'archive', ...(posts.some((p: any) => p.settings?.is_betting_code) ? ['codes'] : [])].map(tab => (
               <TouchableOpacity
                 key={tab}
                 style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
@@ -618,6 +618,9 @@ export default function () {
   const displayPosts = canViewPosts ? posts.filter((post: any) => {
     if (activeTab === 'jobs') return post.settings?.is_job === true
     if (post.settings?.is_job === true) return false
+    
+    if (activeTab === 'codes') return post.settings?.is_betting_code === true
+    if (post.settings?.is_betting_code === true) return false
     
     if (activeTab === 'reposts') return post.is_repost
     if (activeTab === 'likes') return post.is_liked_tab

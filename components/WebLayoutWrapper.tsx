@@ -13,7 +13,7 @@ export function WebLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const pathname = usePathname()
 
-  if (!isDesktop) {
+  if (!isDesktop || !user) {
     return <>{children}</>
   }
 

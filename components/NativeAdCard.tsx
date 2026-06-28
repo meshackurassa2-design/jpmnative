@@ -1,5 +1,5 @@
 import React, { useRef, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Platform, LayoutAnimation, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../lib/theme';
 import NativeAdView, {
@@ -13,10 +13,14 @@ import NativeAdView, {
 
 const { width } = Dimensions.get('window');
 
-// Use official test ID for development, real one for prod
-const adUnitId = __DEV__ 
-  ? (Platform.OS === 'ios' ? 'ca-app-pub-3940256099942544/3986624511' : 'ca-app-pub-3940256099942544/2247696110')
-  : (Platform.OS === 'ios' ? 'ca-app-pub-8166782428171770/4346933923' : 'ca-app-pub-4939768656689626/6513364964');
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// Hardcoded production Ad Unit IDs as requested
+const adUnitId = Platform.OS === 'ios' 
+  ? 'ca-app-pub-8166782428171770/4346933923' 
+  : 'ca-app-pub-4939768656689626/6513364964';
 
 export function NativeAdCard() {
   const { colors } = useTheme();
@@ -25,19 +29,44 @@ export function NativeAdCard() {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
-  if (error) return null; // Hide if failed to load
+  // If there's an error, hide completely
+  if (error) return null;
 
   return (
-    <View style={styles.post}>
+    <View style={[styles.post, { 
+      height: loaded ? 380 : 0, 
+      borderBottomWidth: loaded ? 0.5 : 0,
+      paddingTop: loaded ? 12 : 0,
+      paddingBottom: loaded ? 4 : 0,
+      opacity: loaded ? 1 : 0,
+      overflow: 'hidden'
+    }]}>
+      {/* ACTUAL AD: Moved offscreen absolutely while loading so AdMob SDK doesn't abort the network request */}
       <NativeAdView
         ref={nativeAdRef}
         adUnitID={adUnitId}
-        onAdLoaded={() => setLoaded(true)}
+        onNativeAdLoaded={(ad) => {
+          console.log('Ad Loaded Payload:', ad);
+          // If headline is missing, Google sent an empty shell.
+          if (ad && !ad.headline) {
+            console.log('Ad Loaded but empty headline, hiding.');
+            setError(true);
+          } else {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setLoaded(true);
+          }
+        }}
         onAdFailedToLoad={(err) => {
           console.log('Ad Failed to Load:', err);
           setError(true);
         }}
-        style={{ width: '100%' }}
+        style={{ 
+          width: '100%', 
+          height: 380, 
+          position: loaded ? 'relative' : 'absolute', 
+          left: loaded ? 0 : -10000,
+          opacity: loaded ? 1 : 0
+        }}
         adChoicesPlacement="topRight"
       >
         {/* HEADER: Matches standard PostHeader */}
@@ -87,6 +116,8 @@ function getStyles(colors: any) {
       paddingBottom: 4,
       borderBottomWidth: 0.5,
       borderBottomColor: colors.border,
+      overflow: 'hidden',
+      height: 380, // STRICT BOUNDARY TO PREVENT INFINITE STRETCH BUG
     },
     postHeader: {
       flexDirection: 'row',
@@ -148,10 +179,12 @@ function getStyles(colors: any) {
     ctaButton: {
       backgroundColor: colors.primary, // Using Dapaz pink
       paddingHorizontal: 24,
-      paddingVertical: 10,
-      borderRadius: 20,
+      height: 38,
+      minWidth: 120,
+      borderRadius: 19,
       justifyContent: 'center',
-      alignItems: 'center'
+      alignItems: 'center',
+      overflow: 'hidden'
     },
     ctaButtonText: {
       color: '#fff',
