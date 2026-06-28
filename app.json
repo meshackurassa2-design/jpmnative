@@ -10,9 +10,7 @@
       "fallbackToCacheTimeout": 0,
       "url": "https://u.expo.dev/cc0498f6-2882-418a-8467-17df2bfbf8d6"
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "6.0.1",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
