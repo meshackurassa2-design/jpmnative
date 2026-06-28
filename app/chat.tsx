@@ -22,6 +22,7 @@ import { VibeBadge } from '../components/VibeBadge'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { PanResponder, TouchableWithoutFeedback } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
+import { CoinIcon } from '../components/CoinIcon'
 
 type Message = {
   id: string
@@ -163,6 +164,7 @@ export default function () {
   const [requestStatus, setRequestStatus] = useState<string | null>('allowed')
   const [checkingRequest, setCheckingRequest] = useState(true)
 
+  const [isPartnerOnline, setIsPartnerOnline] = useState(false)
   const [isKeyboardVisible, setKeyboardVisible] = useState(false)
 
   const [showGiphy, setShowGiphy] = useState(false)
@@ -235,7 +237,7 @@ export default function () {
     if (!make_offer || !user || !id || offerSentRef.current) return
     offerSentRef.current = true
     const sendOffer = async () => {
-      const content = `💰 Make an Offer: TZS ${parseFloat(make_offer).toLocaleString()} for "${product_name ? decodeURIComponent(product_name) : 'a product'}"`
+      const content = `[Offer] Make an Offer: TZS ${parseFloat(make_offer).toLocaleString()} for "${product_name ? decodeURIComponent(product_name) : 'a product'}"`
       const encrypted = await encryptMessage(content, getSharedSecret(user.id, id))
       await supabase.from('messages').insert({
         sender_id: user.id,
@@ -397,10 +399,16 @@ export default function () {
   useEffect(() => {
     if (!user || !id) return
     const roomName = [user.id, id].sort().join('-')
-    const channelName = `chat-${roomName}-${Date.now()}` // Ensure unique connection
+    const channelName = `chat-${roomName}`
 
     const channel = supabase
-      .channel(channelName)
+      .channel(channelName, {
+        config: { presence: { key: user.id } }
+      })
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState()
+        setIsPartnerOnline(!!state[id])
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, async (payload) => {
         if (payload.new.sender_id === id && Boolean(payload.new.is_shop_chat) === isShopChat) {
           const decryptedContent = await decryptMessage(payload.new.content, sharedSecret)
@@ -427,7 +435,11 @@ export default function () {
           typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 3000)
         }
       })
-      .subscribe()
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ online_at: new Date().toISOString() })
+        }
+      })
     
     channelRef.current = channel
     return () => { supabase.removeChannel(channel) }
@@ -555,7 +567,7 @@ export default function () {
       const { error: addErr } = await supabase.rpc('receive_coins', { p_user_id: id, p_amount: amount })
       if (addErr) throw addErr
 
-      const content = `💰 Payment Sent: ${amount.toLocaleString()} coins`
+      const content = `[Payment] Payment Sent: ${amount.toLocaleString()} coins`
       const encrypted = await encryptMessage(content, sharedSecret)
       
       const { error: msgErr } = await supabase.from('messages').insert({
@@ -771,7 +783,7 @@ export default function () {
     const isVoice = actualContent.startsWith('voice:')
     const isGif = actualContent.startsWith('gif:')
     const isOffer = msg.is_offer === true
-    const isPayment = actualContent.startsWith('💰 Payment Sent:')
+    const isPayment = actualContent.startsWith('💰 Payment Sent:') || actualContent.startsWith('[Payment] Payment Sent:')
 
     const handleAcceptOffer = async () => {
       await supabase.from('messages').update({ offer_status: 'accepted' } as any).eq('id', msg.id)
@@ -800,11 +812,11 @@ export default function () {
           }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
               <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: bgColor, justifyContent: 'center', alignItems: 'center', marginRight: 10 }}>
-                <Text style={{ fontSize: 18 }}>{isPayment ? '💰' : (status === 'accepted' ? '✅' : status === 'declined' ? '❌' : '🤝')}</Text>
+                {isPayment ? <CoinIcon size={20} /> : <Text style={{ fontSize: 18 }}>{status === 'accepted' ? '✅' : status === 'declined' ? '❌' : '🤝'}</Text>}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.text, fontWeight: '800', fontSize: 13 }}>{isPayment ? 'Payment' : 'Price Offer'}</Text>
-                <Text style={{ color: colors.textDim, fontSize: 12 }} numberOfLines={1}>{actualContent.replace('💰 Make an Offer: ', '')}</Text>
+                <Text style={{ color: colors.textDim, fontSize: 12 }} numberOfLines={1}>{actualContent.replace('💰 Make an Offer: ', '').replace('[Offer] Make an Offer: ', '')}</Text>
               </View>
             </View>
 
@@ -935,7 +947,15 @@ export default function () {
           {partner ? (
             <>
               <Text style={styles.headerName} numberOfLines={1}>{partner.full_name || partner.username || 'User'}</Text>
-              <Text style={styles.headerUsername}>@{partner.username || 'user'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.headerUsername}>@{partner.username || 'user'}</Text>
+                {isPartnerOnline && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981' }} />
+                    <Text style={{ color: '#10b981', fontSize: 10, fontWeight: '700' }}>Online</Text>
+                  </View>
+                )}
+              </View>
             </>
           ) : (
             <View style={{ gap: 4 }}>
@@ -1084,35 +1104,38 @@ export default function () {
                     multiline
                     maxLength={1000}
                   />
+                  {!input.trim() && (
+                    <>
+                      {/* Send Payment Button */}
+                      <TouchableOpacity
+                        onPress={() => setShowPaymentModal(true)}
+                        style={styles.inputIconBtn}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="card-outline" size={24} color="#f59e0b" />
+                      </TouchableOpacity>
 
-                  {/* Send Payment Button */}
-                  <TouchableOpacity
-                    onPress={() => setShowPaymentModal(true)}
-                    style={styles.inputIconBtn}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons name="card-outline" size={24} color="#f59e0b" />
-                  </TouchableOpacity>
+                      {/* GIF button */}
+                      <TouchableOpacity
+                        onPress={() => { setShowGiphy(!showGiphy); setShowEmoji(false) }}
+                        style={styles.inputIconBtn}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <View style={[styles.gifIconBox, showGiphy && styles.gifIconBoxActive]}>
+                          <Text style={[styles.gifIconText, showGiphy && styles.gifIconTextActive]}>GIF</Text>
+                        </View>
+                      </TouchableOpacity>
 
-                  {/* GIF button */}
-                  <TouchableOpacity
-                    onPress={() => { setShowGiphy(!showGiphy); setShowEmoji(false) }}
-                    style={styles.inputIconBtn}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <View style={[styles.gifIconBox, showGiphy && styles.gifIconBoxActive]}>
-                      <Text style={[styles.gifIconText, showGiphy && styles.gifIconTextActive]}>GIF</Text>
-                    </View>
-                  </TouchableOpacity>
-
-                  {/* Emoji button */}
-                  <TouchableOpacity
-                    onPress={() => { setShowEmoji(!showEmoji); setShowGiphy(false) }}
-                    style={styles.inputIconBtn}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons name="happy-outline" size={24} color={showEmoji ? '#2563eb' : colors.textDim} />
-                  </TouchableOpacity>
+                      {/* Emoji button */}
+                      <TouchableOpacity
+                        onPress={() => { setShowEmoji(!showEmoji); setShowGiphy(false) }}
+                        style={styles.inputIconBtn}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="happy-outline" size={24} color={showEmoji ? '#2563eb' : colors.textDim} />
+                      </TouchableOpacity>
+                    </>
+                  )}
 
                   {/* Mic button — only when no text */}
                   {!input.trim() && (

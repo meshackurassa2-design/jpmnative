@@ -148,7 +148,7 @@ export default function () {
       case 'message': return 'sent you a message'
       case 'verification_approved': return 'Your account has been officially verified! 🎉'
       case 'verification_denied': return 'Your verification request was declined. Review guidelines.'
-      case 'monetization_approved': return 'You have been approved for monetization! 💰'
+      case 'monetization_approved': return 'You have been approved for monetization!'
       default: return 'interacted with you'
     }
   }

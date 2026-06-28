@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput, Image,
   ActivityIndicator, Alert, FlatList, Dimensions, Animated,
-  KeyboardAvoidingView, Platform, ScrollView
+  KeyboardAvoidingView, Platform, ScrollView, Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,9 @@ import { useAuth } from '../../lib/auth';
 import { useTheme } from '../../lib/theme';
 import { createClient } from '../../lib/supabase';
 import { getCdnUrl } from '../../lib/cdn';
+import { CoinIcon } from '../../components/CoinIcon';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 
 const { width: W, height: H } = Dimensions.get('window');
 const CARD_W = (W - 48) / 2;
@@ -30,6 +33,7 @@ function CreateScreen({ onClose, onDone, balance, supabase, user }: any) {
   const [prompt, setPrompt] = useState('');
   const [language, setLanguage] = useState('Swahili');
   const [loading, setLoading] = useState(false);
+  const [showCopyrightModal, setShowCopyrightModal] = useState(false);
   const glowAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -56,48 +60,36 @@ function CreateScreen({ onClose, onDone, balance, supabase, user }: any) {
   };
 
   const generate = async () => {
-    if (!imageUri) return Alert.alert('No Image', 'Upload a product photo first.');
     if (!prompt.trim()) return Alert.alert('No Description', 'Describe your product.');
     if (balance < 5000) return Alert.alert('Not Enough Coins', 'You need 5,000 coins.');
 
-    Alert.alert('Confirm Generation', `5,000 coins will be deducted to generate your video ad.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Generate Now', style: 'default',
-        onPress: async () => {
-          setLoading(true);
-          try {
-            const fileExt = imageUri.split('.').pop() || 'jpg';
-            const fileName = `${user?.id}_${Date.now()}.${fileExt}`;
-            const formData = new FormData();
-            formData.append('file', {
-              uri: Platform.OS === 'ios' ? imageUri.replace('file://', '') : imageUri,
-              name: fileName, type: `image/${fileExt}`
-            } as any);
+    setShowCopyrightModal(true);
+  };
 
-            const { error: uploadError } = await supabase.storage
-              .from('memes').upload(`studio/${fileName}`, formData);
-            if (uploadError) throw new Error(uploadError.message);
+  const executeGenerate = async () => {
+    setLoading(true);
+    try {
+      // ==== TEST MODE: Bypass AI API and Coin Deduction ====
+      await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate delay
+      
+      const mockVideo = {
+        id: `temp-${Date.now()}`,
+        user_id: user.id,
+        prompt: prompt || 'Test Ad',
+        language: language,
+        status: 'completed',
+        video_url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+        image_url: imageUri || null,
+        created_at: new Date().toISOString()
+      };
 
-            const { data: urlData } = supabase.storage.from('memes').getPublicUrl(`studio/${fileName}`);
-
-            const { data, error } = await supabase.functions.invoke('generate-video-ad', {
-              body: { prompt, language, image_url: urlData.publicUrl }
-            });
-
-            if (error) throw error;
-            if (data?.error) throw new Error(data.error);
-
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            onDone();
-          } catch (err: any) {
-            Alert.alert('Error', err.message || 'Something went wrong.');
-          } finally {
-            setLoading(false);
-          }
-        }
-      }
-    ]);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      onDone(mockVideo);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Something went wrong.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -194,16 +186,17 @@ function CreateScreen({ onClose, onDone, balance, supabase, user }: any) {
 
             {/* Cost info */}
             <View style={cs.costRow}>
-              <Ionicons name="diamond" size={14} color="#fbbf24" />
-              <Text style={cs.costText}>5,000 coins per generation</Text>
-              <Text style={cs.costBalance}>Balance: {balance.toLocaleString()} 🪙</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={cs.costBalance}>Balance: {balance.toLocaleString()}</Text>
+                <CoinIcon size={14} />
+              </View>
             </View>
 
             {/* Generate Button */}
             <TouchableOpacity
-              style={[cs.generateBtn, (loading || !imageUri || !prompt.trim()) && { opacity: 0.45 }]}
+              style={[cs.generateBtn, (loading || !prompt.trim()) && { opacity: 0.45 }]}
               onPress={generate}
-              disabled={loading || !imageUri || !prompt.trim()}
+              disabled={loading || !prompt.trim()}
               activeOpacity={0.85}
             >
               <View style={cs.generateSolid}>
@@ -216,8 +209,9 @@ function CreateScreen({ onClose, onDone, balance, supabase, user }: any) {
                   <>
                     <Ionicons name="sparkles" size={20} color="#fff" />
                     <Text style={cs.generateText}>Generate Video Ad</Text>
-                    <View style={cs.generateBadge}>
-                      <Text style={cs.generateBadgeText}>5K 🪙</Text>
+                    <View style={[cs.generateBadge, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                      <Text style={cs.generateBadgeText}>5K</Text>
+                      <CoinIcon size={14} />
                     </View>
                   </>
                 )}
@@ -228,6 +222,38 @@ function CreateScreen({ onClose, onDone, balance, supabase, user }: any) {
           <View style={{ height: 100 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Copyright Modal */}
+      <Modal visible={showCopyrightModal} animationType="fade" transparent={true}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: '#18181b', borderRadius: 20, padding: 24, width: '100%', maxWidth: 400, alignItems: 'center', borderWidth: 1, borderColor: '#27272a' }}>
+            <Ionicons name="shield-checkmark" size={56} color="#ec4899" style={{ marginBottom: 16 }} />
+            <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', marginBottom: 12, textAlign: 'center' }}>Copyright Agreement</Text>
+            <Text style={{ fontSize: 15, color: '#a1a1aa', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+              5,000 coins will be deducted. By generating this video, you confirm that you own all rights to the uploaded image, and you agree that we are not responsible for any copyright violations.
+            </Text>
+            
+            <View style={{ gap: 12, width: '100%' }}>
+              <TouchableOpacity 
+                style={{ width: '100%', paddingVertical: 16, borderRadius: 14, backgroundColor: '#ec4899', alignItems: 'center' }}
+                onPress={() => {
+                  setShowCopyrightModal(false)
+                  executeGenerate()
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>I Agree, Generate Video</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={{ width: '100%', paddingVertical: 16, borderRadius: 14, backgroundColor: '#27272a', alignItems: 'center' }}
+                onPress={() => setShowCopyrightModal(false)}
+              >
+                <Text style={{ color: '#e4e4e7', fontWeight: '700', fontSize: 16 }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -241,6 +267,39 @@ export default function StudioScreen() {
   const [history, setHistory] = useState<VideoGen[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownload = async (item: VideoGen) => {
+    if (!item.video_url) return;
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') return Alert.alert('Permission Denied', 'We need access to your gallery to save the video.');
+
+      setDownloadingId(item.id);
+      const url = getCdnUrl(item.video_url);
+      const fileUri = FileSystem.documentDirectory + `dapaz_studio_${Date.now()}.mp4`;
+      const { uri } = await FileSystem.downloadAsync(url, fileUri);
+      await MediaLibrary.saveToLibraryAsync(uri);
+      Alert.alert('Saved!', 'Video successfully saved to your gallery.');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    Alert.alert('Delete Video', 'Are you sure you want to remove this video from your studio?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        if (!id.startsWith('temp-')) {
+          await supabase.from('video_generations').delete().eq('id', id);
+        }
+        setHistory(prev => prev.filter(v => v.id !== id));
+      }}
+    ]);
+  };
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -287,10 +346,27 @@ export default function StudioScreen() {
       )}
       <View style={ms.cardInfo}>
         <Text style={ms.cardPrompt} numberOfLines={2}>{item.prompt}</Text>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
           <Text style={ms.cardDate}>{new Date(item.created_at).toLocaleDateString()}</Text>
-          <View style={[ms.badge, { backgroundColor: item.status === 'completed' ? '#14532d55' : item.status === 'failed' ? '#7f1d1d55' : '#4c1d9555' }]}>
-            <Text style={[ms.badgeText, { color: item.status === 'completed' ? '#4ade80' : item.status === 'failed' ? '#f87171' : '#c084fc' }]}>{item.status}</Text>
+          
+          <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
+            {item.status === 'completed' && item.video_url && (
+              <TouchableOpacity onPress={() => handleDownload(item)} disabled={downloadingId === item.id}>
+                {downloadingId === item.id ? (
+                  <ActivityIndicator size="small" color="#ec4899" />
+                ) : (
+                  <Ionicons name="download" size={20} color="#ec4899" />
+                )}
+              </TouchableOpacity>
+            )}
+            
+            <TouchableOpacity onPress={() => handleDelete(item.id)}>
+              <Ionicons name="trash-outline" size={20} color="#71717a" />
+            </TouchableOpacity>
+
+            <View style={[ms.badge, { backgroundColor: item.status === 'completed' ? '#14532d55' : item.status === 'failed' ? '#7f1d1d55' : '#4c1d9555' }]}>
+              <Text style={[ms.badgeText, { color: item.status === 'completed' ? '#4ade80' : item.status === 'failed' ? '#f87171' : '#c084fc' }]}>{item.status}</Text>
+            </View>
           </View>
         </View>
       </View>
@@ -301,7 +377,14 @@ export default function StudioScreen() {
     return (
       <CreateScreen
         onClose={() => setShowCreate(false)}
-        onDone={() => { setShowCreate(false); fetchData(); }}
+        onDone={(mockVideo: any) => {
+          setShowCreate(false);
+          if (mockVideo && mockVideo.id) {
+            setHistory(prev => [mockVideo, ...prev]);
+          } else {
+            fetchData();
+          }
+        }}
         balance={balance}
         supabase={supabase}
         user={user}
@@ -318,7 +401,7 @@ export default function StudioScreen() {
           <Text style={ms.headerSub}>AI Product Video Generator</Text>
         </View>
         <View style={ms.coinBadge}>
-          <Ionicons name="diamond" size={14} color="#fbbf24" />
+          <CoinIcon size={14} />
           <Text style={ms.coinText}>{balance.toLocaleString()}</Text>
         </View>
       </View>
@@ -333,8 +416,8 @@ export default function StudioScreen() {
           <View style={ms.emptyIcon}>
             <Ionicons name="videocam" size={32} color="#fff" />
           </View>
-          <Text style={ms.emptyTitle}>No Videos Yet</Text>
-          <Text style={ms.emptySub}>Create stunning AI product ads{'\n'}powered by Gemini Veo 3</Text>
+          <Text style={ms.emptyTitle}>Video Generation</Text>
+          <Text style={ms.emptySub}>Create stunning AI product ads powered by Gemini Veo 3.{'\n\n'}Coming Soon to all creators!</Text>
         </View>
       ) : (
         <FlatList
@@ -350,15 +433,7 @@ export default function StudioScreen() {
         />
       )}
 
-      {/* Sticky Create Button */}
-      <View style={ms.fabWrap}>
-        <TouchableOpacity style={ms.fab} onPress={() => setShowCreate(true)} activeOpacity={0.9}>
-          <View style={ms.fabSolid}>
-            <Ionicons name="add" size={24} color="#fff" />
-            <Text style={ms.fabText}>Create Video</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
+
     </SafeAreaView>
   );
 }

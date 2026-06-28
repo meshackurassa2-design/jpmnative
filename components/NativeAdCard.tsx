@@ -1,76 +1,56 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, Dimensions, Platform, Image } from 'react-native';
+import React, { useRef, useState, useMemo } from 'react';
+import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../lib/theme';
-/*
-import {
-  NativeAd,
-  NativeAdView,
-  NativeMediaView,
-  TestIds
-} from 'react-native-google-mobile-ads';
-*/
+import NativeAdView, {
+  AdBadge,
+  HeadlineView,
+  TaglineView,
+  IconView,
+  ImageView,
+  CallToActionView,
+} from 'react-native-admob-native-ads';
 
 const { width } = Dimensions.get('window');
 
-// Use the Official AdMob Test Native Advanced ID for development to prevent accidental bans
-// In production, use the real JPM In-Feed Native Ad Unit ID from the screenshot
-// const adUnitId = __DEV__ ? TestIds.NATIVE : 'ca-app-pub-4939768656689626/6513364964';
+// Use official test ID for development, real one for prod
+const adUnitId = __DEV__ 
+  ? (Platform.OS === 'ios' ? 'ca-app-pub-3940256099942544/3986624511' : 'ca-app-pub-3940256099942544/2247696110')
+  : (Platform.OS === 'ios' ? 'ca-app-pub-8166782428171770/4346933923' : 'ca-app-pub-4939768656689626/6513364964');
 
 export function NativeAdCard() {
-  return null;
-}
-
-export function NativeAdCardOriginal() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const [nativeAd, setNativeAd] = useState<any | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const nativeAdRef = useRef<NativeAdView>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    let ad: any;
-    const loadAd = async () => {
-      try {
-        // ad = await NativeAd.createForAdRequest(adUnitId);
-        // setNativeAd(ad);
-      } catch (e: any) {
-        console.log('Native Ad failed to load', e);
-        setError(e.message);
-      }
-    };
-    loadAd();
-    return () => {
-      if (ad) ad.destroy();
-    };
-  }, []);
-
-  if (error) return null; // Silently fail if ad doesn't load
-  if (!nativeAd) return null; // Wait until loaded
+  if (error) return null; // Hide if failed to load
 
   return (
     <View style={styles.post}>
-      <View
-        // nativeAd={nativeAd}
-        style={{ width: '100%', minHeight: 100 }}
+      <NativeAdView
+        ref={nativeAdRef}
+        adUnitID={adUnitId}
+        onAdLoaded={() => setLoaded(true)}
+        onAdFailedToLoad={(err) => {
+          console.log('Ad Failed to Load:', err);
+          setError(true);
+        }}
+        style={{ width: '100%' }}
+        adChoicesPlacement="topRight"
       >
         {/* HEADER: Matches standard PostHeader */}
         <View style={styles.postHeader}>
-          <View style={styles.avatar}>
-             {nativeAd.icon && nativeAd.icon.uri ? (
-               <Image source={{ uri: nativeAd.icon.uri }} style={{ width: '100%', height: '100%', borderRadius: 20 }} />
-             ) : (
-               <View style={{ width: '100%', height: '100%', backgroundColor: colors.border, borderRadius: 20 }} />
-             )}
-          </View>
+          <IconView style={styles.avatar} />
+          
           <View style={styles.postHeaderText}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={styles.fullName}>{nativeAd.advertiser || 'Sponsored Ad'}</Text>
+              <HeadlineView style={styles.fullName} />
               <Ionicons name="checkmark-circle" size={14} color="#2563eb" />
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <View style={styles.usernameBadge}>
-                 <Text style={styles.usernameBadgeText}>Ad</Text>
-              </View>
+              <AdBadge style={styles.usernameBadge} textStyle={styles.usernameBadgeText} />
               <Text style={styles.username}>Promoted</Text>
             </View>
           </View>
@@ -80,34 +60,21 @@ export function NativeAdCardOriginal() {
         </View>
 
         {/* BODY: Matches standard PostContent */}
-        {nativeAd.body ? (
-           <Text style={styles.postContent}>{nativeAd.body}</Text>
-        ) : null}
+        <TaglineView style={styles.postContent} />
 
         {/* MEDIA: Matches standard PostImage */}
-        {nativeAd.mediaContent ? (
-          <View style={{ marginBottom: 10, width: '100%', aspectRatio: 1.5 }}>
-             <View style={styles.postImage} />
-          </View>
-        ) : nativeAd.images && nativeAd.images.length > 0 ? (
-          <View style={{ marginBottom: 10, width: '100%', aspectRatio: 1.5 }}>
-             <Image source={{ uri: nativeAd.images[0].uri }} style={styles.postImage} />
-          </View>
-        ) : null}
-
-        {/* FOOTER ACTIONS: Matches standard Actions + Call to Action */}
-        <View style={styles.actions}>
-          <Text style={[styles.headline, { flex: 1 }]} numberOfLines={2}>
-            {nativeAd.headline}
-          </Text>
-          
-          {nativeAd.callToAction ? (
-             <View style={styles.ctaButton}>
-               <Text style={styles.ctaButtonText}>{nativeAd.callToAction}</Text>
-             </View>
-          ) : null}
+        <View style={{ width: '100%', aspectRatio: 1.5, marginBottom: 10 }}>
+          <ImageView style={styles.postImage} resizeMode="cover" />
         </View>
-      </View>
+
+        {/* FOOTER ACTIONS: Call to Action */}
+        <View style={styles.actions}>
+          <CallToActionView 
+            style={styles.ctaButton} 
+            textStyle={styles.ctaButtonText} 
+          />
+        </View>
+      </NativeAdView>
     </View>
   );
 }
@@ -133,7 +100,6 @@ function getStyles(colors: any) {
       borderRadius: 20,
       marginRight: 12,
       backgroundColor: colors.border,
-      overflow: 'hidden',
     },
     postHeaderText: {
       flex: 1,
@@ -150,13 +116,15 @@ function getStyles(colors: any) {
     },
     usernameBadge: {
       backgroundColor: colors.border,
-      paddingHorizontal: 4,
-      borderRadius: 2,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
     },
     usernameBadgeText: {
       color: colors.textDim,
       fontSize: 10,
-      fontWeight: 'bold',
+      fontWeight: '800',
+      textTransform: 'uppercase'
     },
     postContent: {
       color: colors.text,
@@ -173,25 +141,23 @@ function getStyles(colors: any) {
     actions: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-end',
       paddingHorizontal: 16,
       paddingVertical: 8,
-    },
-    headline: {
-      color: colors.text,
-      fontSize: 14,
-      fontWeight: 'bold',
     },
     ctaButton: {
-      backgroundColor: colors.primary,
-      paddingHorizontal: 16,
-      paddingVertical: 8,
+      backgroundColor: colors.primary, // Using Dapaz pink
+      paddingHorizontal: 24,
+      paddingVertical: 10,
       borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center'
     },
     ctaButtonText: {
       color: '#fff',
       fontSize: 14,
-      fontWeight: '600',
+      fontWeight: '800',
+      letterSpacing: 0.5,
     },
   });
 }

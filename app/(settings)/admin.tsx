@@ -156,7 +156,7 @@ export default function () {
     }
 
     setPostingJob(true)
-    const content = `💼 **New Job Opportunity: ${jobTitle} at ${companyName}**\n\n${description}\n\n📍 ${location} | 💰 ${salary || 'Unspecified'} | ⏱️ ${jobType}`
+    const content = `💼 **New Job Opportunity: ${jobTitle} at ${companyName}**\n\n${description}\n\n📍 ${location} | Salary: ${salary || 'Unspecified'} | ⏱️ ${jobType}`
 
     const { error } = await supabase.from('posts').insert({
       creator_id: user.id,

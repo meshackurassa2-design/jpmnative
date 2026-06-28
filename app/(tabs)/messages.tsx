@@ -223,7 +223,7 @@ export default function () {
         <View style={styles.header}>
           <Text style={styles.title}>Messages</Text>
           <TouchableOpacity onPress={() => Alert.alert('New Message', 'To start a new chat, visit a user or shop profile and tap Message.')}>
-            <Ionicons name="create-outline" size={26} color="#000" />
+            <Ionicons name="create-outline" size={26} color={colors.text} />
           </TouchableOpacity>
         </View>
         <View style={{ flex: 1 }}>
@@ -246,7 +246,7 @@ export default function () {
       <View style={styles.header}>
         <Text style={styles.title}>Messages</Text>
         <TouchableOpacity onPress={() => Alert.alert('New Message', 'To start a new chat, visit a user or shop profile and tap Message.')}>
-          <Ionicons name="create-outline" size={26} color="#000" />
+          <Ionicons name="create-outline" size={26} color={colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -256,7 +256,7 @@ export default function () {
           style={styles.filterMenuBtn} 
           onPress={() => setShowFilterMenu(true)}
         >
-          <Ionicons name="options" size={22} color="#18181b" style={{ transform: [{ rotate: '90deg' }] }} />
+          <Ionicons name="options" size={22} color={colors.text} style={{ transform: [{ rotate: '90deg' }] }} />
           {activeFilter !== 'All' && <View style={styles.filterActiveDot} />}
         </TouchableOpacity>
 
@@ -412,7 +412,7 @@ export default function () {
                     onPress={() => { setActiveFilter(f); setShowFilterMenu(false) }}
                   >
                     <Text style={[styles.modalOptionText, activeFilter === f && styles.modalOptionTextActive]}>{f}</Text>
-                    {activeFilter === f && <Ionicons name="checkmark" size={24} color="#000" />}
+                    {activeFilter === f && <Ionicons name="checkmark" size={24} color={colors.text} />}
                   </TouchableOpacity>
                 ))}
               </View>

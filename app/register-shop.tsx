@@ -12,6 +12,7 @@ import { router } from 'expo-router'
 import { createClient } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { BackButton } from '../components/BackButton'
+import { CoinIcon } from '../components/CoinIcon'
 import * as ImagePicker from 'expo-image-picker'
 import { decode } from 'base64-arraybuffer'
 
@@ -234,7 +235,11 @@ export default function () {
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.primaryBtnText}>Pay 2,000 🪙 & Open</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.primaryBtnText}>Pay 2,000</Text>
+              <CoinIcon size={20} />
+              <Text style={styles.primaryBtnText}>& Open</Text>
+            </View>
           )}
         </TouchableOpacity>
       </ScrollView>

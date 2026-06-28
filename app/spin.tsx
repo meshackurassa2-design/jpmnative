@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { createClient } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
+import { CoinIcon } from '../components/CoinIcon'
 
 const SPIN_COST = 30;
 
@@ -45,7 +46,7 @@ export default function SpinScreen() {
   const handleSpin = async () => {
     if (spinning) return
     if (balance < SPIN_COST) {
-      Alert.alert('Not enough coins', `You need at least ${SPIN_COST} 🪙 to spin!`)
+      Alert.alert('Not enough coins', `You need at least ${SPIN_COST} Coins to spin!`)
       return
     }
 
@@ -154,8 +155,9 @@ export default function SpinScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
           <Ionicons name="close" size={28} color="#fff" />
         </TouchableOpacity>
-        <View style={styles.balanceBadge}>
-          <Text style={styles.balanceText}>{balance.toLocaleString()} 🪙</Text>
+        <View style={[styles.balanceBadge, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
+          <Text style={styles.balanceText}>{balance.toLocaleString()}</Text>
+          <CoinIcon size={18} />
         </View>
       </View>
 
@@ -227,7 +229,10 @@ export default function SpinScreen() {
             {spinning ? (
               <Text style={styles.spinButtonText}>SPINNING...</Text>
             ) : (
-              <Text style={styles.spinButtonText}>SPIN FOR {SPIN_COST} 🪙</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={styles.spinButtonText}>SPIN FOR {SPIN_COST}</Text>
+                <CoinIcon size={22} />
+              </View>
             )}
           </LinearGradient>
         </TouchableOpacity>

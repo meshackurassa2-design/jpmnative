@@ -142,6 +142,7 @@ export default function ShopDetailScreen() {
     }
   }
 
+  const isOwner = Boolean(user?.id && shop?.owner_id && user.id === shop.owner_id)
   const shopRating = shop?.rating || 0
   const isFoodShop = shop?.category === 'Food & Restaurants'
   const isServiceShop = shop?.category === 'Services & Freelance'

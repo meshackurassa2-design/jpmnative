@@ -431,29 +431,36 @@ export default function () {
         ) : null}
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
-          {(['posts', 'replies', 'media', 'reposts', 'likes', 'archive'] as const).map(tab => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
-              onPress={() => setActiveTab(tab as any)}
-            >
-              <Text style={[styles.tabBtnText, activeTab === tab && styles.tabBtnTextActive]}>
-                {tab === 'posts' ? 'Threads' : tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {(() => {
+            const hasSportsCodes = posts.some((p: any) => p.settings?.is_betting_code === true && !p.is_repost && !p.is_liked_tab && !p.is_bookmarked_tab);
+            const availableTabs = ['posts', ...(hasSportsCodes ? ['sports'] : []), 'replies', 'media', 'reposts', 'likes', 'archive'];
+            return availableTabs.map(tab => (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
+                onPress={() => setActiveTab(tab as any)}
+              >
+                <Text style={[styles.tabBtnText, activeTab === tab && styles.tabBtnTextActive]}>
+                  {tab === 'posts' ? 'Threads' : tab === 'sports' ? 'Sports Codes' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ));
+          })()}
         </ScrollView>
 
         <View style={styles.feed}>
           {(() => {
             const displayPosts = posts.filter((post: any) => {
               if (post.settings?.is_job === true) return false
+              if (activeTab === 'sports') return post.settings?.is_betting_code === true && !post.is_repost && !post.is_liked_tab && !post.is_bookmarked_tab
               if (activeTab === 'reposts') return post.is_repost
               if (activeTab === 'likes') return post.is_liked_tab
               if (activeTab === 'archive') return post.is_bookmarked_tab
               if (activeTab === 'media') return !post.is_repost && !post.is_liked_tab && !post.is_bookmarked_tab && (post.image_urls && post.image_urls.length > 0)
               if (activeTab === 'replies') return !post.is_repost && !post.is_liked_tab && !post.is_bookmarked_tab && post.parent_id
-              return !post.is_repost && !post.is_liked_tab && !post.is_bookmarked_tab
+              
+              // Default fallback for 'posts' (Threads tab)
+              return !post.is_repost && !post.is_liked_tab && !post.is_bookmarked_tab && !post.settings?.is_betting_code
             })
             if (displayPosts.length === 0) {
               return (

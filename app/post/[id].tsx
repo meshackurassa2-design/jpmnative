@@ -13,6 +13,7 @@ import { useAuth } from '../../lib/auth'
 import { useUI } from '../../lib/ui'
 import { BackButton } from '../../components/BackButton'
 import { Video, ResizeMode } from 'expo-av'
+import * as Haptics from 'expo-haptics'
 
 export default function PostDetail() {
   const { colors } = useTheme();
@@ -154,6 +155,7 @@ export default function PostDetail() {
   const toggleLike = async () => {
     if (!user || !post) return
     const isLiked = post.is_liked
+    if (!isLiked) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     
     setPost({ ...post, is_liked: !isLiked, likes_count: (post.likes_count || 0) + (isLiked ? -1 : 1) })
 
@@ -167,6 +169,7 @@ export default function PostDetail() {
   const toggleRepost = async () => {
     if (!user || !post) return
     const isReposted = post.is_reposted
+    if (!isReposted) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     
     setPost({ ...post, is_reposted: !isReposted, reposts_count: (post.reposts_count || 0) + (isReposted ? -1 : 1) })
 
@@ -188,6 +191,7 @@ export default function PostDetail() {
 
   const toggleCommentLike = async (commentId: string, currentLiked: boolean) => {
     if (!user) return
+    if (!currentLiked) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     setComments(prev => prev.map(c => 
       c.id === commentId 
         ? { ...c, is_liked: !currentLiked, likes_count: (c.likes_count || 0) + (currentLiked ? -1 : 1) }
@@ -202,6 +206,7 @@ export default function PostDetail() {
 
   const handlePostOptions = () => {
     if (!user || !post) return
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     if (user.id === post.creator_id) return
     showActionSheet('Post Options', [
       { text: 'Report Post', style: 'destructive', icon: 'flag', onPress: () => {
@@ -229,7 +234,9 @@ export default function PostDetail() {
 
     if (error) {
       Alert.alert('Error', error.message)
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
     } else if (data) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       setComments(prev => [...prev, data])
       setNewComment('')
       setPost({ ...post, comments_count: (post.comments_count || 0) + 1 })
@@ -245,9 +252,15 @@ export default function PostDetail() {
     return `${Math.floor(secs / 86400)}d`
   }
 
+  const isAnonymous = post?.settings?.is_anonymous === true || post?.settings?.is_anonymous === 'true' || post?.settings?.is_anonymous === 1;
+
   const renderHeader = () => (
     <View style={[styles.postHeader]}>
-      {coAuthor ? (
+      {isAnonymous ? (
+        <View style={[styles.postAvatar, styles.avatarFallback, { backgroundColor: '#18181b', borderWidth: 1, borderColor: '#9333ea' }]}>
+          <Ionicons name="person" size={20} color="#9333ea" />
+        </View>
+      ) : coAuthor ? (
           <View style={{ width: 44, height: 44, marginRight: 10, position: 'relative' }}>
             <View style={{ position: 'absolute', top: 0, left: 0, width: 30, height: 30, borderRadius: 15, overflow: 'hidden', borderWidth: post.is_ghost ? 2 : 1, borderColor: post.is_ghost ? '#f59e0b' : colors.border }}>
               {post.profiles?.avatar_url ? (
@@ -268,7 +281,7 @@ export default function PostDetail() {
               )}
             </View>
           </View>
-      ) : post.profiles?.avatar_url ? (
+      ) : post.profiles?.avatar_url && !isAnonymous ? (
         <Image source={{ uri: getCdnUrl(post.profiles.avatar_url) }} style={[styles.postAvatar, post.is_ghost && { borderWidth: 2, borderColor: '#f59e0b' }]} />
       ) : (
         <View style={[styles.postAvatar, styles.avatarFallback, post.is_ghost && { borderWidth: 2, borderColor: '#f59e0b' }]}>
@@ -278,12 +291,12 @@ export default function PostDetail() {
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <Text style={styles.postName}>
-            {coAuthor ? `${post.profiles?.username} & ${coAuthor.username}` : post.profiles?.username}
+            {isAnonymous ? 'Anonymous' : (coAuthor ? `${post.profiles?.username} & ${coAuthor.username}` : post.profiles?.username)}
             {post.is_ghost && <Text style={{ color: '#f59e0b', fontWeight: '400' }}>  👻 24h</Text>}
           </Text>
-          {post.profiles?.settings?.account_type === 'news' ? (
+          {post.profiles?.settings?.account_type === 'news' && !isAnonymous ? (
             <Ionicons name="newspaper" size={14} color="#eab308" />
-          ) : post.profiles?.is_verified ? (
+          ) : post.profiles?.is_verified && !isAnonymous ? (
             <Ionicons name="checkmark-circle" size={14} color="#3b82f6" />
           ) : null}
         </View>
@@ -451,7 +464,7 @@ export default function PostDetail() {
                 {!!post.content && (
                   <View style={{ paddingHorizontal: 16, marginBottom: 8, marginTop: 4 }}>
                     <Text style={styles.commentText}>
-                      <Text style={styles.commentName}>{post.profiles?.username} </Text>
+                      <Text style={styles.commentName}>{isAnonymous ? 'Anonymous' : post.profiles?.username} </Text>
                       {post.content}
                     </Text>
                   </View>

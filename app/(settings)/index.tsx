@@ -9,6 +9,7 @@ import { createClient } from '../../lib/supabase'
 import { useUI } from '../../lib/ui'
 import { Skeleton } from '../../components/Skeleton'
 import { useTranslation } from '../../lib/i18n'
+import * as Haptics from 'expo-haptics'
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
@@ -61,7 +62,10 @@ export default function SettingsScreen() {
   const SettingsItem = ({ icon, title, onPress, danger }: { icon: any, title: string, onPress?: () => void, danger?: boolean }) => (
     <TouchableOpacity
       style={styles.item}
-      onPress={onPress || (() => {})}
+      onPress={() => {
+        Haptics.selectionAsync();
+        if (onPress) onPress();
+      }}
       activeOpacity={0.6}
     >
       <View style={styles.itemLeft}>
@@ -76,7 +80,7 @@ export default function SettingsScreen() {
 
       {/* Profile Header */}
       {profile ? (
-        <TouchableOpacity style={styles.profileCard} onPress={() => router.push('/(settings)/edit-profile')} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.profileCard} onPress={() => { Haptics.selectionAsync(); router.push('/(settings)/edit-profile'); }} activeOpacity={0.8}>
           {profile.avatar_url ? (
             <Image source={{ uri: getCdnUrl(profile.avatar_url) }} style={styles.profileAvatar} />
           ) : (
@@ -122,7 +126,7 @@ export default function SettingsScreen() {
         <View style={styles.sectionCard}>
           <SettingsItem icon="bag-check-outline" title={t('purchases')} onPress={() => router.push('/(settings)/purchases')} />
           <SettingsItem icon="storefront-outline" title={t('store_dashboard')} onPress={() => router.push('/(settings)/store-dashboard')} />
-          <SettingsItem icon="medal-outline" title={t('trust_center')} onPress={() => router.push('/(settings)/trust-center')} />
+
         </View>
       </View>
 
@@ -141,6 +145,7 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>{t('admin')}</Text>
           <View style={styles.sectionCard}>
             <SettingsItem icon="shield-outline" title={t('admin_dashboard')} onPress={() => router.push('/(settings)/admin')} />
+            <SettingsItem icon="cash-outline" title={t('finance_admin') || 'Finance Admin'} onPress={() => router.push('/(settings)/finance-admin')} />
             <SettingsItem icon="briefcase-outline" title={t('marketplace_shops')} onPress={() => router.push('/(settings)/marketplace-admin')} />
             <SettingsItem icon="megaphone-outline" title={t('ads_management')} onPress={() => router.push('/(settings)/ads')} />
           </View>

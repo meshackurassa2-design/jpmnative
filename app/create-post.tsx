@@ -135,11 +135,14 @@ export default function CreatePostScreen() {
   const [reviewReplies, setReviewReplies] = useState(false)
   const [isGhost, setIsGhost] = useState(false)
   const [isDeal, setIsDeal] = useState(false)
-  const [isAnonymous, setIsAnonymous] = useState(false)
+  const [isBettingCode, setIsBettingCode] = useState(false)
+  const [bettingPlatform, setBettingPlatform] = useState('SportyBet')
+  const [bettingCode, setBettingCode] = useState('')
   const [coAuthorUsername, setCoAuthorUsername] = useState('')
   const [coAuthorId, setCoAuthorId] = useState<string | null>(null)
   const [verifyingCoAuthor, setVerifyingCoAuthor] = useState(false)
   const [editingPhoto, setEditingPhoto] = useState<{ uri: string, index: number, asset: any } | null>(null)
+  const [showCopyrightModal, setShowCopyrightModal] = useState(false)
 
   // Smooth Upload Animation
   const pulseAnim = useRef(new Animated.Value(0.7)).current;
@@ -265,11 +268,7 @@ export default function CreatePostScreen() {
     }
   }
 
-  const handlePost = async () => {
-    if (!user) return
-    const isEmpty = thread.every(p => !p.content.trim() && p.images.length === 0 && p.remoteUrls.length === 0 && !p.video)
-    if (isEmpty) { Alert.alert('Error', 'Post cannot be empty.'); return }
-
+  const executePost = async () => {
     setLoading(true)
     try {
       let previousPostId: string | null = null
@@ -349,7 +348,9 @@ export default function CreatePostScreen() {
             ghost_mode: isGhost,
             is_deal: isDeal,
             category: selectedCategory,
-            is_anonymous: isAnonymous,
+            is_betting_code: isBettingCode,
+            betting_platform: isBettingCode ? bettingPlatform : undefined,
+            betting_code: isBettingCode ? bettingCode : undefined,
             co_author_id: coAuthorId,
             co_author_status: coAuthorId ? 'pending' : undefined,
             is_hidden: post.isHidden || false
@@ -383,6 +384,20 @@ export default function CreatePostScreen() {
       Alert.alert('Error', e.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePost = () => {
+    if (!user) return
+    const isEmpty = thread.every(p => !p.content.trim() && p.images.length === 0 && p.remoteUrls.length === 0 && !p.video)
+    if (isEmpty) { Alert.alert('Error', 'Post cannot be empty.'); return }
+
+    const hasLocalMedia = thread.some(p => p.images.length > 0 || p.video !== null)
+
+    if (hasLocalMedia) {
+      setShowCopyrightModal(true)
+    } else {
+      executePost()
     }
   }
 
@@ -620,11 +635,33 @@ export default function CreatePostScreen() {
 
             <View style={styles.settingRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.settingLabel}>{tLocal('whispers')}</Text>
-                <Text style={styles.settingDesc}>{tLocal('whispers_desc')}</Text>
+                <Text style={styles.settingLabel}>Share Betting Code ⚽</Text>
+                <Text style={styles.settingDesc}>Attach a booking code for others to copy</Text>
               </View>
-              <Switch value={isAnonymous} onValueChange={setIsAnonymous} trackColor={{ true: '#9333ea' }} />
+              <Switch value={isBettingCode} onValueChange={setIsBettingCode} trackColor={{ true: '#10b981' }} />
             </View>
+
+            {isBettingCode && (
+              <View style={[styles.settingRow, { flexDirection: 'column', alignItems: 'stretch', marginTop: -8, paddingTop: 0, borderTopWidth: 0 }]}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TextInput
+                    style={{ flex: 1, backgroundColor: colors.background, padding: 10, borderRadius: 8, color: colors.text, borderColor: colors.border, borderWidth: 1 }}
+                    placeholder="Platform (e.g. SportyBet)"
+                    placeholderTextColor={colors.textDim}
+                    value={bettingPlatform}
+                    onChangeText={setBettingPlatform}
+                  />
+                  <TextInput
+                    style={{ flex: 1, backgroundColor: colors.background, padding: 10, borderRadius: 8, color: colors.text, borderColor: colors.border, borderWidth: 1 }}
+                    placeholder="Code (e.g. BC5TRQ)"
+                    placeholderTextColor={colors.textDim}
+                    value={bettingCode}
+                    onChangeText={setBettingCode}
+                    autoCapitalize="characters"
+                  />
+                </View>
+              </View>
+            )}
 
             <View style={styles.settingRow}>
               <View style={{ flex: 1 }}>
@@ -696,6 +733,38 @@ export default function CreatePostScreen() {
             <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', marginTop: 24, letterSpacing: 1 }}>POSTING...</Text>
             <Text style={{ color: '#a1a1aa', fontSize: 14, marginTop: 8 }}>Please wait while your media uploads</Text>
           </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Copyright Modal */}
+      <Modal visible={showCopyrightModal} animationType="fade" transparent={true}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: colors.background, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400, alignItems: 'center' }}>
+            <Ionicons name="shield-checkmark" size={56} color="#3b82f6" style={{ marginBottom: 16 }} />
+            <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text, marginBottom: 12, textAlign: 'center' }}>Copyright Agreement</Text>
+            <Text style={{ fontSize: 15, color: colors.textDim, textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+              By uploading this media, you confirm that you own all rights to it, and you agree that we are not responsible for any copyright violations.
+            </Text>
+            
+            <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+              <TouchableOpacity 
+                style={{ flex: 1, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center' }}
+                onPress={() => setShowCopyrightModal(false)}
+              >
+                <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#3b82f6', alignItems: 'center' }}
+                onPress={() => {
+                  setShowCopyrightModal(false)
+                  executePost()
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>I Agree & Post</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
 

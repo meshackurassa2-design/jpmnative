@@ -10,6 +10,7 @@ import { router } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import { createClient } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import { CoinIcon } from '../../components/CoinIcon'
 
 const TANZANIA_CITIES = [
   'Arusha', 'Dar es Salaam', 'Dodoma', 'Geita', 'Iringa', 'Kagera', 'Katavi',
@@ -240,7 +241,15 @@ export default function RegisterProScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={loading}>
-          <Text style={styles.submitBtnText}>{loading ? 'Processing...' : 'Pay 5,000 🪙 & Apply'}</Text>
+          {loading ? (
+            <Text style={styles.submitBtnText}>Processing...</Text>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.submitBtnText}>Pay 5,000</Text>
+              <CoinIcon size={20} />
+              <Text style={styles.submitBtnText}>& Apply</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 

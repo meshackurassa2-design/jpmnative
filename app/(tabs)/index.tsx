@@ -26,12 +26,14 @@ import { VibeBadge } from '../../components/VibeBadge'
 import { NativeAdCard } from '../../components/NativeAdCard'
 import { SuggestedAccounts } from '../../components/SuggestedAccounts'
 import { useTheme } from '../../lib/theme';
-import { useUI } from '../../lib/ui'
+import { useUI } from '../../lib/ui';
+import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur'
 import * as StoreReview from 'expo-store-review'
+import * as Clipboard from 'expo-clipboard'
 import { useTranslation } from '../../lib/i18n'
 
-type Tab = 'for_you' | 'following' | 'tea'
+type Tab = 'for_you' | 'following' | 'betting_codes'
 
 type StoryGroup = { profile: any; stories: any[]; hasUnseen: boolean }
 
@@ -674,7 +676,7 @@ export default function HomeScreen() {
   const TABS: { key: Tab; label: string }[] = [
     { key: 'for_you', label: 'For You' },
     { key: 'following', label: 'Following' },
-    { key: 'tea', label: 'Whispers' },
+    { key: 'betting_codes', label: 'Sports Codes' },
   ]
 
   // Load my profile for "What's on your mind" section
@@ -752,6 +754,7 @@ export default function HomeScreen() {
         const filteredData = data.filter((p: any) => {
           if (hiddenPosts.includes(p.id)) return false;
           if (p.profiles?.settings?.account_type === 'news') return false;
+          if (p.settings?.is_betting_code) return false;
 
           const ageHours = (Date.now() - new Date(p.created_at).getTime()) / 3600000;
           const isJob = p.settings?.is_job === true;
@@ -818,22 +821,21 @@ export default function HomeScreen() {
         .limit(30)
 
       if (!error && data) {
-        const nonNewsData = data.filter((p: any) => p.profiles?.settings?.account_type !== 'news');
-        await resolveAndSetPosts(nonNewsData)
+        const filtered = data.filter((p: any) => p.profiles?.settings?.account_type !== 'news' && !p.settings?.is_betting_code);
+        await resolveAndSetPosts(filtered)
       }
     }
 
-    if (activeTab === 'tea') {
+    if (activeTab === 'betting_codes') {
       const { data, error } = await supabase
         .from('posts')
         .select('*, profiles:creator_id(id, full_name, username, avatar_url, is_verified, settings)')
-        .eq('settings->is_anonymous', true)
+        .eq('settings->is_betting_code', true)
         .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
         .order('created_at', { ascending: false })
         .limit(30)
 
       if (!error && data) {
-        // Shuffle or add some random delay if needed, but for now chronological is fine
         await resolveAndSetPosts(data)
       }
     }
@@ -896,6 +898,7 @@ export default function HomeScreen() {
 
   const switchTab = (tab: Tab, index: number) => {
     if (tab === activeTab) return
+    Haptics.selectionAsync()
     setPosts([])
     setLoading(true)
     setActiveTab(tab)
@@ -908,6 +911,7 @@ export default function HomeScreen() {
   }
 
   const onRefresh = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     setRefreshing(true)
     fetchPosts()
   }, [fetchPosts])
@@ -1114,6 +1118,40 @@ export default function HomeScreen() {
           )}
         </TouchableOpacity>
 
+        {post.settings?.is_betting_code && post.settings?.betting_code && (
+          <View style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 16 }}>
+            <View style={{ backgroundColor: '#111118', borderRadius: 16, borderWidth: 1, borderColor: '#05966955', padding: 16, shadowColor: '#10b981', shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: {width:0, height:4} }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="football" size={14} color="#10b981" />
+                    <Text style={{ fontSize: 11, color: '#10b981', fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>{post.settings.betting_platform || 'Betting'} CODE</Text>
+                  </View>
+                  <Text style={{ fontSize: 26, fontWeight: '900', color: '#fff', letterSpacing: 2, marginTop: 6 }}>{post.settings.betting_code}</Text>
+                </View>
+              </View>
+              
+              <TouchableOpacity 
+                style={{ backgroundColor: '#10b981', paddingVertical: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 }}
+                onPress={() => {
+                  Clipboard.setStringAsync(post.settings.betting_code)
+                  showToast('Code copied to clipboard!', 'success')
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="copy" size={18} color="#fff" />
+                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14, letterSpacing: 0.5 }}>COPY CODE</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, paddingHorizontal: 8, justifyContent: 'center' }}>
+              <Ionicons name="warning" size={12} color="#f59e0b" />
+              <Text style={{ fontSize: 11, color: '#a1a1aa', fontWeight: '500' }}>Warning: Betting involves risk. Copy and play at your own risk.</Text>
+            </View>
+          </View>
+        )}
+
         {post.video_url && (
           <View style={{ marginBottom: 10 }}>
             <Video
@@ -1224,7 +1262,7 @@ export default function HomeScreen() {
         {[
           { key: 'for_you', label: t('for_you') },
           { key: 'following', label: t('following') },
-          { key: 'tea', label: t('tea') }
+          { key: 'betting_codes', label: 'Sports Codes' }
         ].map((tab, i) => (
           <TouchableOpacity
             key={tab.key}

@@ -9,6 +9,7 @@ import * as Haptics from 'expo-haptics'
 import { useAuth } from '../../lib/auth'
 import { useTheme } from '../../lib/theme'
 import { createClient } from '../../lib/supabase'
+import { CoinIcon } from '../../components/CoinIcon'
 
 export default function IntegrationsScreen() {
   const { user } = useAuth()
@@ -101,8 +102,11 @@ export default function IntegrationsScreen() {
                 Unlock Unlimited AI Chats, Image Generation, and connect your Meta/Google Ads via Zapier.
               </Text>
               
-              <View style={styles.priceTag}>
-                <Text style={styles.priceAmount}>25,000 🪙</Text>
+              <View style={[styles.priceTag, { flexDirection: 'row', gap: 8 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={[styles.priceAmount, { marginBottom: 0 }]}>25,000</Text>
+                  <CoinIcon size={24} />
+                </View>
                 <Text style={styles.priceLabel}>30 Days Access</Text>
               </View>
 

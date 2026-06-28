@@ -5,6 +5,7 @@ import React from 'react'
 import { TouchableOpacity, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
+import * as Haptics from 'expo-haptics'
 
 interface Props {
   color?: string
@@ -18,7 +19,11 @@ export function BackButton({ color, onPress, style }: Props) {
   return (
     <TouchableOpacity
       style={[styles.btn, style]}
-      onPress={onPress || (() => router.back())}
+      onPress={() => {
+        Haptics.selectionAsync();
+        if (onPress) onPress();
+        else router.back();
+      }}
       activeOpacity={0.7}
       hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
     >

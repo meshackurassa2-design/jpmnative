@@ -32,7 +32,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
   // -- TOAST STATE --
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info')
-  const toastAnim = useRef(new Animated.Value(-100)).current
+  const toastAnim = useRef(new Animated.Value(150)).current
 
   // -- TAB BAR STATE --
   const [isTabBarVisible, setTabBarVisible] = useState(true)
@@ -49,7 +49,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
     setToastMessage(message)
     setToastType(type)
     Animated.spring(toastAnim, {
-      toValue: insets.top + 10,
+      toValue: -(insets.bottom + 90),
       useNativeDriver: true,
       bounciness: 12,
       speed: 14
@@ -57,7 +57,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
 
     setTimeout(() => {
       Animated.timing(toastAnim, {
-        toValue: -100,
+        toValue: 150,
         duration: 300,
         useNativeDriver: true,
       }).start(() => setToastMessage(''))
@@ -101,7 +101,6 @@ export function UIProvider({ children }: { children: ReactNode }) {
       {/* --- TOAST --- */}
       {!!toastMessage && (
         <Animated.View style={[styles.toastContainer, { transform: [{ translateY: toastAnim }] }]}>
-          <View style={[styles.toastLine, { backgroundColor: getToastColor() }]} />
           <Ionicons name={getToastIcon() as any} size={20} color={getToastColor()} style={styles.toastIcon} />
           <Text style={styles.toastText} numberOfLines={2}>{toastMessage}</Text>
         </Animated.View>
@@ -150,17 +149,17 @@ export const useUI = () => useContext(UIContext)
 const styles = StyleSheet.create({
   // Toast
   toastContainer: {
-    position: 'absolute', top: 0, alignSelf: 'center',
-    width: width * 0.9, backgroundColor: '#fff',
-    borderRadius: 16, flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 12, paddingHorizontal: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1, shadowRadius: 20, elevation: 10,
+    position: 'absolute', bottom: 0, alignSelf: 'center',
+    backgroundColor: '#18181b', // sleek dark pill
+    borderRadius: 30, // fully rounded
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 12, paddingHorizontal: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 10, elevation: 10,
     zIndex: 9999,
   },
-  toastLine: { position: 'absolute', left: 0, top: 12, bottom: 12, width: 4, borderTopRightRadius: 4, borderBottomRightRadius: 4 },
   toastIcon: { marginRight: 10 },
-  toastText: { fontSize: 14, fontWeight: '600', color: '#111', flex: 1 },
+  toastText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 
   // Sheet
   sheetOverlay: {

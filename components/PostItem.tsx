@@ -14,6 +14,7 @@ import { getCDNUrl } from '../lib/cdn';
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Video, ResizeMode } from 'expo-av';
 import { VibeBadge } from './VibeBadge';
+import * as Clipboard from 'expo-clipboard';
 
 const { width } = Dimensions.get('window')
 
@@ -149,6 +150,7 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
 
   const handlePostOptions = () => {
     if (!user || !post) return
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     
     if (user.id === post.creator_id) {
       showActionSheet('Post Options', [
@@ -211,7 +213,7 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
 
   const hasImage = post.image_urls && post.image_urls.length > 0
   const hasVideo = !!post.video_url
-  const isAnonymous = post.settings?.is_anonymous === true
+  const isAnonymous = post.settings?.is_anonymous === true || post.settings?.is_anonymous === 'true' || post.settings?.is_anonymous === 1;
   
   const [coAuthor, setCoAuthor] = useState<any>(post.co_author_profile)
 
@@ -318,6 +320,40 @@ export function PostItem({ post: initialPost }: { post: PostType }) {
           </View>
         )}
       </TouchableOpacity>
+
+        {post.settings?.is_betting_code && post.settings?.betting_code && (
+          <View style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 16 }}>
+            <View style={{ backgroundColor: '#111118', borderRadius: 16, borderWidth: 1, borderColor: '#05966955', padding: 16, shadowColor: '#10b981', shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: {width:0, height:4} }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="football" size={14} color="#10b981" />
+                    <Text style={{ fontSize: 11, color: '#10b981', fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>{post.settings.betting_platform || 'Betting'} CODE</Text>
+                  </View>
+                  <Text style={{ fontSize: 26, fontWeight: '900', color: '#fff', letterSpacing: 2, marginTop: 6 }}>{post.settings.betting_code}</Text>
+                </View>
+              </View>
+              
+              <TouchableOpacity 
+                style={{ backgroundColor: '#10b981', paddingVertical: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 }}
+                onPress={() => {
+                  Clipboard.setStringAsync(post.settings.betting_code)
+                  showToast('Code copied to clipboard!', 'success')
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="copy" size={18} color="#fff" />
+                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14, letterSpacing: 0.5 }}>COPY CODE</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, paddingHorizontal: 8, justifyContent: 'center' }}>
+              <Ionicons name="warning" size={12} color="#f59e0b" />
+              <Text style={{ fontSize: 11, color: '#a1a1aa', fontWeight: '500' }}>Warning: Betting involves risk. Copy and play at your own risk.</Text>
+            </View>
+          </View>
+        )}
 
       {hasVideo && (
         <Video

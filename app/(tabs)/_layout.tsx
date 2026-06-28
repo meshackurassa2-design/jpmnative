@@ -10,6 +10,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import Svg, { Path } from 'react-native-svg'
 import { createClient } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import * as Haptics from 'expo-haptics'
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets()
@@ -98,6 +99,7 @@ export default function TabLayout() {
         }}
         listeners={{
           tabPress: (e) => {
+            Haptics.selectionAsync();
             const now = Date.now()
             if (now - lastTapRef.current.home < 300) {
               DeviceEventEmitter.emit('refresh_home')
@@ -113,6 +115,7 @@ export default function TabLayout() {
             <Ionicons name={focused ? 'search' : 'search-outline'} size={26} color={color} />
           ),
         }}
+        listeners={{ tabPress: () => Haptics.selectionAsync() }}
       />
       <Tabs.Screen
         name="ai"
@@ -124,6 +127,7 @@ export default function TabLayout() {
             </Svg>
           ),
         }}
+        listeners={{ tabPress: () => Haptics.selectionAsync() }}
       />
       <Tabs.Screen
         name="studio"
@@ -132,6 +136,7 @@ export default function TabLayout() {
             <Ionicons name={focused ? 'videocam' : 'videocam-outline'} size={26} color={color} />
           ),
         }}
+        listeners={{ tabPress: () => Haptics.selectionAsync() }}
       />
 
       <Tabs.Screen
@@ -141,6 +146,7 @@ export default function TabLayout() {
             <Ionicons name={focused ? 'cart' : 'cart-outline'} size={26} color={color} />
           ),
         }}
+        listeners={{ tabPress: () => Haptics.selectionAsync() }}
       />
       <Tabs.Screen
         name="messages"
@@ -158,6 +164,7 @@ export default function TabLayout() {
         }}
         listeners={{
           tabPress: (e) => {
+            Haptics.selectionAsync();
             const now = Date.now()
             if (now - lastTapRef.current.messages < 300) {
               DeviceEventEmitter.emit('refresh_messages')
@@ -173,6 +180,7 @@ export default function TabLayout() {
             <Ionicons name={focused ? 'person' : 'person-outline'} size={26} color={color} />
           ),
         }}
+        listeners={{ tabPress: () => Haptics.selectionAsync() }}
       />
     </Tabs>
     </Animated.View>

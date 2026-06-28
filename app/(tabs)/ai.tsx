@@ -60,7 +60,7 @@ Keep your responses relatively concise so they are easy to read on a phone.
 
 
 // ==========================================
-// 💰 PRICING CONFIGURATION (in Tokens/Coins)
+// PRICING CONFIGURATION (in Tokens/Coins)
 // Adjust how much each action costs the user
 // ==========================================
 const PRICING = {
@@ -113,6 +113,7 @@ export default function AIScreen() {
   const [currentConvId, setCurrentConvId] = useState<string>('')
   const [conversations, setConversations] = useState<ConversationMeta[]>([])
   const [isHistoryVisible, setIsHistoryVisible] = useState(false)
+  const [shopStats, setShopStats] = useState({ totalRevenue: 0, pendingOrders: 0 })
   const flatListRef = useRef<FlatList>(null)
   const typingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -282,6 +283,17 @@ export default function AIScreen() {
       setUserName(firstName)
       // Re-run the welcome animation now that we have the name
       startWelcomeAnimation(firstName)
+
+      // Fetch shop stats
+      const { data: revData } = await supabase.from('order_items').select('price, quantity').eq('shop_id', user?.id).eq('status', 'DELIVERED')
+      let rev = 0
+      if (revData) {
+        revData.forEach((item: any) => rev += (item.price * item.quantity))
+      }
+      const { count: pendingCount } = await supabase.from('order_items').select('id', { count: 'exact', head: true }).eq('shop_id', user?.id).eq('status', 'PROCESSING')
+      
+      setShopStats({ totalRevenue: rev, pendingOrders: pendingCount || 0 })
+
     } else if (error) {
       const { data: fallbackData } = await supabase.from('profiles').select('full_name, wallet_balance, avatar_url').eq('id', user?.id).single()
       if (fallbackData) {
@@ -435,7 +447,7 @@ export default function AIScreen() {
     if (balance < cost) {
       const adsNeeded = Math.ceil((cost - balance) / 10);
       Alert.alert(
-        'Not Enough Coins 🪙',
+        'Not Enough Coins',
         `You need ${cost} coins but only have ${balance}. Watch ${adsNeeded} more free ad${adsNeeded > 1 ? 's' : ''} to top up, or buy a coin pack instantly.`,
         [
           { text: 'Cancel', style: 'cancel' },
@@ -481,7 +493,7 @@ export default function AIScreen() {
       if (mode === 'chat' || mode === 'translate') {
         const effectiveHistory = mode === 'translate' ? [] : history;
         
-        let businessContext = '';
+        let businessContext = `USER LIVE SHOP DATA: You have ${shopStats.pendingOrders} pending orders to fulfill. Your total completed revenue is ${shopStats.totalRevenue} Tsh. `;
         if (mode === 'chat' && userMsgText) {
           try {
             // 1. Convert user question to vector embedding
@@ -731,6 +743,18 @@ export default function AIScreen() {
                       <Text style={[styles.actionCardText, mode === 'translate' && { color: '#000' }]}>Translate</Text>
                     </TouchableOpacity>
                   </ScrollView>
+
+                  {/* Business Prompts (Chat mode only) */}
+                  {mode === 'chat' && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 6, gap: 8, marginTop: 4 }}>
+                      {['📊 Review my Shop Analytics', '💡 Suggest a marketing plan', '🛍️ How do I price my products?'].map(t => (
+                        <TouchableOpacity key={t} onPress={() => { setInputText(t); Haptics.selectionAsync(); }}
+                          style={{ backgroundColor: '#1e1e2e', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: '#3f3f5a' }}>
+                          <Text style={{ color: '#a78bfa', fontSize: 13, fontWeight: '600' }}>{t}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  )}
 
                   {/* Aspect Ratio Picker (Only for Image modes) */}
                   {mode === 'image' && (
