@@ -1,0 +1,501 @@
+diff --git a/node_modules/react-native-admob-native-ads/android/build/.transforms/df9ee3d7b6814cfd2ac7b83a6e535f67/results.bin b/node_modules/react-native-admob-native-ads/android/build/.transforms/df9ee3d7b6814cfd2ac7b83a6e535f67/results.bin
+deleted file mode 100644
+index 0d259dd..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/.transforms/df9ee3d7b6814cfd2ac7b83a6e535f67/results.bin
++++ /dev/null
+@@ -1 +0,0 @@
+-o/classes
+diff --git a/node_modules/react-native-admob-native-ads/android/build/.transforms/df9ee3d7b6814cfd2ac7b83a6e535f67/transformed/classes/classes_dex/classes.dex b/node_modules/react-native-admob-native-ads/android/build/.transforms/df9ee3d7b6814cfd2ac7b83a6e535f67/transformed/classes/classes_dex/classes.dex
+deleted file mode 100644
+index d234f39..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/.transforms/df9ee3d7b6814cfd2ac7b83a6e535f67/transformed/classes/classes_dex/classes.dex and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/generated/source/buildConfig/debug/com/ammarahmed/rnadmob/nativeads/BuildConfig.java b/node_modules/react-native-admob-native-ads/android/build/generated/source/buildConfig/debug/com/ammarahmed/rnadmob/nativeads/BuildConfig.java
+deleted file mode 100644
+index 1d937e0..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/generated/source/buildConfig/debug/com/ammarahmed/rnadmob/nativeads/BuildConfig.java
++++ /dev/null
+@@ -1,10 +0,0 @@
+-/**
+- * Automatically generated file. DO NOT MODIFY
+- */
+-package com.ammarahmed.rnadmob.nativeads;
+-
+-public final class BuildConfig {
+-  public static final boolean DEBUG = Boolean.parseBoolean("true");
+-  public static final String LIBRARY_PACKAGE_NAME = "com.ammarahmed.rnadmob.nativeads";
+-  public static final String BUILD_TYPE = "debug";
+-}
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/aapt_friendly_merged_manifests/debug/processDebugManifest/aapt/AndroidManifest.xml b/node_modules/react-native-admob-native-ads/android/build/intermediates/aapt_friendly_merged_manifests/debug/processDebugManifest/aapt/AndroidManifest.xml
+deleted file mode 100644
+index 5b886ad..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/aapt_friendly_merged_manifests/debug/processDebugManifest/aapt/AndroidManifest.xml
++++ /dev/null
+@@ -1,9 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-    package="com.ammarahmed.rnadmob.nativeads" >
+-
+-    <uses-sdk android:minSdkVersion="23" />
+-
+-    <uses-permission android:name="android.permission.INTERNET" />
+-
+-</manifest>
+\ No newline at end of file
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/aapt_friendly_merged_manifests/debug/processDebugManifest/aapt/output-metadata.json b/node_modules/react-native-admob-native-ads/android/build/intermediates/aapt_friendly_merged_manifests/debug/processDebugManifest/aapt/output-metadata.json
+deleted file mode 100644
+index bed05f7..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/aapt_friendly_merged_manifests/debug/processDebugManifest/aapt/output-metadata.json
++++ /dev/null
+@@ -1,18 +0,0 @@
+-{
+-  "version": 3,
+-  "artifactType": {
+-    "type": "AAPT_FRIENDLY_MERGED_MANIFESTS",
+-    "kind": "Directory"
+-  },
+-  "applicationId": "com.ammarahmed.rnadmob.nativeads",
+-  "variantName": "debug",
+-  "elements": [
+-    {
+-      "type": "SINGLE",
+-      "filters": [],
+-      "attributes": [],
+-      "outputFile": "AndroidManifest.xml"
+-    }
+-  ],
+-  "elementType": "File"
+-}
+\ No newline at end of file
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/aar_metadata/debug/writeDebugAarMetadata/aar-metadata.properties b/node_modules/react-native-admob-native-ads/android/build/intermediates/aar_metadata/debug/writeDebugAarMetadata/aar-metadata.properties
+deleted file mode 100644
+index 1211b1e..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/aar_metadata/debug/writeDebugAarMetadata/aar-metadata.properties
++++ /dev/null
+@@ -1,6 +0,0 @@
+-aarFormatVersion=1.0
+-aarMetadataVersion=1.0
+-minCompileSdk=1
+-minCompileSdkExtension=0
+-minAndroidGradlePluginVersion=1.0.0
+-coreLibraryDesugaringEnabled=false
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/annotation_processor_list/debug/javaPreCompileDebug/annotationProcessors.json b/node_modules/react-native-admob-native-ads/android/build/intermediates/annotation_processor_list/debug/javaPreCompileDebug/annotationProcessors.json
+deleted file mode 100644
+index 9e26dfe..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/annotation_processor_list/debug/javaPreCompileDebug/annotationProcessors.json
++++ /dev/null
+@@ -1 +0,0 @@
+-{}
+\ No newline at end of file
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/compile_library_classes_jar/debug/bundleLibCompileToJarDebug/classes.jar b/node_modules/react-native-admob-native-ads/android/build/intermediates/compile_library_classes_jar/debug/bundleLibCompileToJarDebug/classes.jar
+deleted file mode 100644
+index 897e1a9..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/compile_library_classes_jar/debug/bundleLibCompileToJarDebug/classes.jar and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar b/node_modules/react-native-admob-native-ads/android/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar
+deleted file mode 100644
+index a36944d..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/compile_symbol_list/debug/generateDebugRFile/R.txt b/node_modules/react-native-admob-native-ads/android/build/intermediates/compile_symbol_list/debug/generateDebugRFile/R.txt
+deleted file mode 100644
+index 0a72861..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/compile_symbol_list/debug/generateDebugRFile/R.txt
++++ /dev/null
+@@ -1,2 +0,0 @@
+-int id native_ad_view 0x0
+-int layout rn_ad_unified_native_ad 0x0
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/compiled_local_resources/debug/compileDebugLibraryResources/out/layout_rn_ad_unified_native_ad.xml.flat b/node_modules/react-native-admob-native-ads/android/build/intermediates/compiled_local_resources/debug/compileDebugLibraryResources/out/layout_rn_ad_unified_native_ad.xml.flat
+deleted file mode 100644
+index fb8881c..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/compiled_local_resources/debug/compileDebugLibraryResources/out/layout_rn_ad_unified_native_ad.xml.flat and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/incremental/debug/packageDebugResources/compile-file-map.properties b/node_modules/react-native-admob-native-ads/android/build/intermediates/incremental/debug/packageDebugResources/compile-file-map.properties
+deleted file mode 100644
+index 4c9aa9d..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/incremental/debug/packageDebugResources/compile-file-map.properties
++++ /dev/null
+@@ -1,2 +0,0 @@
+-#Thu Aug 29 15:09:46 PKT 2024
+-com.ammarahmed.rnadmob.nativeads.react-native-admob-native-ads-main-6\:/layout/rn_ad_unified_native_ad.xml=/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/build/intermediates/packaged_res/debug/packageDebugResources/layout/rn_ad_unified_native_ad.xml
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/incremental/debug/packageDebugResources/merger.xml b/node_modules/react-native-admob-native-ads/android/build/intermediates/incremental/debug/packageDebugResources/merger.xml
+deleted file mode 100644
+index 807a692..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/incremental/debug/packageDebugResources/merger.xml
++++ /dev/null
+@@ -1,2 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<merger version="3"><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="main$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="main" generated-set="main$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/res"><file name="rn_ad_unified_native_ad" path="/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/res/layout/rn_ad_unified_native_ad.xml" qualifiers="" type="layout"/></source></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="debug$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/debug/res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="debug" generated-set="debug$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/debug/res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="generated$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/build/generated/res/resValues/debug"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="generated" generated-set="generated$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/build/generated/res/resValues/debug"/></dataSet><mergedItems/></merger>
+\ No newline at end of file
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/incremental/mergeDebugJniLibFolders/merger.xml b/node_modules/react-native-admob-native-ads/android/build/intermediates/incremental/mergeDebugJniLibFolders/merger.xml
+deleted file mode 100644
+index e8a0d7e..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/incremental/mergeDebugJniLibFolders/merger.xml
++++ /dev/null
+@@ -1,2 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<merger version="3"><dataSet config="main" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/jniLibs"/></dataSet><dataSet config="debug" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/debug/jniLibs"/></dataSet></merger>
+\ No newline at end of file
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/incremental/mergeDebugShaders/merger.xml b/node_modules/react-native-admob-native-ads/android/build/intermediates/incremental/mergeDebugShaders/merger.xml
+deleted file mode 100644
+index c710384..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/incremental/mergeDebugShaders/merger.xml
++++ /dev/null
+@@ -1,2 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<merger version="3"><dataSet config="main" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/shaders"/></dataSet><dataSet config="debug" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/debug/shaders"/></dataSet></merger>
+\ No newline at end of file
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/incremental/packageDebugAssets/merger.xml b/node_modules/react-native-admob-native-ads/android/build/intermediates/incremental/packageDebugAssets/merger.xml
+deleted file mode 100644
+index 38f0574..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/incremental/packageDebugAssets/merger.xml
++++ /dev/null
+@@ -1,2 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<merger version="3"><dataSet config="main" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/assets"/></dataSet><dataSet config="debug" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/debug/assets"/></dataSet><dataSet config="generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/build/intermediates/shader_assets/debug/compileDebugShaders/out"/></dataSet></merger>
+\ No newline at end of file
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/BuildConfig.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/BuildConfig.class
+deleted file mode 100644
+index 2b39709..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/BuildConfig.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/CacheManager.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/CacheManager.class
+deleted file mode 100644
+index a925990..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/CacheManager.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/EventEmitter.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/EventEmitter.class
+deleted file mode 100644
+index 0c8144d..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/EventEmitter.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobNativePackage.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobNativePackage.class
+deleted file mode 100644
+index 71b6549..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobNativePackage.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobUnifiedAdComparator.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobUnifiedAdComparator.class
+deleted file mode 100644
+index b581602..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobUnifiedAdComparator.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobUnifiedAdContainer.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobUnifiedAdContainer.class
+deleted file mode 100644
+index 3531592..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobUnifiedAdContainer.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobUnifiedAdQueueWrapper$1$1.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobUnifiedAdQueueWrapper$1$1.class
+deleted file mode 100644
+index 39ba374..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobUnifiedAdQueueWrapper$1$1.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobUnifiedAdQueueWrapper$1.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobUnifiedAdQueueWrapper$1.class
+deleted file mode 100644
+index fff613d..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobUnifiedAdQueueWrapper$1.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobUnifiedAdQueueWrapper.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobUnifiedAdQueueWrapper.class
+deleted file mode 100644
+index 4df1ce4..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdMobUnifiedAdQueueWrapper.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobAdChoicesManager.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobAdChoicesManager.class
+deleted file mode 100644
+index d165b27..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobAdChoicesManager.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobButton.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobButton.class
+deleted file mode 100644
+index f850707..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobButton.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobButtonManager.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobButtonManager.class
+deleted file mode 100644
+index 4155843..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobButtonManager.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobComponentsWrapper$1.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobComponentsWrapper$1.class
+deleted file mode 100644
+index 70ec59f..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobComponentsWrapper$1.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobComponentsWrapper.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobComponentsWrapper.class
+deleted file mode 100644
+index ca38287..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobComponentsWrapper.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobComponentsWrapperManager.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobComponentsWrapperManager.class
+deleted file mode 100644
+index 8f5b31d..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobComponentsWrapperManager.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobMediaView$1.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobMediaView$1.class
+deleted file mode 100644
+index b609fc5..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobMediaView$1.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobMediaView$2.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobMediaView$2.class
+deleted file mode 100644
+index a49adbc..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobMediaView$2.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobMediaView.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobMediaView.class
+deleted file mode 100644
+index 8fd82c5..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobMediaView.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobMediaViewManager.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobMediaViewManager.class
+deleted file mode 100644
+index f5c0109..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobMediaViewManager.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeAdsManager$1.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeAdsManager$1.class
+deleted file mode 100644
+index edb3898..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeAdsManager$1.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeAdsManager.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeAdsManager.class
+deleted file mode 100644
+index be013df..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeAdsManager.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeView$1.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeView$1.class
+deleted file mode 100644
+index 439b19a..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeView$1.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeView$2.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeView$2.class
+deleted file mode 100644
+index 0340e49..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeView$2.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeView.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeView.class
+deleted file mode 100644
+index 5ff10dc..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeView.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeViewManager.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeViewManager.class
+deleted file mode 100644
+index f74e3ab..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/RNAdmobNativeViewManager.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/UnifiedNativeAdLoadedListener.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/UnifiedNativeAdLoadedListener.class
+deleted file mode 100644
+index 1cce85a..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/UnifiedNativeAdLoadedListener.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/Utils.class b/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/Utils.class
+deleted file mode 100644
+index f48d458..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/com/ammarahmed/rnadmob/nativeads/Utils.class and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/local_only_symbol_list/debug/parseDebugLocalResources/R-def.txt b/node_modules/react-native-admob-native-ads/android/build/intermediates/local_only_symbol_list/debug/parseDebugLocalResources/R-def.txt
+deleted file mode 100644
+index b243a8c..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/local_only_symbol_list/debug/parseDebugLocalResources/R-def.txt
++++ /dev/null
+@@ -1,4 +0,0 @@
+-R_DEF: Internal format may change without notice
+-local
+-id native_ad_view
+-layout rn_ad_unified_native_ad
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/manifest_merge_blame_file/debug/processDebugManifest/manifest-merger-blame-debug-report.txt b/node_modules/react-native-admob-native-ads/android/build/intermediates/manifest_merge_blame_file/debug/processDebugManifest/manifest-merger-blame-debug-report.txt
+deleted file mode 100644
+index 63e4ef7..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/manifest_merge_blame_file/debug/processDebugManifest/manifest-merger-blame-debug-report.txt
++++ /dev/null
+@@ -1,11 +0,0 @@
+-1<?xml version="1.0" encoding="utf-8"?>
+-2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-3    package="com.ammarahmed.rnadmob.nativeads" >
+-4
+-5    <uses-sdk android:minSdkVersion="23" />
+-6
+-7    <uses-permission android:name="android.permission.INTERNET" />
+-7-->/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/AndroidManifest.xml:4:5-67
+-7-->/Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/AndroidManifest.xml:4:22-64
+-8
+-9</manifest>
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml b/node_modules/react-native-admob-native-ads/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml
+deleted file mode 100644
+index 5b886ad..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml
++++ /dev/null
+@@ -1,9 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-    package="com.ammarahmed.rnadmob.nativeads" >
+-
+-    <uses-sdk android:minSdkVersion="23" />
+-
+-    <uses-permission android:name="android.permission.INTERNET" />
+-
+-</manifest>
+\ No newline at end of file
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/navigation_json/debug/extractDeepLinksDebug/navigation.json b/node_modules/react-native-admob-native-ads/android/build/intermediates/navigation_json/debug/extractDeepLinksDebug/navigation.json
+deleted file mode 100644
+index 0637a08..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/navigation_json/debug/extractDeepLinksDebug/navigation.json
++++ /dev/null
+@@ -1 +0,0 @@
+-[]
+\ No newline at end of file
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/nested_resources_validation_report/debug/generateDebugResources/nestedResourcesValidationReport.txt b/node_modules/react-native-admob-native-ads/android/build/intermediates/nested_resources_validation_report/debug/generateDebugResources/nestedResourcesValidationReport.txt
+deleted file mode 100644
+index 08f4ebe..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/nested_resources_validation_report/debug/generateDebugResources/nestedResourcesValidationReport.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-0 Warning/Error
+\ No newline at end of file
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/packaged_res/debug/packageDebugResources/layout/rn_ad_unified_native_ad.xml b/node_modules/react-native-admob-native-ads/android/build/intermediates/packaged_res/debug/packageDebugResources/layout/rn_ad_unified_native_ad.xml
+deleted file mode 100644
+index 1d84177..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/packaged_res/debug/packageDebugResources/layout/rn_ad_unified_native_ad.xml
++++ /dev/null
+@@ -1,10 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<com.google.android.gms.ads.nativead.NativeAdView xmlns:android="http://schemas.android.com/apk/res/android"
+-    xmlns:app="http://schemas.android.com/apk/res-auto"
+-    xmlns:tools="http://schemas.android.com/tools"
+-    android:background="@android:color/transparent"
+-    android:id="@+id/native_ad_view"
+-    android:layout_width="match_parent"
+-    android:layout_height="wrap_content">
+-
+-</com.google.android.gms.ads.nativead.NativeAdView>
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/runtime_library_classes_jar/debug/bundleLibRuntimeToJarDebug/classes.jar b/node_modules/react-native-admob-native-ads/android/build/intermediates/runtime_library_classes_jar/debug/bundleLibRuntimeToJarDebug/classes.jar
+deleted file mode 100644
+index ccbc53f..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/intermediates/runtime_library_classes_jar/debug/bundleLibRuntimeToJarDebug/classes.jar and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/intermediates/symbol_list_with_package_name/debug/generateDebugRFile/package-aware-r.txt b/node_modules/react-native-admob-native-ads/android/build/intermediates/symbol_list_with_package_name/debug/generateDebugRFile/package-aware-r.txt
+deleted file mode 100644
+index 452df1d..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/intermediates/symbol_list_with_package_name/debug/generateDebugRFile/package-aware-r.txt
++++ /dev/null
+@@ -1,3 +0,0 @@
+-com.ammarahmed.rnadmob.nativeads
+-id native_ad_view
+-layout rn_ad_unified_native_ad
+diff --git a/node_modules/react-native-admob-native-ads/android/build/outputs/logs/manifest-merger-debug-report.txt b/node_modules/react-native-admob-native-ads/android/build/outputs/logs/manifest-merger-debug-report.txt
+deleted file mode 100644
+index ab9d9f0..0000000
+--- a/node_modules/react-native-admob-native-ads/android/build/outputs/logs/manifest-merger-debug-report.txt
++++ /dev/null
+@@ -1,21 +0,0 @@
+--- Merging decision tree log ---
+-manifest
+-ADDED from /Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/AndroidManifest.xml:1:1-5:12
+-INJECTED from /Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/AndroidManifest.xml:1:1-5:12
+-	package
+-		ADDED from /Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/AndroidManifest.xml:2:11-53
+-		INJECTED from /Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/AndroidManifest.xml
+-	xmlns:android
+-		ADDED from /Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/AndroidManifest.xml:1:11-69
+-uses-permission#android.permission.INTERNET
+-ADDED from /Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/AndroidManifest.xml:4:5-67
+-	android:name
+-		ADDED from /Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/AndroidManifest.xml:4:22-64
+-uses-sdk
+-INJECTED from /Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/AndroidManifest.xml reason: use-sdk injection requested
+-INJECTED from /Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/AndroidManifest.xml
+-INJECTED from /Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/AndroidManifest.xml
+-	android:targetSdkVersion
+-		INJECTED from /Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/AndroidManifest.xml
+-	android:minSdkVersion
+-		INJECTED from /Volumes/DataDrive/Projects/react-native/react-native-admob-native-ads/android/src/main/AndroidManifest.xml
+diff --git a/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/RNAdMobNativePackage.class.uniqueId1 b/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/RNAdMobNativePackage.class.uniqueId1
+deleted file mode 100644
+index 71b6549..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/RNAdMobNativePackage.class.uniqueId1 and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/RNAdmobNativeView$1.class.uniqueId2 b/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/RNAdmobNativeView$1.class.uniqueId2
+deleted file mode 100644
+index 439b19a..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/RNAdmobNativeView$1.class.uniqueId2 and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/RNAdmobNativeView$2.class.uniqueId3 b/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/RNAdmobNativeView$2.class.uniqueId3
+deleted file mode 100644
+index 0340e49..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/RNAdmobNativeView$2.class.uniqueId3 and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/RNAdmobNativeView.class.uniqueId4 b/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/RNAdmobNativeView.class.uniqueId4
+deleted file mode 100644
+index ba33d5f..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/RNAdmobNativeView.class.uniqueId4 and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/RNAdmobNativeViewManager.class.uniqueId0 b/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/RNAdmobNativeViewManager.class.uniqueId0
+deleted file mode 100644
+index 14ec751..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/RNAdmobNativeViewManager.class.uniqueId0 and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/previous-compilation-data.bin b/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/previous-compilation-data.bin
+deleted file mode 100644
+index f4924af..0000000
+Binary files a/node_modules/react-native-admob-native-ads/android/build/tmp/compileDebugJavaWithJavac/previous-compilation-data.bin and /dev/null differ
+diff --git a/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/AdListener.h b/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/AdListener.h
+index 6431f95..c113d5e 100644
+--- a/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/AdListener.h
++++ b/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/AdListener.h
+@@ -7,7 +7,7 @@
+ 
+ #ifndef AdListener_h
+ #define AdListener_h
+-@import GoogleMobileAds;
++#import <GoogleMobileAds/GoogleMobileAds.h>
+ @protocol AdListener
+ @optional
+ - (void)didAdLoaded:(nonnull GADNativeAd *)nativeAd;
+diff --git a/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNAdMobUnifiedAdQueueWrapper.m b/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNAdMobUnifiedAdQueueWrapper.m
+index f3b84bf..a22e7f8 100644
+--- a/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNAdMobUnifiedAdQueueWrapper.m
++++ b/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNAdMobUnifiedAdQueueWrapper.m
+@@ -11,7 +11,7 @@
+ #import "RNAdMobUnifiedAdContainer.h"
+ #import "EventEmitter.h"
+ #import "CacheManager.h"
+-@import GoogleMobileAds;
++#import <GoogleMobileAds/GoogleMobileAds.h>
+ #ifdef MEDIATION_FACEBOOK
+ @import FacebookAdapter;
+ #endif
+diff --git a/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNAdmobNativeAdsManager.m b/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNAdmobNativeAdsManager.m
+index 10e56f4..2a1f513 100644
+--- a/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNAdmobNativeAdsManager.m
++++ b/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNAdmobNativeAdsManager.m
+@@ -3,7 +3,7 @@
+ #import "CacheManager.h"
+ 
+ 
+-@import GoogleMobileAds;
++#import <GoogleMobileAds/GoogleMobileAds.h>
+ 
+ #ifdef MEDIATION_FACEBOOK
+ @import FBAudienceNetwork;
+diff --git a/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNGADMediaView.h b/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNGADMediaView.h
+index 8df656e..ebe9d8c 100644
+--- a/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNGADMediaView.h
++++ b/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNGADMediaView.h
+@@ -1,7 +1,7 @@
+ #import <React/RCTViewManager.h>
+ #import <React/RCTUIManager.h>
+ #import <React/RCTLog.h>
+-@import GoogleMobileAds;
++#import <GoogleMobileAds/GoogleMobileAds.h>
+ 
+ @interface RNGADMediaView: GADMediaView <GADVideoControllerDelegate>
+ 
+diff --git a/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNGADMediaViewManager.h b/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNGADMediaViewManager.h
+index c0f144c..833da86 100644
+--- a/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNGADMediaViewManager.h
++++ b/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNGADMediaViewManager.h
+@@ -7,7 +7,7 @@
+ #import <React/RCTViewManager.h>
+ #import <React/RCTUIManager.h>
+ #import <React/RCTLog.h>
+-@import GoogleMobileAds;
++#import <GoogleMobileAds/GoogleMobileAds.h>
+ 
+ @interface RNGADMediaViewManager : RCTViewManager
+ @end
+diff --git a/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNGADNativeView.h b/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNGADNativeView.h
+index 95c2d93..31e85aa 100644
+--- a/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNGADNativeView.h
++++ b/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/RNGADNativeView.h
+@@ -2,7 +2,7 @@
+ #import <React/RCTUIManager.h>
+ #import <React/RCTLog.h>
+ 
+-@import GoogleMobileAds;
++#import <GoogleMobileAds/GoogleMobileAds.h>
+ #import "AdListener.h"
+ @interface RNGADNativeView : GADNativeAdView <AdListener,GADNativeAdLoaderDelegate,
+ GADNativeAdDelegate>
+diff --git a/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/UnifiedNativeAdLoadedListener.h b/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/UnifiedNativeAdLoadedListener.h
+index b597b26..2a0430d 100644
+--- a/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/UnifiedNativeAdLoadedListener.h
++++ b/node_modules/react-native-admob-native-ads/ios/RNAdMobManager/UnifiedNativeAdLoadedListener.h
+@@ -8,7 +8,7 @@
+ #ifndef OnUnifiedNativeAdLoadedListener_h
+ #define OnUnifiedNativeAdLoadedListener_h
+ #import "RNAdMobUnifiedAdContainer.h"
+-@import GoogleMobileAds;
++#import <GoogleMobileAds/GoogleMobileAds.h>
+ 
+ @interface UnifiedNativeAdLoadedListener : NSObject<GADNativeAdLoaderDelegate>
+ 
+diff --git a/node_modules/react-native-admob-native-ads/react-native-admob-native-ads.podspec b/node_modules/react-native-admob-native-ads/react-native-admob-native-ads.podspec
+index 975b6d9..36c61ac 100644
+--- a/node_modules/react-native-admob-native-ads/react-native-admob-native-ads.podspec
++++ b/node_modules/react-native-admob-native-ads/react-native-admob-native-ads.podspec
+@@ -27,5 +27,5 @@ Pod::Spec.new do |s|
+   }
+ 
+   s.dependency 'React-Core'
+-  s.dependency 'Google-Mobile-Ads-SDK'
++  
+ end
