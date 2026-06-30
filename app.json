@@ -64,13 +64,7 @@
           "iosAppId": "ca-app-pub-8166782428171770~1458002511"
         }
       ],
-      [
-        "react-native-admob-native-ads",
-        {
-          "android_app_id": "ca-app-pub-4939768656689626~2505670868",
-          "ios_app_id": "ca-app-pub-8166782428171770~1458002511"
-        }
-      ]
+
     ],
     "experiments": {
       "typedRoutes": true
