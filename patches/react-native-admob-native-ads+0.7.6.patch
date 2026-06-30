@@ -488,14 +488,3 @@ index b597b26..2a0430d 100644
  
  @interface UnifiedNativeAdLoadedListener : NSObject<GADNativeAdLoaderDelegate>
  
-diff --git a/node_modules/react-native-admob-native-ads/react-native-admob-native-ads.podspec b/node_modules/react-native-admob-native-ads/react-native-admob-native-ads.podspec
-index 975b6d9..36c61ac 100644
---- a/node_modules/react-native-admob-native-ads/react-native-admob-native-ads.podspec
-+++ b/node_modules/react-native-admob-native-ads/react-native-admob-native-ads.podspec
-@@ -27,5 +27,5 @@ Pod::Spec.new do |s|
-   }
- 
-   s.dependency 'React-Core'
--  s.dependency 'Google-Mobile-Ads-SDK'
-+  
- end
