@@ -49,6 +49,9 @@
             "compileSdkVersion": 36,
             "targetSdkVersion": 35,
             "minSdkVersion": 24
+          },
+          "ios": {
+            "deploymentTarget": "15.0"
           }
         }
       ],
