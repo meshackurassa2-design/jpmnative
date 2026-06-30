@@ -31,19 +31,21 @@ jobs:
           cd ios
           pod install
 
-      - name: Build Unsigned Archive
+      - name: Build Unsigned App
         run: |
-          xcodebuild -workspace ios/JPM.xcworkspace \
+          xcodebuild build -workspace ios/JPM.xcworkspace \
             -scheme JPM \
             -configuration Release \
             -sdk iphoneos \
             CODE_SIGNING_ALLOWED=NO \
-            archive -archivePath build/JPM.xcarchive
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_IDENTITY="" \
+            CONFIGURATION_BUILD_DIR=$(pwd)/build/Release-iphoneos
 
       - name: Package into IPA
         run: |
           mkdir -p build/Payload
-          cp -R build/JPM.xcarchive/Products/Applications/JPM.app build/Payload
+          cp -R build/Release-iphoneos/JPM.app build/Payload
           cd build
           zip -r jpm-unsigned.ipa Payload
 
