@@ -48,7 +48,10 @@ jobs:
       - name: Annotate log URL on failure
         if: failure()
         run: |
-          URL=$(tail -n 200 xcodebuild.log | curl -s -F "content=<-" https://dpaste.com/api/v2/)
+          ERRORS=$(grep -E "error:|fatal error:" xcodebuild.log | head -50)
+          TAIL=$(tail -n 100 xcodebuild.log)
+          COMBINED=$(printf "=== ERRORS ===\n%s\n\n=== TAIL ===\n%s" "$ERRORS" "$TAIL")
+          URL=$(echo "$COMBINED" | curl -s -F "content=<-" https://dpaste.com/api/v2/)
           echo "::error::Build failed! View logs here: $URL"
 
       - name: Package into IPA
