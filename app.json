@@ -3,7 +3,7 @@
     "name": "JPM",
     "slug": "jpm-socialmarket",
     "version": "6.0.1",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "orientation": "portrait",
     "updates": {
       "enabled": true,
