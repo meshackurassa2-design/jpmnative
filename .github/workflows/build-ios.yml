@@ -33,6 +33,7 @@ jobs:
 
       - name: Build Unsigned App
         run: |
+          set -o pipefail
           xcodebuild build -workspace ios/JPM.xcworkspace \
             -scheme JPM \
             -configuration Release \
@@ -40,7 +41,11 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_IDENTITY="" \
-            CONFIGURATION_BUILD_DIR=$(pwd)/build/Release-iphoneos
+            CONFIGURATION_BUILD_DIR=$(pwd)/build/Release-iphoneos | tee xcodebuild.log | xcpretty
+
+      - name: Print logs on failure
+        if: failure()
+        run: tail -n 200 xcodebuild.log
 
       - name: Package into IPA
         run: |
