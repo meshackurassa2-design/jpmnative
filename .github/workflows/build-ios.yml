@@ -36,10 +36,11 @@ jobs:
       - name: Build Unsigned App
         run: |
           set -o pipefail
-          xcodebuild build -workspace ios/JPM.xcworkspace \
+          xcodebuild clean build -workspace ios/JPM.xcworkspace \
             -scheme JPM \
             -configuration Release \
             -sdk iphoneos \
+            -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_IDENTITY="" \

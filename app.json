@@ -52,7 +52,8 @@
           },
           "ios": {
             "deploymentTarget": "18.0",
-            "useFrameworks": "static"
+            "useFrameworks": "static",
+            "newArchEnabled": false
           }
         }
       ],
