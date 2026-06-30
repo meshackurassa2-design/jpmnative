@@ -3,6 +3,7 @@
     "name": "JPM",
     "slug": "jpm-socialmarket",
     "version": "6.0.1",
+    "newArchEnabled": false,
     "orientation": "portrait",
     "updates": {
       "enabled": true,
@@ -51,9 +52,7 @@
             "minSdkVersion": 24
           },
           "ios": {
-            "deploymentTarget": "18.0",
-            "useFrameworks": "static",
-            "newArchEnabled": false
+            "deploymentTarget": "18.0"
           }
         }
       ],
@@ -64,8 +63,7 @@
           "androidAppId": "ca-app-pub-4939768656689626~2505670868",
           "iosAppId": "ca-app-pub-8166782428171770~1458002511"
         }
-      ],
-
+      ]
     ],
     "experiments": {
       "typedRoutes": true
