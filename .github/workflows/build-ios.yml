@@ -43,9 +43,16 @@ jobs:
             CODE_SIGNING_IDENTITY="" \
             CONFIGURATION_BUILD_DIR=$(pwd)/build/Release-iphoneos | tee xcodebuild.log | xcpretty
 
-      - name: Print logs on failure
+      - name: Push logs on failure
         if: failure()
-        run: tail -n 200 xcodebuild.log
+        run: |
+          tail -n 200 xcodebuild.log > xcodebuild_error.log
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b build-error-log
+          git add xcodebuild_error.log
+          git commit -m "Upload build error log"
+          git push origin build-error-log --force
 
       - name: Package into IPA
         run: |
