@@ -31,7 +31,12 @@ jobs:
       - name: Install CocoaPods
         run: |
           cd ios
-          pod install
+          pod install 2>&1 | tee ../pod_install.log
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            URL=$(tail -n 100 ../pod_install.log | curl -s -F "content=<-" https://dpaste.com/api/v2/)
+            echo "::error::Pod install failed! View logs here: $URL"
+            exit 1
+          fi
 
       - name: Build Unsigned App
         run: |
