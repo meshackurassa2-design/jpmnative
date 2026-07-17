@@ -47,17 +47,6 @@ export function WebLayoutWrapper({ children }: { children: React.ReactNode }) {
           <View style={styles.navContainer}>
             <NavItem icon="home-outline" label="Home" path="/" />
             <NavItem icon="search-outline" label="Search" path="/search" />
-            <NavItem 
-              isSvg={true} 
-              icon={(color: string) => (
-                <Svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <Path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                  <Path d="M9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0z" />
-                </Svg>
-              )} 
-              label="Dapaz AI" 
-              path="/ai" 
-            />
             <NavItem icon="cart-outline" label="Marketplace" path="/marketplace" />
             <NavItem icon="chatbubble-outline" label="Messages" path="/messages" />
             <NavItem icon="person-outline" label="Profile" path="/profile" />
