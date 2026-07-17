@@ -28,12 +28,14 @@ export default function LoginScreen() {
   const slideAnim = React.useRef(new Animated.Value(Platform.OS === 'web' ? 0 : 30)).current;
 
   React.useEffect(() => {
-    // Check if new user should be sent directly to onboarding without waiting for any click
-    AsyncStorage.getItem('@has_seen_onboarding_v2').then(seen => {
-      if (!seen) {
-        router.replace('/onboarding');
-      }
-    });
+    // Check if new user should be sent directly to onboarding without waiting for any click on mobile
+    if (Platform.OS !== 'web') {
+      AsyncStorage.getItem('@has_seen_onboarding_v2').then(seen => {
+        if (!seen) {
+          router.replace('/onboarding');
+        }
+      });
+    }
 
     if (Platform.OS !== 'web') {
       Animated.parallel([
@@ -103,8 +105,12 @@ export default function LoginScreen() {
     }
   }
 
-  // Catch: If a user clicks Sign Up and hasn't gone through onboarding, guide them first!
+  // Catch: If a user clicks Sign Up and hasn't gone through onboarding on mobile, guide them first!
   const handleSignUpPress = async () => {
+    if (Platform.OS === 'web') {
+      router.push('/(auth)/signup');
+      return;
+    }
     const seen = await AsyncStorage.getItem('@has_seen_onboarding_v2');
     if (!seen) {
       router.push('/onboarding');

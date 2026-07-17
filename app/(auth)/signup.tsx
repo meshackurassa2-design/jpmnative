@@ -148,7 +148,11 @@ export default function SignupScreen() {
             full_name: `${firstName.trim()} ${lastName.trim()}`
           }).eq('id', newUser.id)
       }
-      router.replace('/onboarding')
+      if (Platform.OS === 'web') {
+        router.replace('/(tabs)')
+      } else {
+        router.replace('/onboarding')
+      }
     } catch (e: any) {
       Alert.alert('Signup Failed', e.message)
     } finally {

@@ -26,7 +26,11 @@ function AuthGuard() {
   useEffect(() => {
     if (loading) return // Still checking session, wait
     if (!user) {
-      // Check if they've seen onboarding before
+      if (Platform.OS === 'web') {
+        router.replace('/(auth)/login')
+        return
+      }
+      // Check if they've seen onboarding before on mobile
       AsyncStorage.getItem('@has_seen_onboarding_v2').then(seen => {
         if (!seen) {
           router.replace('/onboarding')

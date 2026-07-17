@@ -120,7 +120,7 @@ export default function Onboarding() {
   const renderItem = ({ item }: { item: typeof SLIDES[0] }) => {
     const bgColor = isDark ? item.darkBg : item.bg;
     return (
-      <View style={[styles.slide]}>
+      <View style={[styles.slide, { width: slideWidth }]}>
         {/* Big vector icon hero */}
         <View style={[styles.heroCircle, { backgroundColor: bgColor }]}>
           <Ionicons name={item.heroIcon as any} size={64} color={item.color} />
@@ -147,12 +147,16 @@ export default function Onboarding() {
   };
 
   const slide = SLIDES[currentIndex];
+  const slideWidth = Platform.OS === 'web' ? Math.min(width, 500) : width;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+      <Animated.View style={[
+        { flex: 1, opacity: fadeAnim },
+        Platform.OS === 'web' && { maxWidth: 500, width: '100%', alignSelf: 'center', justifyContent: 'center' }
+      ]}>
         {/* Skip button top right */}
         <TouchableOpacity style={styles.skipBtn} onPress={finishOnboarding}>
           <Text style={[styles.skipText, { color: colors.textDim }]}>Skip</Text>
@@ -180,7 +184,7 @@ export default function Onboarding() {
         {/* Dot indicators */}
         <View style={styles.paginator}>
           {SLIDES.map((s, i) => {
-            const inputRange = [(i - 1) * width, i * width, (i + 1) * width];
+            const inputRange = [(i - 1) * slideWidth, i * slideWidth, (i + 1) * slideWidth];
             const dotWidth = scrollX.interpolate({
               inputRange, outputRange: [8, 24, 8], extrapolate: 'clamp',
             });
