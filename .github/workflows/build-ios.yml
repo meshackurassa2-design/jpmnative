@@ -12,6 +12,8 @@ jobs:
     runs-on: macos-latest
     permissions:
       contents: write
+    env:
+      RCT_NEW_ARCH_ENABLED: 1
 
     steps:
       - name: Checkout repository
