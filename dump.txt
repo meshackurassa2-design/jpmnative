@@ -1,0 +1,771 @@
+Created At: 2026-06-05T22:58:27Z
+Completed At: 2026-06-05T22:58:27Z
+File Path: `file:///C:/jpm_app/app/chat.tsx`
+Total Lines: 1185
+Total Bytes: 49468
+Showing lines 170 to 215
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+170: 
+171:   const flatListRef = useRef<FlatList>(null)
+172:   const inputRef = useRef<TextInput>(null)
+173:   const didFocus = useRef(false)
+174:   const channelRef = useRef<any>(null)
+175:   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+176:   const [isTyping, setIsTyping] = useState(false)
+177:   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+178: 
+179:   const sharedSecret = user && id ? getSharedSecret(user.id, id) : ''
+180:   const offerSentRef = useRef(false)
+181: 
+182:   // Auto-send offer if arriving from product page with make_offer param
+183:   useEffect(() => {
+184:     if (!make_offer || !user || !id || offerSentRef.current) return
+185:     offerSentRef.current = true
+186:     const sendOffer = async () => {
+187:       const content = `💰 Make an Offer: TZS ${parseFloat(make_offer).toLocaleString()} for "${product_name ? decodeURIComponent(product_name) : 'a product'}"`
+188:       const encrypted = await encryptMessage(content, getSharedSecret(user.id, id))
+189:       await supabase.from('messages').insert({
+190:         sender_id: user.id,
+191:         receiver_id: id,
+192:         content: encrypted,
+193:         is_shop_chat: true,
+194:         is_offer: true,
+195:         offer_amount: parseFloat(make_offer),
+196:         offer_status: 'pending',
+197:         offer_product_id: product_id || null,
+198:       } as any)
+199:     }
+200:     sendOffer()
+201:   }, [make_offer, user, id])
+202:   useFocusEffect(
+203:     useCallback(() => {
+204:       if (!didFocus.current) {
+205:         didFocus.current = true
+206:         const t = setTimeout(() => { inputRef.current?.focus() }, 400)
+207:         return () => clearTimeout(t)
+208:       }
+209:     }, [])
+210:   )
+211: 
+212:   // Load partner profile (with cache)
+213:   useEffect(() => {
+214:     if (!id) return
+215:     // Show cached partner instantly
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+Created At: 2026-06-05T22:58:36Z
+Completed At: 2026-06-05T22:58:37Z
+File Path: `file:///C:/jpm_app/app/chat.tsx`
+Total Lines: 1185
+Total Bytes: 49468
+Showing lines 870 to 930
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+870:             <View style={styles.emojiGrid}>
+871:               {EMOJIS.map(e => (
+872:                 <TouchableOpacity key={e} onPress={() => addEmoji(e)} style={styles.emojiBtn}>
+873:                   <Text style={styles.emojiText}>{e}</Text>
+874:                 </TouchableOpacity>
+875:               ))}
+876:             </View>
+877:           </View>
+878:         )}
+879: 
+880:         {/* ── Input bar / Request status ── */}
+881:         {checkingRequest ? (
+882:           <View style={[styles.requestBanner, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+883:             <ActivityIndicator size="small" color="#000" />
+884:           </View>
+885:         ) : requestStatus === 'allowed' ? (
+886:           recording ? (
+887:             // ── Recording UI ──
+888:             <View style={[styles.recordingBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+889:               <TouchableOpacity onPress={cancelRecording} style={styles.recordCancelBtn}>
+890:                 <Ionicons name="close" size={24} color="#ef4444" />
+891:               </TouchableOpacity>
+892:               <View style={styles.recordingInfo}>
+893:                 <Animated.View style={[styles.recordDot, { transform: [{ scale: pulseAnim }] }]} />
+894:                 <Text style={styles.recordingTime}>{formatRecordingTime(recordingDuration)}</Text>
+895:               </View>
+896:               <TouchableOpacity onPress={stopAndSendVoice} style={styles.recordSendBtn}>
+897:                 <Ionicons name="send" size={20} color="#fff" />
+898:               </TouchableOpacity>
+899:             </View>
+900:           ) : (
+901:             // ── Normal input bar ──
+902:             <>
+903:               {replyingTo && (
+904:                 <View style={styles.replyingToBar}>
+905:                   <View style={styles.replyingToContent}>
+906:                     <Text style={styles.replyingToLabel}>Replying to {replyingTo.sender_id === user.id ? 'yourself' : partner?.full_name?.split(' ')[0]}</Text>
+907:                     <Text style={styles.replyingToText} numberOfLines={1}>
+908:                       {replyingTo.content.startsWith('voice:') ? '🎤 Voice note' : 
+909:                        replyingTo.content.startsWith('gif:') ? '🖼️ GIF' : 
+910:                        replyingTo.content}
+911:                     </Text>
+912:                   </View>
+913:                   <TouchableOpacity onPress={() => setReplyingTo(null)} style={{ padding: 4 }}>
+914:                     <Ionicons name="close-circle" size={24} color={colors.textDim} />
+915:                   </TouchableOpacity>
+916:                 </View>
+917:               )}
+918:               {isTyping && (
+919:                 <Text style={styles.typingIndicatorText}>
+920:                   {partner?.full_name?.split(' ')[0] || partner?.username || 'User'} is typing...
+921:                 </Text>
+922:               )}
+923:               <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+924:                 <View style={styles.inputRow}>
+925:                   <TextInput
+926:                     ref={inputRef}
+927:                     style={styles.input}
+928:                     placeholder="Type a message..."
+929:                     placeholderTextColor="#a1a1aa"
+930:                     value={input}
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+Created At: 2026-06-06T09:59:43Z
+Completed At: 2026-06-06T09:59:43Z
+File Path: `file:///C:/jpm_app/app/chat.tsx`
+Total Lines: 1185
+Total Bytes: 49694
+Showing lines 1 to 60
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: import { getCdnUrl } from '../lib/cdn';
+2: // app/chat.tsx — Full E2E encrypted chat with voice, emoji, and GIF support
+3: import { useTheme } from '../lib/theme';
+4: import React, { useEffect, useState, useRef, useCallback } from 'react'
+5: import {
+6:   View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet,
+7:   Platform, Image, ActivityIndicator, Alert,
+8:   Dimensions, Animated, InteractionManager, Keyboard
+9: } from 'react-native'
+10: import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+11: 
+12: const KeyboardAvoidingView = require('react-native').KeyboardAvoidingView
+13: import { useLocalSearchParams, router, useFocusEffect } from 'expo-router'
+14: import { Ionicons } from '@expo/vector-icons'
+15: import { createClient } from '../lib/supabase'
+16: import { useAuth } from '../lib/auth'
+17: import { BackButton } from '../components/BackButton'
+18: import { encryptMessage, decryptMessage, getSharedSecret } from '../lib/crypto'
+19: import { Audio } from 'expo-av'
+20: import { GiphyPicker } from '../components/GiphyPicker'
+21: import { Skeleton } from '../components/Skeleton'
+22: import AsyncStorage from '@react-native-async-storage/async-storage'
+23: import { PanResponder } from 'react-native'
+24: 
+25: type Message = {
+26:   id: string
+27:   content: string
+28:   sender_id: string
+29:   receiver_id: string
+30:   created_at: string
+31:   is_read: boolean
+32:   is_shop_chat?: boolean
+33:   is_offer?: boolean
+34:   offer_amount?: number
+35:   offer_status?: string // 'pending', 'accepted', 'declined'
+36:   offer_product_id?: string
+37: }
+38: 
+39: // ── Swipe to reply wrapper ────────────────────────────────────────────────────
+40: const SwipeableMessage = React.memo(({ children, onSwipe, mine }: { children: React.ReactNode; onSwipe: () => void; mine: boolean }) => {
+41:   const translateX = useRef(new Animated.Value(0)).current
+42: 
+43:   const panResponder = useRef(PanResponder.create({
+44:     onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dy) < 12,
+45:     onPanResponderMove: (_, g) => {
+46:       if (g.dx > 0) translateX.setValue(Math.min(g.dx, 60))
+47:     },
+48:     onPanResponderRelease: (_, g) => {
+49:       if (g.dx > 50) onSwipe()
+50:       Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start()
+51:     },
+52:     onPanResponderTerminate: () => {
+53:       Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start()
+54:     },
+55:   })).current
+56: 
+57:   return (
+58:     <Animated.View style={{ flexShrink: 1, transform: [{ translateX }] }} {...panResponder.panHandlers}>
+59:       {children}
+60:     </Animated.View>
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+Created At: 2026-06-06T10:11:32Z
+Completed At: 2026-06-06T10:11:32Z
+File Path: `file:///C:/jpm_app/app/chat.tsx`
+Total Lines: 1185
+Total Bytes: 49694
+Showing lines 60 to 120
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+60:     </Animated.View>
+61:   )
+62: })
+63: 
+64: // Emoji grid — matches web
+65: const EMOJIS = ['😂', '❤️', '🔥', '👀', '😭', '💀', '🤣', '✨', '😤', '🙏', '👏', '😍', '🥺', '💪', '⚡', '🎉', '😈', '🤝', '🫡', '😎', '🤯', '💯', '👑', '🫶']
+66: 
+67: // ── Voice note player component ──────────────────────────────────────────────
+68: const VoiceNote = React.memo(({ url, mine }: { url: string; mine: boolean }) => {
+69:   const { colors } = useTheme();
+70:   const styles = React.useMemo(() => getStyles(colors), [colors]);
+71:   const [playing, setPlaying] = useState(false)
+72:   const [duration, setDuration] = useState(0)
+73:   const [position, setPosition] = useState(0)
+74:   const soundRef = useRef<Audio.Sound | null>(null)
+75: 
+76:   const play = async () => {
+77:     try {
+78:       if (soundRef.current) {
+79:         const status = await soundRef.current.getStatusAsync()
+80:         if (status.isLoaded && status.isPlaying) {
+81:           await soundRef.current.pauseAsync()
+82:           setPlaying(false)
+83:           return
+84:         }
+85:         if (status.isLoaded) {
+86:           await soundRef.current.playFromPositionAsync(0)
+87:           setPlaying(true)
+88:           return
+89:         }
+90:       }
+91: 
+92:       await Audio.setAudioModeAsync({ playsInSilentModeIOS: true })
+93:       const { sound } = await Audio.Sound.createAsync(
+94:         { uri: url },
+95:         { shouldPlay: true },
+96:         (status) => {
+97:           if (status.isLoaded) {
+98:             setPosition(status.positionMillis || 0)
+99:             setDuration(status.durationMillis || 0)
+100:             if (status.didJustFinish) {
+101:               setPlaying(false)
+102:               setPosition(0)
+103:             }
+104:           }
+105:         }
+106:       )
+107:       soundRef.current = sound
+108:       setPlaying(true)
+109:     } catch (e: any) {
+110:       if (e?.message?.includes('-11828')) {
+111:         Alert.alert('Unsupported format', 'This voice note was recorded on the web (.webm) and iOS does not support it natively.')
+112:       } else {
+113:         console.error('Voice playback error:', e)
+114:       }
+115:     }
+116:   }
+117: 
+118:   useEffect(() => {
+119:     return () => { soundRef.current?.unloadAsync() }
+120:   }, [])
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+Created At: 2026-06-06T10:12:10Z
+Completed At: 2026-06-06T10:12:10Z
+File Path: `file:///C:/jpm_app/app/chat.tsx`
+Total Lines: 1185
+Total Bytes: 49694
+Showing lines 200 to 300
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+200:       } as any)
+201:     }
+202:     sendOffer()
+203:   }, [make_offer, user, id])
+204:   // useFocusEffect removed to prevent 400ms manual delay; using autoFocus instead
+205:   // Load partner profile (with cache)
+206:   useEffect(() => {
+207:     if (!id) return
+208:     // Show cached partner instantly
+209:     AsyncStorage.getItem(`@partner_${id}`).then(cached => {
+210:       if (cached) try { setPartner(JSON.parse(cached)) } catch {}
+211:     })
+212:     // Then fetch fresh from network
+213:     supabase.from('profiles').select('*').eq('id', id).single()
+214:       .then(({ data }) => {
+215:         if (data) {
+216:           setPartner(data)
+217:           AsyncStorage.setItem(`@partner_${id}`, JSON.stringify(data))
+218:         }
+219:       })
+220:   }, [id])
+221: 
+222:   const checkRequestStatus = useCallback(async () => {
+223:     if (!user || !id) return
+224:     // Shop chats bypass the follow/request gate entirely
+225:     if (is_shop === 'true' || !!make_offer) {
+226:       setRequestStatus('allowed')
+227:       setCheckingRequest(false)
+228:       return
+229:     }
+230:     setCheckingRequest(true)
+231: 
+232:     const { count } = await supabase
+233:       .from('messages')
+234:       .select('*', { count: 'exact', head: true })
+235:       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${id}),and(sender_id.eq.${id},receiver_id.eq.${user.id})`)
+236: 
+237:     if ((count || 0) > 0) {
+238:       setRequestStatus('allowed')
+239:       setCheckingRequest(false)
+240:       return
+241:     }
+242: 
+243:     const { data: followData } = await supabase
+<truncated 204 bytes>
+owData && followData.length > 0) {
+249:       setRequestStatus('allowed')
+250:       setCheckingRequest(false)
+251:       return
+252:     }
+253: 
+254:     const { data: req } = await supabase
+255:       .from('message_requests')
+256:       .select('*')
+257:       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${id}),and(sender_id.eq.${id},receiver_id.eq.${user.id})`)
+258:       .maybeSingle()
+259: 
+260:     if (!req) {
+261:       setRequestStatus(null)
+262:     } else if ((req as any).status === 'accepted') {
+263:       setRequestStatus('allowed')
+264:     } else if ((req as any).status === 'pending') {
+265:       if ((req as any).sender_id === user.id) setRequestStatus('pending_sent')
+266:       else setRequestStatus('pending_received')
+267:     } else if ((req as any).status === 'declined') {
+268:       setRequestStatus('declined')
+269:     }
+270: 
+271:     setCheckingRequest(false)
+272:   }, [user, id])
+273: 
+274:   useEffect(() => { checkRequestStatus() }, [checkRequestStatus])
+275: 
+276:   // Decrypt and load messages
+277:   const loadMessages = useCallback(async () => {
+278:     if (!user || !id) return
+279: 
+280:     // Offline Cache load
+281:     const cached = await AsyncStorage.getItem(`@chat_${user.id}_${id}`)
+282:     if (cached) {
+283:       try {
+284:         setMessages(JSON.parse(cached))
+285:         setLoading(false)
+286:       } catch (e) {}
+287:     }
+288: 
+289:     const { data } = await supabase
+290:       .from('messages')
+291:       .select('*')
+292:       .or(
+293:         `and(sender_id.eq.${user.id},receiver_id.eq.${id}),` +
+294:         `and(sender_id.eq.${id},receiver_id.eq.${user.id})`
+295:       )
+296:       .order('created_at', { ascending: false })
+297:       .limit(100)
+298: 
+299:     if (data) {
+300:       const decrypted = await Promise.all(
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+Created At: 2026-06-06T10:12:39Z
+Completed At: 2026-06-06T10:12:39Z
+File Path: `file:///C:/jpm_app/app/chat.tsx`
+Total Lines: 1185
+Total Bytes: 49694
+Showing lines 680 to 750
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+680:       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, offer_status: 'declined' } : m))
+681:     }
+682: 
+683:     if (isOffer) {
+684:       const status = msg.offer_status || 'pending'
+685:       const isSeller = !mine // seller is the receiver
+686:       return (
+687:         <View style={[styles.msgRow, { justifyContent: 'center', marginVertical: 6 }]}>
+688:           <View style={{
+689:             width: '90%', maxWidth: 340,
+690:             backgroundColor: colors.card || '#111',
+691:             borderRadius: 20, padding: 16,
+692:             borderWidth: 1.5,
+693:             borderColor: status === 'accepted' ? '#16a34a' : status === 'declined' ? '#ef4444' : '#f59e0b',
+694:           }}>
+695:             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+696:               <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: status === 'accepted' ? '#16a34a22' : status === 'declined' ? '#ef444422' : '#f59e0b22', justifyContent: 'center', alignItems: 'center', marginRight: 10 }}>
+697:                 <Text style={{ fontSize: 18 }}>{status === 'accepted' ? '✅' : status === 'declined' ? '❌' : '🤝'}</Text>
+698:               </View>
+699:               <View style={{ flex: 1 }}>
+700:                 <Text style={{ color: colors.text, fontWeight: '800', fontSize: 13 }}>Price Offer</Text>
+701:                 <Text style={{ color: colors.textDim, fontSize: 12 }} numberOfLines={1}>{actualContent.replace('💰 Make an Offer: ', '')}</Text>
+702:               </View>
+703:             </View>
+704: 
+705:         
+<truncated 1250 bytes>
+ '#fff', fontWeight: '700', fontSize: 13 }}>Accept</Text>
+716:                   </TouchableOpacity>
+717:                 </View>
+718:               )}
+719:               {status === 'accepted' && mine && (
+720:                 <TouchableOpacity
+721:                   onPress={() => router.push(`/cart`)}
+722:                   style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#16a34a' }}
+723:                 >
+724:                   <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Checkout →</Text>
+725:                 </TouchableOpacity>
+726:               )}
+727:             </View>
+728:           </View>
+729:         </View>
+730:       )
+731:     }
+732: 
+733:     return (
+734:       <View style={[styles.msgRow, mine ? styles.msgRowMine : styles.msgRowTheirs, { marginTop: sameAsOlder ? 2 : 10 }]}>
+735:         {!mine && !sameAsNewer && partner?.avatar_url ? (
+736:           <Image source={{ uri: getCdnUrl(partner.avatar_url) }} style={styles.msgAvatar} />
+737:         ) : !mine ? (
+738:           <View style={styles.msgAvatarSpacer} />
+739:         ) : null}
+740: 
+741:         <SwipeableMessage
+742:           mine={mine}
+743:           onSwipe={() => setReplyingTo({ ...msg, content: actualContent })}
+744:         >
+745:           {replyMsg && (
+746:             <View style={[styles.replyPreview, mine ? styles.replyPreviewMine : styles.replyPreviewTheirs, { alignSelf: mine ? 'flex-end' : 'flex-start' }]}>
+747:               <Text style={styles.replyPreviewText} numberOfLines={1}>
+748:                 {replyMsg.content.startsWith('voice:') ? '🎤 Voice note' :
+749:                  replyMsg.content.startsWith('gif:') ? '🖼️ GIF' :
+750:                  replyMsg.content.includes('|') ? replyMsg.content.split('|')[1] : replyMsg.content}
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+Created At: 2026-06-06T10:13:46Z
+Completed At: 2026-06-06T10:13:46Z
+File Path: `file:///C:/jpm_app/app/chat.tsx`
+Total Lines: 1185
+Total Bytes: 49694
+Showing lines 900 to 1100
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+900:             // ── Normal input bar ──
+901:             <>
+902:               {replyingTo && (
+903:                 <View style={styles.replyingToBar}>
+904:                   <View style={styles.replyingToContent}>
+905:                     <Text style={styles.replyingToLabel}>Replying to {replyingTo.sender_id === user.id ? 'yourself' : partner?.full_name?.split(' ')[0]}</Text>
+906:                     <Text style={styles.replyingToText} numberOfLines={1}>
+907:                       {replyingTo.content.startsWith('voice:') ? '🎤 Voice note' : 
+908:                        replyingTo.content.startsWith('gif:') ? '🖼️ GIF' : 
+909:                        replyingTo.content}
+910:                     </Text>
+911:                   </View>
+912:                   <TouchableOpacity onPress={() => setReplyingTo(null)} style={{ padding: 4 }}>
+913:                     <Ionicons name="close-circle" size={24} color={colors.textDim} />
+914:                   </TouchableOpacity>
+915:                 </View>
+916:               )}
+917:               {isTyping && (
+918:                 <Text style={styles.typingIndicatorText}>
+919:                   {partner?.full_name?.split(' ')[0] || partner?.username || 'User'} is typing...
+920:                 </Text>
+921:               )}
+922:               <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+923:                 <View style={styles.inputRow}>
+924:                   <TextInput
+925:                     ref={inputRef}
+926:                     style={styles.input}
+927:                     placeholde
+<truncated 6937 bytes>
+ colors.text, lineHeight: 21 },
+1060:   msgTime: { fontSize: 11, color: colors.textDim, marginTop: 4, alignSelf: 'flex-end', marginHorizontal: 4 },
+1061:   msgTimeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 4, marginHorizontal: 4 },
+1062: 
+1063:   // GIF in message
+1064:   gifMessage: { width: SCREEN_WIDTH * 0.55, height: SCREEN_WIDTH * 0.4, borderRadius: 16 },
+1065: 
+1066:   // Voice note
+1067:   voiceNote: {
+1068:     flexDirection: 'row', alignItems: 'center', gap: 8,
+1069:     minWidth: 160, paddingHorizontal: 4, paddingVertical: 4,
+1070:   },
+1071:   voiceWaveform: {
+1072:     flex: 1, height: 6, backgroundColor: 'rgba(255,255,255,0.25)',
+1073:     borderRadius: 3, overflow: 'hidden',
+1074:   },
+1075:   voiceProgress: { height: '100%', backgroundColor: colors.background, borderRadius: 3 },
+1076:   voiceProgressMine: { backgroundColor: colors.background },
+1077:   voiceTime: { fontSize: 12, color: colors.textDim, fontVariant: ['tabular-nums'] },
+1078:   voiceTimeMine: { color: 'rgba(255,255,255,0.8)' },
+1079: 
+1080:   // Emoji picker
+1081:   emojiPicker: {
+1082:     backgroundColor: colors.background,
+1083:     borderTopWidth: StyleSheet.hairlineWidth,
+1084:     borderTopColor: colors.border,
+1085:     paddingHorizontal: 12,
+1086:     paddingVertical: 8,
+1087:   },
+1088:   emojiGrid: {
+1089:     flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center',
+1090:   },
+1091:   emojiBtn: { padding: 6 },
+1092:   emojiText: { fontSize: 24 },
+1093: 
+1094:   // Input bar
+1095:   inputBar: {
+1096:     flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+1097:     paddingHorizontal: 12, paddingVertical: 8,
+1098:     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border,
+1099:     backgroundColor: colors.background,
+1100:   },
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+Created At: 2026-06-06T10:13:53Z
+Completed At: 2026-06-06T10:13:54Z
+File Path: `file:///C:/jpm_app/app/chat.tsx`
+Total Lines: 1185
+Total Bytes: 49694
+Showing lines 115 to 145
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+115:     }
+116:   }
+117: 
+118:   useEffect(() => {
+119:     return () => { soundRef.current?.unloadAsync() }
+120:   }, [])
+121: 
+122:   const progress = duration > 0 ? position / duration : 0
+123:   const formatTime = (ms: number) => {
+124:     const s = Math.floor(ms / 1000)
+125:     return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
+126:   }
+127: 
+128:   return (
+129:     <TouchableOpacity onPress={play} style={styles.voiceNote} activeOpacity={0.7}>
+130:       <Ionicons
+131:         name={playing ? 'pause' : 'play'}
+132:         size={22}
+133:         color={mine ? colors.background : '#2563eb'}
+134:       />
+135:       <View style={styles.voiceWaveform}>
+136:         <View style={[styles.voiceProgress, { width: `${progress * 100}%` as any }, mine ? styles.voiceProgressMine : null]} />
+137:       </View>
+138:       <Text style={[styles.voiceTime, mine ? styles.voiceTimeMine : null]}>
+139:         {formatTime(playing ? position : duration)}
+140:       </Text>
+141:     </TouchableOpacity>
+142:   )
+143: })
+144: 
+145: export default function () {
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+Created At: 2026-06-06T10:13:59Z
+Completed At: 2026-06-06T10:13:59Z
+File Path: `file:///C:/jpm_app/app/chat.tsx`
+Total Lines: 1185
+Total Bytes: 49694
+Showing lines 145 to 200
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+145: export default function () {
+146:   const { colors } = useTheme();
+147:   const styles = React.useMemo(() => getStyles(colors), [colors]);
+148:   const { id, is_shop, make_offer, product_id, product_name } = useLocalSearchParams<{ id: string, is_shop?: string, make_offer?: string, product_id?: string, product_name?: string }>()
+149:   const { user } = useAuth()
+150:   const supabase = createClient()
+151:   const insets = useSafeAreaInsets()
+152: 
+153:   const [partner, setPartner] = useState<any>(null)
+154:   const [messages, setMessages] = useState<Message[]>([])
+155:   const [input, setInput] = useState('')
+156:   const [loading, setLoading] = useState(true)
+157:   const [sending, setSending] = useState(false)
+158:   const isShopChat = is_shop === 'true' || !!make_offer || messages.some(m => m.is_shop_chat)
+159: 
+160:   // For shop chats skip the follow/request gate — always allow
+161:   const [requestStatus, setRequestStatus] = useState<string | null>('allowed')
+162:   const [checkingRequest, setCheckingRequest] = useState(true)
+163: 
+164:   // Feature states
+165:   const [showGiphy, setShowGiphy] = useState(false)
+166:   const [showEmoji, setShowEmoji] = useState(false)
+167:   const [recording, setRecording] = useState(false)
+168:   const [recordingDuration, setRecordingDuration] = useState(0)
+169:   const recordingRef = useRef<Audio.Recording | null>(null)
+170:   const recordingTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+171:   const pulseAnim = useRef(new Animated.Value(1)).current
+172: 
+173:   const flatListRef = useRef<FlatList>(null)
+174:   const inputRef = useRef<TextInput>(null)
+175:   const didFocus = useRef(false)
+176:   const channelRef = useRef<any>(null)
+177:   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+178:   const [isTyping, setIsTyping] = useState(false)
+179:   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+180: 
+181:   const sharedSecret = user && id ? getSharedSecret(user.id, id) : ''
+182:   const offerSentRef = useRef(false)
+183: 
+184:   // Auto-send offer if arriving from product page with make_offer param
+185:   useEffect(() => {
+186:     if (!make_offer || !user || !id || offerSentRef.current) return
+187:     offerSentRef.current = true
+188:     const sendOffer = async () => {
+189:       const content = `💰 Make an Offer: TZS ${parseFloat(make_offer).toLocaleString()} for "${product_name ? decodeURIComponent(product_name) : 'a product'}"`
+190:       const encrypted = await encryptMessage(content, getSharedSecret(user.id, id))
+191:       await supabase.from('messages').insert({
+192:         sender_id: user.id,
+193:         receiver_id: id,
+194:         content: encrypted,
+195:         is_shop_chat: true,
+196:         is_offer: true,
+197:         offer_amount: parseFloat(make_offer),
+198:         offer_status: 'pending',
+199:         offer_product_id: product_id || null,
+200:       } as any)
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+Created At: 2026-06-06T10:14:05Z
+Completed At: 2026-06-06T10:14:05Z
+File Path: `file:///C:/jpm_app/app/chat.tsx`
+Total Lines: 1185
+Total Bytes: 49694
+Showing lines 1 to 20
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: import { getCdnUrl } from '../lib/cdn';
+2: // app/chat.tsx — Full E2E encrypted chat with voice, emoji, and GIF support
+3: import { useTheme } from '../lib/theme';
+4: import React, { useEffect, useState, useRef, useCallback } from 'react'
+5: import {
+6:   View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet,
+7:   Platform, Image, ActivityIndicator, Alert,
+8:   Dimensions, Animated, InteractionManager, Keyboard
+9: } from 'react-native'
+10: import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+11: 
+12: const KeyboardAvoidingView = require('react-native').KeyboardAvoidingView
+13: import { useLocalSearchParams, router, useFocusEffect } from 'expo-router'
+14: import { Ionicons } from '@expo/vector-icons'
+15: import { createClient } from '../lib/supabase'
+16: import { useAuth } from '../lib/auth'
+17: import { BackButton } from '../components/BackButton'
+18: import { encryptMessage, decryptMessage, getSharedSecret } from '../lib/crypto'
+19: import { Audio } from 'expo-av'
+20: import { GiphyPicker } from '../components/GiphyPicker'
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+Created At: 2026-06-06T10:14:16Z
+Completed At: 2026-06-06T10:14:16Z
+File Path: `file:///C:/jpm_app/app/chat.tsx`
+Total Lines: 1185
+Total Bytes: 49694
+Showing lines 410 to 480
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+410:   // ── Send text message ─────────────────────────────────────────────────────
+411:   const sendMessage = async () => {
+412:     if (!input.trim() || !user || !id || sending) return
+413:     const text = input.trim()
+414:     const payloadText = replyingTo ? `reply:${replyingTo.id}|${text}` : text
+415:     setInput('')
+416:     setShowEmoji(false)
+417:     setSending(true)
+418:     setReplyingTo(null)
+419: 
+420:     const encrypted = await encryptMessage(payloadText, sharedSecret)
+421:     const { error } = await supabase.from('messages').insert({
+422:       sender_id: user.id,
+423:       receiver_id: id,
+424:       content: encrypted,
+425:       is_shop_chat: isShopChat,
+426:     } as any)
+427: 
+428:     if (error) {
+429:       Alert.alert('Error', 'Failed to send message')
+430:       setInput(text)
+431:     } else {
+432:       sendPushNotification('text')
+433:       setMessages(prev => [{
+434:         id: Date.now().toString(),
+435:         content: payloadText,
+436:         sender_id: user.id,
+437:         receiver_id: id,
+438:         created_at: new Date().toISOString(),
+439:         is_read: false,
+440:       }, ...prev])
+441:       setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 50)
+442:     }
+443:     setSending(false)
+444:   }
+445: 
+446:   // ── Send GIF ──────────────────────────────────────────────────────────────
+447:   const sendGif = async (url: string) => {
+448:     if (!user || !id) return
+449:     setShowGiphy(false)
+450:     const payloadText = replyingTo ? `reply:${replyingTo.id}|gif:${url}` : `gif:${url}`
+451:     setReplyingTo(null)
+452:     const encrypted = await encryptMessage(payloadText, sharedSecret)
+453:     const { error } = await supabase.from('messages').insert({
+454:       sender_id: user.id,
+455:       receiver_id: id,
+456:       content: encrypted,
+457:       is_shop_chat: isShopChat,
+458:     } as any)
+459:     if (!error) {
+460:       sendPushNotification('gif')
+461:       setMessages(prev => [{
+462:         id: Date.now().toString(),
+463:         content: payloadText,
+464:         sender_id: user.id,
+465:         receiver_id: id,
+466:         created_at: new Date().toISOString(),
+467:         is_read: false,
+468:       }, ...prev])
+469:     }
+470:   }
+471: 
+472:   // ── Add emoji to input ────────────────────────────────────────────────────
+473:   const addEmoji = (emoji: string) => {
+474:     setInput(prev => prev + emoji)
+475:     inputRef.current?.focus()
+476:   }
+477: 
+478:   // ── Voice recording ───────────────────────────────────────────────────────
+479:   const startRecording = async () => {
+480:     if (recording) {
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+Created At: 2026-06-06T10:43:21Z
+Tool is running as a background task with task id: cd228e72-a0f7-44b1-9390-416bf97600e9/task-2329
+Task Description: node -e "const fs=require('fs'); const lines=fs.readFileSync('C:\\Users\\Joshan\\.gemini\\antigravity-ide\\brain\\cd228e72-a0f7-44b1-9390-416bf97600e9\\.system_generated\\logs\\transcript.jsonl', 'utf-8').split('\n').filter(Boolean); console.log(lines.find(l => l.includes('Total Lines: 1185')));"
+Task logs are available at: file:///C:/Users/Joshan/.gemini/antigravity-ide/brain/cd228e72-a0f7-44b1-9390-416bf97600e9/.system_generated/tasks/task-2329.log
+---
+The following is a <SYSTEM_MESSAGE> not actually sent by the user. It is provided by the system as important information to pay attention to.
+
+<SYSTEM_MESSAGE>
+[Message] timestamp=2026-06-06T10:43:32Z sender=cd228e72-a0f7-44b1-9390-416bf97600e9/task-2329 priority=MESSAGE_PRIORITY_HIGH content=Task id "cd228e72-a0f7-44b1-9390-416bf97600e9/task-2329" finished with result:
+
+				The command completed successfully.
+				Output:
+				{"step_index":1432,"source":"MODEL","type":"VIEW_FILE","status":"DONE","created_at":"2026-06-05T22:58:27Z","content":"Created At: 2026-06-05T22:58:27Z\nCompleted At: 2026-06-05T22:58:27Z\nFile Path: `file:///C:/jpm_app/app/chat.tsx`\nTotal Lines: 1185\nTotal Bytes: 49468\nShowing lines 170 to 215\nThe following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.\n170: \r\n171:   const flatListRef = useRef<FlatList>(null)\r\n172:   const inputRef = useRef<TextInput>(null)\r\n173:   const didFocus = useRef(false)\r\n174:   const channelRef = useRef<any>(null)\r\n175:   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)\r\n176:   const [isTyping, setIsTyping] = useState(false)\r\n177:   const [replyingTo, setReplyingTo] = useState<Message | null>(null)\r\n178: \r\n179:   const sharedSecret = user && id ? getSharedSecret(user.id, id) : ''\r\n180:   const offerSentRef = useRef(false)\r\n181: \r\n182:   // Auto-send offer if arriving from product page with make_offer param\r\n183:   useEffect(() => {\r\n184:     if (!make_offer || !user || !id || offerSentRef.current) return\r\n185:     offerSentRef.current = true\r\n186:     const sendOffer = async () => {\r\n187:       const content = `💰 Make an Offer: TZS ${parseFloat(make_offer).toLocaleString()} for \"${product_name ? decodeURIComponent(product_name) : 'a product'}\"`\r\n188:       const encrypted = await encryptMessage(content, getSharedSecret(user.id, id))\r\n189:       await supabase.from('messages').insert({\r\n190:         sender_id: user.id,\r\n191:         receiver_id: id,\r\n192:         content: encrypted,\r\n193:         is_shop_chat: true,\r\n194:         is_offer: true,\r\n195:         offer_amount: parseFloat(make_offer),\r\n196:         offer_status: 'pending',\r\n197:         offer_product_id: product_id || null,\r\n198:       } as any)\r\n199:     }\r\n200:     sendOffer()\r\n201:   }, [make_offer, user, id])\r\n202:   useFocusEffect(\r\n203:     useCallback(() => {\r\n204:       if (!didFocus.current) {\r\n205:         didFocus.current = true\r\n206:         const t = setTimeout(() => { inputRef.current?.focus() }, 400)\r\n207:         return () => clearTimeout(t)\r\n208:       }\r\n209:     }, [])\r\n210:   )\r\n211: \r\n212:   // Load partner profile (with cache)\r\n213:   useEffect(() => {\r\n214:     if (!id) return\r\n215:     // Show cached partner instantly\r\nThe above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.\n"}
+
+
+Log: file:///C:/Users/Joshan/.gemini/antigravity-ide/brain/cd228e72-a0f7-44b1-9390-416bf97600e9/.system_generated/tasks/task-2329.log
+</SYSTEM_MESSAGE>
+---
+Created At: 2026-06-06T10:51:13Z
+Tool is running as a background task with task id: cd228e72-a0f7-44b1-9390-416bf97600e9/task-2368
+Task Description: node -e "const fs=require('fs'); const lines=fs.readFileSync('C:\\Users\\Joshan\\.gemini\\antigravity-ide\\brain\\cd228e72-a0f7-44b1-9390-416bf97600e9\\.system_generated\\logs\\transcript.jsonl', 'utf-8').split('\n').filter(Boolean); lines.forEach(l => { const obj = JSON.parse(l); if(obj.content && obj.content.includes('Total Lines: 1185')) { console.log('Length:', obj.content.length); } });"
+Task logs are available at: file:///C:/Users/Joshan/.gemini/antigravity-ide/brain/cd228e72-a0f7-44b1-9390-416bf97600e9/.system_generated/tasks/task-2368.log
+---

@@ -1,0 +1,71 @@
+name: Build Unsigned iOS IPA
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build iOS IPA
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Expo Prebuild
+        run: npx expo prebuild -p ios --clean
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install 2>&1 | tee ../pod_install.log
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            URL=$(tail -n 100 ../pod_install.log | curl -s -F "content=<-" https://dpaste.com/api/v2/)
+            echo "::error::Pod install failed! View logs here: $URL"
+            exit 1
+          fi
+
+      - name: Build Unsigned Archive
+        run: |
+          set -o pipefail
+          xcodebuild clean archive -workspace ios/JPM.xcworkspace \
+            -scheme JPM \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            -archivePath build/JPM.xcarchive | tee xcodebuild.log | xcpretty
+
+      - name: Annotate log URL on failure
+        if: failure()
+        run: |
+          ERRORS=$(grep -E "error:|fatal error:" xcodebuild.log | head -50)
+          TAIL=$(tail -n 100 xcodebuild.log)
+          COMBINED=$(printf "=== ERRORS ===\n%s\n\n=== TAIL ===\n%s" "$ERRORS" "$TAIL")
+          URL=$(echo "$COMBINED" | curl -s -F "content=<-" https://dpaste.com/api/v2/)
+          echo "::error::Build failed! View logs here: $URL"
+
+      - name: Package into IPA
+        run: |
+          mkdir -p build/Payload
+          cp -R build/JPM.xcarchive/Products/Applications/JPM.app build/Payload
+          cd build
+          zip -r jpm-unsigned.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jpm-unsigned-ipa
+          path: build/jpm-unsigned.ipa

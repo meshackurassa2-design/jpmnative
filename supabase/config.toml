@@ -1,0 +1,38 @@
+
+[functions.clickpesa-payment]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/clickpesa-payment/index.ts"
+
+[functions.feed-the-brain]
+enabled = true
+verify_jwt = false
+import_map = "./functions/feed-the-brain/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/feed-the-brain/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/feed-the-brain/*.html" ]
+
+[functions.generate-video-ad]
+enabled = true
+verify_jwt = false
+import_map = "./functions/generate-video-ad/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/generate-video-ad/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/generate-video-ad/*.html" ]
+
+[functions.check-video-status]
+enabled = true
+verify_jwt = false
+import_map = "./functions/check-video-status/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/check-video-status/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/check-video-status/*.html" ]

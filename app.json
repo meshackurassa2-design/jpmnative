@@ -1,0 +1,79 @@
+{
+  "expo": {
+    "name": "JPM",
+    "slug": "jpm-socialmarket",
+    "version": "6.0.1",
+    "newArchEnabled": false,
+    "orientation": "portrait",
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/cc0498f6-2882-418a-8467-17df2bfbf8d6"
+    },
+    "runtimeVersion": "6.0.1",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "userInterfaceStyle": "automatic",
+    "scheme": "jpm",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.jpm.app",
+      "buildNumber": "28",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.jpm.app",
+      "versionCode": 29,
+      "predictiveBackGestureEnabled": false,
+      "icon": "./assets/icon_real.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon_real.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 35,
+            "minSdkVersion": 24
+          },
+          "ios": {
+            "deploymentTarget": "18.0"
+          }
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-8166782428171770~2422181294",
+          "iosAppId": "ca-app-pub-8166782428171770~2422181294"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "cc0498f6-2882-418a-8467-17df2bfbf8d6"
+      }
+    },
+    "owner": "dapazcm"
+  }
+}
