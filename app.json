@@ -2,7 +2,7 @@
   "expo": {
     "name": "JPM",
     "slug": "jpm-socialmarket",
-    "version": "6.0.1",
+    "version": "6.0.2",
     "newArchEnabled": true,
     "orientation": "portrait",
     "updates": {
@@ -11,7 +11,7 @@
       "fallbackToCacheTimeout": 0,
       "url": "https://u.expo.dev/cc0498f6-2882-418a-8467-17df2bfbf8d6"
     },
-    "runtimeVersion": "6.0.1",
+    "runtimeVersion": "6.0.2",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
@@ -23,14 +23,14 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.jpm.app",
-      "buildNumber": "28",
+      "buildNumber": "30",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.jpm.app",
-      "versionCode": 29,
+      "versionCode": 30,
       "predictiveBackGestureEnabled": false,
       "icon": "./assets/icon_real.png",
       "adaptiveIcon": {

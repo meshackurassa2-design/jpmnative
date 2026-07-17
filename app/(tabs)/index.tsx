@@ -1164,14 +1164,13 @@ export default function HomeScreen() {
     if (item.isSuggestedAccounts) return <SuggestedAccounts />
     if (item.isVerseCard) return <DailyVerseCard />
     if (item.isAdMobNative) {
-      // Show a DirectAdCard from the database if available (rotates through all ads by slot index)
-      if (directAds.length > 0) {
-        const slotIndex = parseInt(item.id.replace('admob-banner-', ''), 10) || 0
-        const ad = directAds[slotIndex % directAds.length]
-        return <DirectAdCard ad={ad} isAdmin={false} onDelete={() => {}} />
-      }
-      // Fallback: real AdMob banner (works in production builds, invisible in Expo Go)
-      return <NativeAdCard />
+      const slotIndex = parseInt(item.id.replace('admob-banner-', ''), 10) || 0
+      const directAd = directAds.length > 0 ? directAds[slotIndex % directAds.length] : null
+      return (
+        <NativeAdCard
+          fallback={directAd ? <DirectAdCard ad={directAd} isAdmin={false} onDelete={() => {}} /> : null}
+        />
+      )
     }
     if (item.isFoodPromo) return <FoodPromoCard onHideAll={hideAllSpecialPosts} />
     if (item.isServicePromo) return <ServicePromoCard onHideAll={hideAllSpecialPosts} />
@@ -1360,11 +1359,11 @@ const post = item as Post
               <View style={{ marginLeft: -10 }}>
                  {(() => {
                    const postHash = post.id.charCodeAt(0) + post.id.charCodeAt(post.id.length - 1)
-                   const showDirectAd = directAds.length > 0 && postHash % 2 === 0
-                   return showDirectAd ? (
-                     <DirectAdCard ad={directAds[postHash % directAds.length]} isAdmin={false} onDelete={() => {}} />
-                   ) : (
-                     <NativeAdCard />
+                   const directAd = directAds.length > 0 ? directAds[postHash % directAds.length] : null
+                   return (
+                     <NativeAdCard
+                       fallback={directAd ? <DirectAdCard ad={directAd} isAdmin={false} onDelete={() => {}} /> : null}
+                     />
                    )
                  })()}
               </View>

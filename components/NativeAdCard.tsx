@@ -18,22 +18,42 @@ try {
   // Running in Expo Go — native module not available, will return null
 }
 
-export function NativeAdCard() {
+export function NativeAdCard({ fallback }: { fallback?: React.ReactNode }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
+  const [adLoaded, setAdLoaded] = useState(false);
   const [adFailed, setAdFailed] = useState(false);
 
-  // If native module not available or ad failed to load, render nothing
-  if (!BannerAd || !BannerAdSize || adFailed) return null;
+  // If native module not available or ad failed to load, render our direct ad fallback
+  if (!BannerAd || !BannerAdSize || adFailed) {
+    return fallback ? <>{fallback}</> : null;
+  }
 
   return (
     <View style={styles.wrapper}>
-      <BannerAd
-        unitId={adUnitId}
-        size={BannerAdSize.BANNER}
-        requestOptions={{ requestNonPersonalizedAdsOnly: false }}
-        onAdFailedToLoad={() => setAdFailed(true)}
-      />
+      {/* Show Direct Ad fallback seamlessly while Google Ad is loading in the background */}
+      {!adLoaded && fallback && (
+        <View style={{ width: '100%' }}>
+          {fallback}
+        </View>
+      )}
+
+      {/* Google AdMob Banner - When loaded, it displays and hides our direct ad fallback */}
+      <View style={!adLoaded ? { height: 0, overflow: 'hidden', opacity: 0 } : { width: '100%', alignItems: 'center' }}>
+        <BannerAd
+          unitId={adUnitId}
+          size={BannerAdSize.BANNER}
+          requestOptions={{ requestNonPersonalizedAdsOnly: false }}
+          onAdLoaded={() => {
+            setAdLoaded(true);
+            setAdFailed(false);
+          }}
+          onAdFailedToLoad={(error: any) => {
+            setAdFailed(true);
+            setAdLoaded(false);
+          }}
+        />
+      </View>
     </View>
   );
 }
@@ -43,11 +63,7 @@ function getStyles(colors: any) {
     wrapper: {
       alignItems: 'center',
       backgroundColor: colors.card,
-      paddingVertical: 6,
-      borderBottomWidth: 0.5,
-      borderBottomColor: colors.border,
-      borderTopWidth: 0.5,
-      borderTopColor: colors.border,
+      width: '100%',
     },
   });
 }
