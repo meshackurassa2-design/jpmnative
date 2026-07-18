@@ -3,7 +3,7 @@ import { useTheme } from '../../lib/theme';
 import React, { useEffect, useState } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ActivityIndicator, ScrollView, Alert, Dimensions
+  ActivityIndicator, ScrollView, Alert, Dimensions, Modal, TextInput, KeyboardAvoidingView, Platform
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { createClient } from '../../lib/supabase'
@@ -24,6 +24,12 @@ export default function () {
   const [monthlyViews, setMonthlyViews] = useState(0)
   const [totalPosts, setTotalPosts] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState('Airtel Money')
+  const [paymentDetails, setPaymentDetails] = useState('')
+  const [receiverName, setReceiverName] = useState('')
+  const [isWithdrawing, setIsWithdrawing] = useState(false)
+  const [withdrawals, setWithdrawals] = useState<any[]>([])
 
   useEffect(() => {
     if (!user) return
@@ -41,6 +47,15 @@ export default function () {
       const { count } = await supabase.from('posts').select('*', { count: 'exact', head: true }).eq('creator_id', user.id)
       setTotalPosts(count || 0)
 
+      // Fetch past withdrawals
+      const { data: wData } = await supabase
+        .from('wallet_transactions')
+        .select('*')
+        .eq('profile_id', user.id)
+        .eq('type', 'WITHDRAWAL')
+        .order('created_at', { ascending: false })
+      if (wData) setWithdrawals(wData)
+
       setLoading(false)
     }
     fetchData()
@@ -54,22 +69,62 @@ export default function () {
     )
   }
 
-  const earnings = profile?.monetization_earnings || 0
+  const EXCHANGE_RATE = 2600
+  const earnings_usd = profile?.monetization_earnings || 0
+  const withdrawnEarnings_usd = profile?.withdrawn_earnings || 0
+  const availableBalance_usd = Math.max(earnings_usd - withdrawnEarnings_usd, 0)
+  
+  const earnings_tsh = earnings_usd * EXCHANGE_RATE
+  const availableBalance_tsh = availableBalance_usd * EXCHANGE_RATE
+  
   const appStatus = profile?.settings?.creator_application_status
   const isApproved = appStatus === 'approved'
   const isPending = appStatus === 'pending'
 
+  const handleWithdrawal = async () => {
+    if (!paymentDetails.trim() || !receiverName.trim()) {
+      return Alert.alert('Required', 'Please enter both the mobile number and the receiver\'s name.')
+    }
+    setIsWithdrawing(true)
+    const { data, error } = await supabase.rpc('request_monetization_withdrawal', {
+      p_amount_usd: availableBalance_usd,
+      p_payment_method: paymentMethod,
+      p_payment_details: { details: paymentDetails, receiver_name: receiverName }
+    })
+    setIsWithdrawing(false)
+    if (error) {
+      Alert.alert('Error', error.message)
+    } else if (data && data.success) {
+      setShowWithdrawModal(false)
+      Alert.alert('Success', data.message)
+      // Optimistic update
+      setProfile({ ...profile, withdrawn_earnings: withdrawnEarnings_usd + availableBalance_usd })
+      setWithdrawals([{
+        id: data.transaction_id || Math.random().toString(),
+        amount: availableBalance_tsh,
+        status: 'PENDING',
+        description: `${paymentMethod} Payout`,
+        created_at: new Date().toISOString()
+      }, ...withdrawals])
+    } else {
+      Alert.alert('Notice', data?.message || 'Failed to request withdrawal.')
+    }
+  }
+
   if (isApproved) {
-    const rpm = monthlyViews > 0 ? (earnings / (monthlyViews / 1000)) : 0;
-    const progressPercent = Math.min((earnings / 50) * 100, 100);
+    const calculatedRPM_usd = monthlyViews > 0 ? (earnings_usd / (monthlyViews / 1000)) : 0;
+    const cappedRPM_usd = Math.min(calculatedRPM_usd, 0.01);
+    const rpm_tsh = cappedRPM_usd * EXCHANGE_RATE;
+    const progressPercent = Math.min((availableBalance_tsh / 50000) * 100, 100);
 
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         
         {/* Clean Header */}
         <View style={[styles.headerArea, { marginBottom: 24, marginTop: 16 }]}>
-          <Text style={[styles.pageTitle, { fontSize: 40, letterSpacing: -1.5 }]}>${earnings.toFixed(2)}</Text>
-          <Text style={[styles.pageDesc, { fontSize: 14, textTransform: 'uppercase', letterSpacing: 1 }]}>Total Net Revenue</Text>
+          <Text style={[styles.pageTitle, { fontSize: 40, letterSpacing: -1.5 }]}>{availableBalance_tsh.toLocaleString()} TSH</Text>
+          <Text style={[styles.pageDesc, { fontSize: 14, textTransform: 'uppercase', letterSpacing: 1 }]}>Available Balance</Text>
+          <Text style={{ color: colors.textDim, fontSize: 12, marginTop: 4 }}>Lifetime Earnings: {earnings_tsh.toLocaleString()} TSH</Text>
         </View>
 
         {/* 2x2 Grid */}
@@ -82,7 +137,7 @@ export default function () {
           
           <View style={[styles.gridCell, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Ionicons name="stats-chart-outline" size={22} color={colors.textDim} style={{ marginBottom: 12 }} />
-            <Text style={styles.gridValue}>${rpm.toFixed(2)}</Text>
+            <Text style={styles.gridValue}>{Math.round(rpm_tsh).toLocaleString()} TSH</Text>
             <Text style={styles.gridLabel}>Avg. RPM</Text>
           </View>
 
@@ -102,9 +157,9 @@ export default function () {
         {/* Withdrawal Section */}
         <Text style={[styles.sectionHeader, { marginTop: 32 }]}>Payouts</Text>
         <View style={[styles.glassCard, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 12, paddingVertical: 24 }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
-            <Text style={{ fontSize: 15, color: colors.text, fontWeight: '600' }}>Threshold Progress</Text>
-            <Text style={{ fontSize: 15, color: colors.text, fontWeight: '800' }}>${earnings.toFixed(2)} / $50.00</Text>
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ fontSize: 15, color: colors.text, fontWeight: '600', marginBottom: 4 }}>Threshold Progress</Text>
+            <Text style={{ fontSize: 15, color: colors.text, fontWeight: '800' }}>{availableBalance_tsh.toLocaleString()} / 50,000 TSH</Text>
           </View>
           
           <View style={styles.progressBarBg}>
@@ -112,21 +167,94 @@ export default function () {
           </View>
           
           <Text style={{ color: colors.textDim, fontSize: 13, marginTop: 16, lineHeight: 20 }}>
-            You need to reach the $50 minimum threshold to request a payout. Payments are processed within 3-5 business days.
+            You need a minimum available balance of 50,000 TSH to request a payout. Payments are processed to your preferred account securely.
           </Text>
 
           <TouchableOpacity 
-            style={[styles.withdrawBtn, earnings < 50 && styles.withdrawBtnDisabled]}
-            disabled={earnings < 50}
+            style={[styles.withdrawBtn, availableBalance_tsh < 50000 && styles.withdrawBtnDisabled]}
+            disabled={availableBalance_tsh < 50000}
             activeOpacity={0.8}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              Alert.alert('Payout Requested', 'Your payout request is being processed.');
+              setShowWithdrawModal(true);
             }}
           >
-            <Text style={[styles.withdrawBtnText, earnings < 50 && styles.withdrawBtnTextDisabled]}>Withdraw Funds</Text>
+            <Text style={[styles.withdrawBtnText, availableBalance_tsh < 50000 && styles.withdrawBtnTextDisabled]}>Withdraw Funds</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Withdrawal History */}
+        {withdrawals.length > 0 && (
+          <View style={{ marginTop: 24 }}>
+            <Text style={[styles.sectionHeader, { marginBottom: 12 }]}>History</Text>
+            {withdrawals.map(w => (
+              <View key={w.id} style={[styles.glassCard, { backgroundColor: colors.card, borderColor: colors.border, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+                <View>
+                  <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>{Number(w.amount).toLocaleString()} TSH</Text>
+                  <Text style={{ color: colors.textDim, fontSize: 12, marginTop: 2 }}>{new Date(w.created_at).toLocaleDateString()}</Text>
+                </View>
+                <View style={[styles.statusBadge, w.status === 'PENDING' ? styles.bgOrange : (w.status === 'COMPLETED' ? {backgroundColor: 'rgba(16, 185, 129, 0.1)'} : styles.bgGray)]}>
+                  <Text style={[styles.statusBadgeText, w.status === 'PENDING' ? styles.textOrange : (w.status === 'COMPLETED' ? {color: '#10b981'} : styles.textGray)]}>{w.status}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Withdraw Modal */}
+        <Modal visible={showWithdrawModal} transparent animationType="slide">
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
+            style={styles.modalOverlay}
+          >
+            <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800', marginBottom: 16 }}>Request Payout</Text>
+              
+              <Text style={{ color: colors.textDim, fontSize: 14, marginBottom: 8 }}>You are withdrawing <Text style={{fontWeight: '700', color: colors.text}}>{availableBalance_tsh.toLocaleString()} TSH</Text>.</Text>
+
+              <Text style={styles.inputLabel}>Payment Method</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                {['Airtel Money', 'HaloPesa', 'Tigo Pesa'].map(m => (
+                  <TouchableOpacity 
+                    key={m} 
+                    style={[styles.methodBtn, paymentMethod === m && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                    onPress={() => setPaymentMethod(m)}
+                  >
+                    <Text style={[styles.methodBtnText, paymentMethod === m && { color: '#fff' }]}>{m}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.inputLabel}>Mobile Money Number</Text>
+              <TextInput
+                style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
+                placeholder="Phone number (e.g. 07... or 06...)"
+                placeholderTextColor={colors.textDim}
+                value={paymentDetails}
+                onChangeText={setPaymentDetails}
+                keyboardType="phone-pad"
+              />
+
+              <Text style={styles.inputLabel}>Receiver Name</Text>
+              <TextInput
+                style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background, marginBottom: 8 }]}
+                placeholder="Full name matching the account"
+                placeholderTextColor={colors.textDim}
+                value={receiverName}
+                onChangeText={setReceiverName}
+              />
+
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
+                <TouchableOpacity style={[styles.modalBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border }]} onPress={() => setShowWithdrawModal(false)}>
+                  <Text style={{ color: colors.text, fontWeight: '600' }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.primary }]} onPress={handleWithdrawal} disabled={isWithdrawing}>
+                  {isWithdrawing ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>Confirm</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
 
       </ScrollView>
     )
@@ -258,4 +386,12 @@ const getStyles = (colors: any) => StyleSheet.create({
   withdrawBtnDisabled: { backgroundColor: 'rgba(100,116,139,0.1)' },
   withdrawBtnText: { color: colors.background, fontWeight: '800', fontSize: 16 },
   withdrawBtnTextDisabled: { color: colors.textDim },
+  
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalContent: { borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40, borderWidth: 1, borderBottomWidth: 0 },
+  inputLabel: { fontSize: 13, fontWeight: '700', color: colors.textDim, marginBottom: 8, marginTop: 16, textTransform: 'uppercase', letterSpacing: 0.5 },
+  methodBtn: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: 'transparent' },
+  methodBtnText: { fontSize: 14, fontWeight: '700', color: colors.text },
+  input: { borderWidth: 1, borderRadius: 16, padding: 16, fontSize: 16, marginTop: 4 },
+  modalBtn: { flex: 1, paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
 })

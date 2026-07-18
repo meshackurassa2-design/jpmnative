@@ -317,13 +317,13 @@ export default function () {
 const getStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: colors.background,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: colors.background,
   },
   content: {
     paddingVertical: 20,
@@ -337,61 +337,42 @@ const getStyles = (colors: any) => StyleSheet.create({
     paddingHorizontal: 16,
   },
   sectionCard: {
-    backgroundColor: '#000',
+    backgroundColor: colors.card,
     overflow: 'hidden',
     marginBottom: 24,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#1a1a1a',
+    borderBottomColor: colors.border,
     paddingLeft: 16,
   },
-  label: {
-    width: 110,
-    fontSize: 15,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  labelSocial: {
-    width: 110,
+  inputLabel: {
+    width: 100,
     fontSize: 15,
     fontWeight: '500',
     color: colors.text,
   },
   input: {
     flex: 1,
-    height: 48,
+    paddingVertical: 14,
+    paddingRight: 16,
     fontSize: 15,
-    color: '#fff',
-    paddingRight: 16,
+    color: colors.text,
   },
-  textArea: {
-    height: 80,
-    paddingTop: 12,
-    paddingBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textDim,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    paddingHorizontal: 16,
-  },
-  switchContainer: {
+  switchRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  switchTextContainer: {
-    flex: 1,
-    paddingRight: 16,
-  },
-  switchTitle: {
+  switchLabel: {
     fontSize: 15,
     fontWeight: '500',
     color: colors.text,
@@ -403,7 +384,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     lineHeight: 18,
   },
   saveButton: {
-    backgroundColor: colors.text,
+    backgroundColor: colors.primary,
     borderRadius: 12,
     height: 50,
     justifyContent: 'center',
@@ -411,7 +392,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     marginHorizontal: 16,
   },
   saveButtonText: {
-    color: colors.background,
+    color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -424,7 +405,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: '#333',
+    backgroundColor: colors.border,
   },
   avatarFallback: {
     justifyContent: 'center',
@@ -433,24 +414,24 @@ const getStyles = (colors: any) => StyleSheet.create({
   avatarInitial: {
     fontSize: 36,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
   },
   avatarEditBadge: {
     position: 'absolute',
     bottom: 44,
     right: '50%',
     marginRight: -40,
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     width: 28,
     height: 28,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#000',
+    borderColor: colors.background,
   },
   changePhotoText: {
-    color: '#2563eb',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
     marginTop: 8,

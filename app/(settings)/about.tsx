@@ -1,13 +1,13 @@
 // app/(settings)/about.tsx
 import { useTheme } from '../../lib/theme';
 import React, { useRef, useEffect } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Linking, Animated } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Linking, Animated, Image } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useTranslation } from '../../lib/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const APP_VERSION = '1.0.0'
+const APP_VERSION = '6.0.2'
 
 export default function () {
   const { colors } = useTheme();
@@ -35,9 +35,7 @@ export default function () {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* App branding */}
       <View style={styles.brandCard}>
-        <View style={styles.brandLogo}>
-          <Text style={styles.brandLogoText}>J</Text>
-        </View>
+        <Image source={require('../../assets/icon_real.png')} style={styles.brandLogoImage} resizeMode="contain" />
         <Text style={styles.brandName}>JPM</Text>
         <Text style={styles.brandVersion}>Version {APP_VERSION}</Text>
       </View>
@@ -115,8 +113,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.border },
   content: { padding: 20, paddingBottom: 60 },
   brandCard: { backgroundColor: colors.background, borderRadius: 16, padding: 32, alignItems: 'center', marginBottom: 20 },
-  brandLogo: { width: 72, height: 72, borderRadius: 22, backgroundColor: colors.text, justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
-  brandLogoText: { color: colors.background, fontSize: 32, fontWeight: '900' },
+  brandLogoImage: { width: 80, height: 80, borderRadius: 24, marginBottom: 14 },
   brandName: { fontSize: 22, fontWeight: '900', color: colors.text, marginBottom: 4 },
   brandVersion: { fontSize: 14, color: colors.textDim, fontWeight: '500' },
   

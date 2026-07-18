@@ -29,6 +29,7 @@ import { useTheme } from '../../lib/theme';
 import { useUI } from '../../lib/ui';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur'
+import { LinearGradient } from 'expo-linear-gradient'
 import * as StoreReview from 'expo-store-review'
 import * as Clipboard from 'expo-clipboard'
 import { useTranslation } from '../../lib/i18n'
@@ -249,243 +250,103 @@ function StoriesBar({
 // ── Jobs Card ───────────────────────────────────────────────────────────────
 
 
-// ── Direct Ad Card ─────────────────────────────────────────────────────────
+// ── Direct Ad Card (Full-Width Premium Layout) ─────────────────────────────
 function DirectAdCard({ ad, isAdmin, onDelete }: { ad: any, isAdmin?: boolean, onDelete?: () => void }) {
   const { colors } = useTheme()
   const styles = useMemo(() => getStyles(colors), [colors])
   const supabase = useMemo(() => createClient(), [])
 
-  // Automatically record ad impression when shown to users in feed
   useEffect(() => {
     if (!ad?.id || isAdmin) return;
     const recordImpression = async () => {
       try {
         await supabase.rpc('increment_ad_impressions', { ad_id: ad.id });
-      } catch (err) {
-        // ignore network error during background metric tracking
-      }
+      } catch (err) {}
     };
     recordImpression();
   }, [ad?.id, isAdmin, supabase]);
 
+  const handlePress = async () => {
+    if (ad?.id && !isAdmin) {
+      try {
+        await supabase.rpc('increment_ad_clicks', { ad_id: ad.id });
+      } catch (err) {}
+    }
+    if (!ad.target_url) return;
+    let urlToOpen = ad.target_url;
+    if (!urlToOpen.startsWith('http://') && !urlToOpen.startsWith('https://')) {
+      urlToOpen = 'https://' + urlToOpen;
+    }
+    try {
+      await Linking.openURL(urlToOpen);
+    } catch (err) {
+      console.error("Couldn't load page", err);
+    }
+  };
+
   return (
-    <View style={styles.adContainer}>
-      <View style={{ flexDirection: 'row', padding: 10, alignItems: 'center', position: 'relative' }}>
-        <View style={{ width: 80, height: 80, borderRadius: 8, overflow: 'hidden', backgroundColor: colors.border }}>
-          {ad.image_url && <Image source={{ uri: getCdnUrl(ad.image_url) }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />}
+    <View style={{ position: 'relative', paddingBottom: 8 }}>
+      <View style={[styles.post, { paddingBottom: 0 }]}>
+        {/* Left Column: Avatar */}
+        <View style={styles.postLeftColumn}>
+          <TouchableOpacity onPress={handlePress} activeOpacity={0.7}>
+            <View style={[styles.avatar, { backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center' }]}>
+              <Text style={{ fontSize: 18 }}>📢</Text>
+            </View>
+          </TouchableOpacity>
         </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.adHeadline} numberOfLines={1}>{ad.title}</Text>
-          <Text style={styles.adBody} numberOfLines={2}>{ad.description}</Text>
+
+        {/* Right Column: Content */}
+        <View style={styles.postRightColumn}>
+          {/* Header Row */}
+          <View style={styles.postHeaderRow}>
+            <TouchableOpacity onPress={handlePress} activeOpacity={0.7} style={styles.postUserInfo}>
+              <Text style={styles.fullName} numberOfLines={1}>{ad.title || 'Sponsored'}</Text>
+              <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+              <Text style={styles.username} numberOfLines={1}>@sponsor · Promoted</Text>
+            </TouchableOpacity>
+            
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+               {isAdmin && onDelete && (
+                 <TouchableOpacity onPress={onDelete} style={{ padding: 4 }}>
+                   <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                 </TouchableOpacity>
+               )}
+            </View>
+          </View>
+
+          {/* Text Content */}
+          <TouchableOpacity onPress={handlePress} activeOpacity={0.9}>
+            {!!ad.description && (
+              <Text style={styles.postContent}>{ad.description}</Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Media */}
+          <TouchableOpacity onPress={handlePress} activeOpacity={0.9} style={{ marginTop: 8, marginBottom: 12 }}>
+            {ad.image_url ? (
+              <View style={{ width: '100%', aspectRatio: 16/9, backgroundColor: colors.border, borderRadius: 12, overflow: 'hidden' }}>
+                <Image source={{ uri: getCdnUrl(ad.image_url) }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              </View>
+            ) : (
+              <View style={{ width: '100%', paddingVertical: 28, backgroundColor: colors.primary + '10', borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="megaphone-outline" size={32} color={colors.primary} style={{ marginBottom: 6 }} />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary, textAlign: 'center' }}>{ad.title || 'Special Promotion'}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* CTA Button */}
           <TouchableOpacity 
-            style={[styles.adCta, { paddingVertical: 8, paddingHorizontal: 16, alignSelf: 'flex-start' }]} 
+            style={{ backgroundColor: colors.primary + '15', borderRadius: 8, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 16 }} 
             activeOpacity={0.85}
-            onPress={() => {
-              if (ad?.id && !isAdmin) {
-                const recordClick = async () => {
-                  try {
-                    await supabase.rpc('increment_ad_clicks', { ad_id: ad.id });
-                  } catch (err) {
-                    // ignore network error
-                  }
-                };
-                recordClick();
-              }
-              if (!ad.target_url) return;
-              let urlToOpen = ad.target_url;
-              if (!urlToOpen.startsWith('http://') && !urlToOpen.startsWith('https://')) {
-                urlToOpen = 'https://' + urlToOpen;
-              }
-              Linking.openURL(urlToOpen).catch(err => console.error("Couldn't load page", err));
-            }}
+            onPress={handlePress}
           >
-            <Text style={[styles.adCtaText, { color: '#ffffff' }]}>LEARN MORE</Text>
+            <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '800' }}>LEARN MORE</Text>
+            <Ionicons name="arrow-forward" size={16} color={colors.primary} />
           </TouchableOpacity>
         </View>
-        {isAdmin && onDelete && (
-          <TouchableOpacity onPress={onDelete} style={{ position: 'absolute', top: 10, right: 10, padding: 8, backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: 20 }}>
-            <Ionicons name="trash-outline" size={16} color="#ef4444" />
-          </TouchableOpacity>
-        )}
       </View>
-    </View>
-  )
-}
-
-// ── Food Promo Card ────────────────────────────────────────────────────────────
-function FoodPromoCard({ onHideAll }: { onHideAll?: () => void }) {
-  const { colors } = useTheme()
-  const styles = useMemo(() => getStyles(colors), [colors])
-  const [showConfirm, setShowConfirm] = useState(false)
-  const { t } = useTranslation()
-  
-  return (
-    <View style={[styles.post, { paddingBottom: 0, overflow: 'hidden' }]}>
-      {showConfirm && (
-        <View style={{ 
-          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: colors.background,
-          padding: 24, alignItems: 'center', justifyContent: 'center',
-          zIndex: 10
-        }}>
-          <Ionicons name="eye-off-outline" size={32} color={colors.textDim} style={{ marginBottom: 12 }} />
-          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 16, textAlign: 'center' }}>
-            {t('stop_seeing_promos')}
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <TouchableOpacity 
-              onPress={() => setShowConfirm(false)} 
-              style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.border }}
-            >
-              <Text style={{ color: colors.textDim, fontWeight: '600' }}>{t('cancel')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={onHideAll} 
-              style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#ea580c' }}
-            >
-              <Text style={{ color: '#fff', fontWeight: '600' }}>{t('yes_hide')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-      <TouchableOpacity
-        style={styles.postHeader}
-        onPress={() => router.push('/food')}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: '#ea580c' }]}>
-          <Text style={styles.avatarText}>🍔</Text>
-        </View>
-        <View style={styles.postHeaderText}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Text style={styles.fullName}>{t('food_delivery')}</Text>
-            <Ionicons name="checkmark-circle" size={14} color="#2563eb" />
-          </View>
-          <Text style={styles.username}>@food · {t('sponsored')}</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {onHideAll && (
-            <TouchableOpacity style={{ padding: 4 }} onPress={() => setShowConfirm(true)}>
-              <Ionicons name="close" size={22} color="#a1a1aa" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => router.push('/food')} activeOpacity={0.9}>
-        <Text style={styles.postContent}>
-          {t('food_promo_desc')}
-        </Text>
-        
-        <Image
-          source={{ uri: getCdnUrl('https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=1000&auto=format&fit=crop') }}
-          style={styles.postImage}
-          resizeMode="cover"
-        />
-        
-        <View style={{ 
-          backgroundColor: '#ea580c', 
-          padding: 12, 
-          flexDirection: 'row', 
-          justifyContent: 'center', 
-          alignItems: 'center',
-          gap: 6,
-          borderBottomLeftRadius: 16,
-          borderBottomRightRadius: 16
-        }}>
-          <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>{t('order_now')}</Text>
-          <Ionicons name="arrow-forward" size={16} color="#fff" />
-        </View>
-      </TouchableOpacity>
-    </View>
-  )
-}
-
-// ── Service Promo Card ─────────────────────────────────────────────────────────
-function ServicePromoCard({ onHideAll }: { onHideAll?: () => void }) {
-  const { colors } = useTheme()
-  const styles = useMemo(() => getStyles(colors), [colors])
-  const [showConfirm, setShowConfirm] = useState(false)
-  const { t } = useTranslation()
-
-  return (
-    <View style={[styles.post, { paddingBottom: 0, overflow: 'hidden' }]}>
-      {showConfirm && (
-        <View style={{ 
-          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: colors.background,
-          padding: 24, alignItems: 'center', justifyContent: 'center',
-          zIndex: 10
-        }}>
-          <Ionicons name="eye-off-outline" size={32} color={colors.textDim} style={{ marginBottom: 12 }} />
-          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 16, textAlign: 'center' }}>
-            {t('stop_seeing_promos')}
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <TouchableOpacity 
-              onPress={() => setShowConfirm(false)} 
-              style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.border }}
-            >
-              <Text style={{ color: colors.textDim, fontWeight: '600' }}>{t('cancel')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={onHideAll} 
-              style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#2563eb' }}
-            >
-              <Text style={{ color: '#fff', fontWeight: '600' }}>{t('yes_hide')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-      <TouchableOpacity
-        style={styles.postHeader}
-        onPress={() => router.push('/services')}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: '#2563eb' }]}>
-          <Text style={styles.avatarText}>🛠️</Text>
-        </View>
-        <View style={styles.postHeaderText}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Text style={styles.fullName}>{t('hire_pro')}</Text>
-            <Ionicons name="checkmark-circle" size={14} color="#2563eb" />
-          </View>
-          <Text style={styles.username}>@services · {t('sponsored')}</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {onHideAll && (
-            <TouchableOpacity style={{ padding: 4 }} onPress={() => setShowConfirm(true)}>
-              <Ionicons name="close" size={22} color="#a1a1aa" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => router.push('/services')} activeOpacity={0.9}>
-        <Text style={styles.postContent}>
-          {t('hire_promo_desc')}
-        </Text>
-        
-        <Image
-          source={{ uri: getCdnUrl('https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1000&auto=format&fit=crop') }}
-          style={styles.postImage}
-          resizeMode="cover"
-        />
-        
-        <View style={{ 
-          backgroundColor: '#2563eb', 
-          padding: 12, 
-          flexDirection: 'row', 
-          justifyContent: 'center', 
-          alignItems: 'center',
-          gap: 6,
-          borderBottomLeftRadius: 16,
-          borderBottomRightRadius: 16
-        }}>
-          <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>FIND EXPERTS</Text>
-          <Ionicons name="arrow-forward" size={16} color="#fff" />
-        </View>
-      </TouchableOpacity>
     </View>
   )
 }
@@ -715,6 +576,14 @@ export default function HomeScreen() {
             if (id.startsWith('suggested-') || id.startsWith('daily-verse-') || viewableItem.item.isAdMobNative || viewableItem.item.isDirectAd) return;
             if (!viewedPostsRef.current.has(id)) {
               viewedPostsRef.current.add(id);
+              
+              // Save seen posts to storage (cap at 500)
+              const arr = Array.from(viewedPostsRef.current);
+              if (arr.length > 500) {
+                viewedPostsRef.current = new Set(arr.slice(-500));
+              }
+              AsyncStorage.setItem('seen_posts', JSON.stringify(Array.from(viewedPostsRef.current)));
+
               supabase.rpc('increment_engaged_view', { p_post_id: id }).then(({ error }) => {
                 if (error) console.log('View Track Error', error)
               });
@@ -809,6 +678,15 @@ export default function HomeScreen() {
     let fetchedCount = 0;
 
     if (currentTab === 'for_you') {
+      if (viewedPostsRef.current.size === 0) {
+        try {
+          const cached = await AsyncStorage.getItem('seen_posts');
+          if (cached) {
+            viewedPostsRef.current = new Set(JSON.parse(cached));
+          }
+        } catch(e) {}
+      }
+
       const [postsRes, adsRes] = await Promise.all([
         supabase
           .from('posts')
@@ -854,15 +732,23 @@ export default function HomeScreen() {
           return true;
         });
 
-        // Algorithmic Sorting: (Likes * 1) + (Comments * 13) + Recency Boost
+        // True Trending Algorithm: Velocity (Engagement / Time) + Recency Boost
         const scoredPosts = filteredData.map((p: any) => {
           const likesCount = p.likes?.[0]?.count || 0;
           const commentsCount = p.comments?.[0]?.count || 0;
-          // Calculate age in hours
-          const ageHours = (Date.now() - new Date(p.created_at).getTime()) / 3600000;
+          // Calculate age in hours (minimum 1 hour to prevent division by zero for brand new posts)
+          const ageHours = Math.max((Date.now() - new Date(p.created_at).getTime()) / 3600000, 1);
+          
+          // Calculate Engagement Velocity
+          const engagementVolume = (likesCount * 1) + (commentsCount * 13);
+          const velocityScore = engagementVolume / ageHours;
+          
           // Give up to 50 points for brand new posts, decaying over 24 hours
           const recencyBoost = ageHours < 24 ? (24 - ageHours) * 2 : 0;
-          const score = (likesCount * 1) + (commentsCount * 13) + recencyBoost;
+          // Apply massive penalty for posts the user has already seen
+          const seenPenalty = viewedPostsRef.current.has(p.id) ? -1000 : 0;
+          
+          const score = engagementVolume + (velocityScore * 10) + recencyBoost + seenPenalty;
           return { ...p, score };
         });
         
@@ -1096,35 +982,44 @@ export default function HomeScreen() {
   const feedData = useMemo(() => {
     if (loading) return []
     const data: any[] = []
+    
+    let postsSinceLastAd = 0;
+    const MIN_POSTS_BETWEEN_ADS = 3;
 
     posts.forEach((post, i) => {
-      data.push(post)
+      // Create a shallow copy so we can mutate the `showCreatorAd` property for this specific render cycle
+      const currentPost = { ...post, showCreatorAd: false }
+      
+      const isMonetised = currentPost.profiles?.settings?.creator_application_status === 'approved'
+
+      // Can we show an ad here?
+      if (postsSinceLastAd >= MIN_POSTS_BETWEEN_ADS) {
+        if (isMonetised) {
+          // It's a monetized post, and we are eligible to show an ad. Attach the creator's ad to their post!
+          currentPost.showCreatorAd = true;
+          data.push(currentPost);
+          postsSinceLastAd = 0; // Reset counter
+        } else {
+          // Not a monetized post, but we are eligible for an ad. Inject a generic feed banner.
+          data.push(currentPost);
+          data.push({ id: `admob-banner-${i}`, isAdMobNative: true });
+          postsSinceLastAd = 0; // Reset counter
+        }
+      } else {
+        // We cannot show an ad here (it would be too dense).
+        // The post is pushed normally (without a creator ad, even if they are monetized).
+        data.push(currentPost);
+        postsSinceLastAd++;
+      }
       
       // Inject Suggested Accounts after the 3rd post (like Threads / X)
       if (i === 2) {
         data.push({ id: 'suggested-accounts-widget', isSuggestedAccounts: true })
       }
 
-      // Inject AdMob banner ad every 3 posts — shown to ALL users
-      // Skip if this post is from a monetised creator (they already show their own in-stream ad)
-      const isMonetised = post.profiles?.settings?.creator_application_status === 'approved'
-      if ((i + 1) % 3 === 0 && !isMonetised) {
-        data.push({ id: `admob-banner-${i}`, isAdMobNative: true })
-      }
-
       // Inject Daily Verse Card every 100 posts
       if ((i + 1) % 100 === 0) {
         data.push({ id: `daily-verse-card-${i}`, isVerseCard: true })
-      }
-
-      // Inject Food Promo every 7 posts
-      if (!hideAllSpecial && (i + 1) % 7 === 0) {
-        data.push({ id: `food-promo-${i}`, isFoodPromo: true })
-      }
-
-      // Inject Service Promo every 12 posts
-      if (!hideAllSpecial && (i + 1) % 12 === 0) {
-        data.push({ id: `service-promo-${i}`, isServicePromo: true })
       }
     })
 
@@ -1172,9 +1067,6 @@ export default function HomeScreen() {
         />
       )
     }
-    if (item.isFoodPromo) return <FoodPromoCard onHideAll={hideAllSpecialPosts} />
-    if (item.isServicePromo) return <ServicePromoCard onHideAll={hideAllSpecialPosts} />
-
     if (item.isDirectAd) return <DirectAdCard ad={item} isAdmin={myProfile?.is_admin} onDelete={() => handleDeleteDirectAd(item.id)} />
     if (item.settings?.is_job) return <JobCard post={item} isAdmin={myProfile?.is_admin} onDelete={() => handleDeleteJob(item.id)} onHideAll={confirmHideAllSpecialPosts} />
 const post = item as Post
@@ -1350,7 +1242,7 @@ const post = item as Post
           </View>
             
           {/* --- FACEBOOK-STYLE IN-STREAM AD --- */}
-          {post.profiles?.settings?.creator_application_status === 'approved' && (
+          {post.showCreatorAd && (
             <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                 <Ionicons name="megaphone-outline" size={12} color={colors.textDim} style={{ marginRight: 4 }} />

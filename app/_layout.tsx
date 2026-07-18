@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { Platform } from 'react-native'
 import { AuthProvider, useAuth } from '../lib/auth'
 import { CartProvider } from '../lib/cart'
 import { LanguageProvider } from '../lib/i18n'
@@ -19,6 +20,7 @@ import { ThemeProvider, useTheme } from '../lib/theme'
 import { ThemeProvider as NavThemeProvider, DefaultTheme, DarkTheme } from '@react-navigation/native'
 import Constants from 'expo-constants'
 import * as Updates from 'expo-updates'
+import InAppNotification from '../components/InAppNotification'
 
 // Global auth guard — runs once auth has resolved
 function AuthGuard() {
@@ -46,7 +48,7 @@ function AuthGuard() {
 // Configure how notifications appear when the app is in the foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowAlert: false, // We use our custom InAppNotification banner instead
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
@@ -123,7 +125,6 @@ function AutoUpdateSetup() {
   return null
 }
 
-import { Platform } from 'react-native'
 
 const KeyboardProvider = ({ children }: any) => <>{children}</>
 
@@ -183,13 +184,27 @@ function AppStack() {
 }
 
 export default function RootLayout() {
-  /*
   useEffect(() => {
-    mobileAds().initialize().then(adapterStatuses => {
-      console.log('AdMob initialized', adapterStatuses);
-    }).catch(e => console.log('AdMob init error', e));
+    if (Platform.OS !== 'web') {
+      const Constants = require('expo-constants').default;
+      const isExpoGo = Constants.executionEnvironment === 'storeClient';
+      
+      if (!isExpoGo) {
+        try {
+          const mobileAds = require('react-native-google-mobile-ads').default;
+          if (mobileAds) {
+            mobileAds().initialize().then((adapterStatuses: any) => {
+              console.log('AdMob initialized successfully:', adapterStatuses);
+            }).catch((e: any) => console.log('AdMob init error:', e));
+          }
+        } catch (e) {
+          console.log('Google Mobile Ads native module not available');
+        }
+      } else {
+        console.log('Running in Expo Go - skipping AdMob initialization');
+      }
+    }
   }, []);
-  */
 
   return (
     <ThemeProvider>
@@ -212,6 +227,7 @@ function ThemedRoot() {
                 <StatusBar style="auto" />
               <WebLayoutWrapper>
                 <AppStack />
+                <InAppNotification />
                 <SplashScreen />
               </WebLayoutWrapper>
               </UIProvider>

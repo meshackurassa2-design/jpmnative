@@ -245,19 +245,19 @@ export default function AdminShopsScreen() {
       {/* Top Main Section Switcher */}
       <View style={{ flexDirection: 'row', marginHorizontal: 16, marginBottom: 12, backgroundColor: colors.card, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: colors.border }}>
         <TouchableOpacity
-          style={{ flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8, backgroundColor: mainSection === 'shops' ? colors.primary : 'transparent' }}
+          style={{ flex: 1, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: mainSection === 'shops' ? colors.primary : 'transparent' }}
           onPress={() => setMainSection('shops')}
         >
-          <Text style={{ fontSize: 14, fontWeight: '700', color: mainSection === 'shops' ? '#fff' : colors.text }}>
-            Shop Management ({shops.length})
+          <Text style={{ fontSize: 14, fontWeight: '700', textAlign: 'center', color: mainSection === 'shops' ? '#fff' : colors.text }}>
+            Shops ({shops.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={{ flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8, backgroundColor: mainSection === 'disputes' ? '#ef4444' : 'transparent' }}
+          style={{ flex: 1, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: mainSection === 'disputes' ? '#ef4444' : 'transparent' }}
           onPress={() => setMainSection('disputes')}
         >
-          <Text style={{ fontSize: 14, fontWeight: '700', color: mainSection === 'disputes' ? '#fff' : colors.text }}>
-            Disputes & Reports ({reports.filter(r => r.status === 'pending').length})
+          <Text style={{ fontSize: 14, fontWeight: '700', textAlign: 'center', color: mainSection === 'disputes' ? '#fff' : colors.text }}>
+            Reports ({reports.filter(r => r.status === 'pending').length})
           </Text>
         </TouchableOpacity>
       </View>

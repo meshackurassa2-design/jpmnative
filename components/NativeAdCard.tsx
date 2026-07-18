@@ -7,15 +7,23 @@ const adUnitId = Platform.OS === 'ios'
   ? 'ca-app-pub-8166782428171770/7007104506'
   : 'ca-app-pub-8166782428171770/7007104506';
 
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+
 // Safely import BannerAd — it crashes in Expo Go if native module is missing
 let BannerAd: any = null;
 let BannerAdSize: any = null;
-try {
-  const admob = require('react-native-google-mobile-ads');
-  BannerAd = admob.BannerAd;
-  BannerAdSize = admob.BannerAdSize;
-} catch (e) {
-  // Running in Expo Go — native module not available, will return null
+
+// Only attempt to require the native module if we are NOT in Expo Go
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+if (!isExpoGo) {
+  try {
+    const admob = require('react-native-google-mobile-ads');
+    BannerAd = admob.BannerAd;
+    BannerAdSize = admob.BannerAdSize;
+  } catch (e) {
+    console.log("Google Mobile Ads native module not available");
+  }
 }
 
 export function NativeAdCard({ fallback }: { fallback?: React.ReactNode }) {
@@ -31,18 +39,10 @@ export function NativeAdCard({ fallback }: { fallback?: React.ReactNode }) {
 
   return (
     <View style={styles.wrapper}>
-      {/* Show Direct Ad fallback seamlessly while Google Ad is loading in the background */}
-      {!adLoaded && fallback && (
-        <View style={{ width: '100%' }}>
-          {fallback}
-        </View>
-      )}
-
-      {/* Google AdMob Banner - When loaded, it displays and hides our direct ad fallback */}
-      <View style={!adLoaded ? { height: 0, overflow: 'hidden', opacity: 0 } : { width: '100%', alignItems: 'center' }}>
+      <View style={{ width: '100%', alignItems: 'center', minHeight: adLoaded ? 'auto' : 60 }}>
         <BannerAd
           unitId={adUnitId}
-          size={BannerAdSize.BANNER}
+          size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER || BannerAdSize.BANNER}
           requestOptions={{ requestNonPersonalizedAdsOnly: false }}
           onAdLoaded={() => {
             setAdLoaded(true);

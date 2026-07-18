@@ -1,7 +1,10 @@
 import Constants from 'expo-constants';
 
-// The base Supabase URL that we want to replace
-const SUPABASE_URL = 'https://tgfuufsgkelgjjktbugg.supabase.co';
+// The current base Supabase URL that we want to proxy
+const SUPABASE_URL = 'https://aarqgytazwnlwveeqwdd.supabase.co';
+
+// The legacy Supabase URL that might still be saved in older database rows
+const LEGACY_SUPABASE_URL = 'https://tgfuufsgkelgjjktbugg.supabase.co';
 
 /**
  * Replaces the Supabase Storage URL with an aggressive global caching proxy (wsrv.nl).
@@ -11,12 +14,12 @@ const SUPABASE_URL = 'https://tgfuufsgkelgjjktbugg.supabase.co';
 export function getCdnUrl(originalUrl?: string | null): string {
   if (!originalUrl) return '';
   
-  // If it's a Supabase storage URL, route it through the global proxy
-  if (originalUrl.startsWith(SUPABASE_URL)) {
-    // We encode the Supabase URL and pass it to wsrv.nl
-    // We also ask it to compress it slightly (q=80) to save app memory!
+  // Route current DB and legacy DB images through wsrv.nl
+  if (originalUrl.startsWith(SUPABASE_URL) || originalUrl.startsWith(LEGACY_SUPABASE_URL)) {
     const encodedUrl = encodeURIComponent(originalUrl);
-    return `https://wsrv.nl/?url=${encodedUrl}&q=80&output=webp`;
+    // q=80 compresses the image slightly to save memory, output=webp ensures modern format
+    // maxage=1y completely forces the CDN and Browser to cache it for 1 full year without hitting Supabase again!
+    return `https://wsrv.nl/?url=${encodedUrl}&q=80&output=webp&maxage=1y`;
   }
   
   return originalUrl;

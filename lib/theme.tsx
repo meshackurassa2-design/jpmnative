@@ -16,11 +16,11 @@ type Colors = {
 }
 
 const lightColors: Colors = {
-  background: '#ffffff',
+  background: '#fafafa',
   card: '#ffffff',
-  text: '#000000',
+  text: '#18181b',
   textDim: '#71717a',
-  border: '#f4f4f5',
+  border: '#e4e4e7',
   primary: '#2563eb',
   tabBar: '#ffffff',
   isDark: false,

@@ -51,6 +51,38 @@ export function PostItem({ post: initialPost, compact = false }: { post: PostTyp
   const [post, setPost] = useState(initialPost)
   const [isDeleted, setIsDeleted] = useState(false)
   const videoRef = React.useRef(null)
+  const trackedMilestones = React.useRef(new Set<number>())
+
+  const handlePlaybackStatusUpdate = (status: any) => {
+    if (!status.isLoaded) return;
+    
+    // Log start (0%)
+    if (status.positionMillis > 0 && !trackedMilestones.current.has(0)) {
+      trackedMilestones.current.add(0);
+      supabase.rpc('log_video_retention', { p_post_id: post.id, p_milestone: 0 }).then(() => {});
+    }
+
+    if (status.durationMillis) {
+      const percentage = (status.positionMillis / status.durationMillis) * 100;
+      
+      if (percentage >= 25 && !trackedMilestones.current.has(25)) {
+        trackedMilestones.current.add(25);
+        supabase.rpc('log_video_retention', { p_post_id: post.id, p_milestone: 25 }).then(() => {});
+      }
+      if (percentage >= 50 && !trackedMilestones.current.has(50)) {
+        trackedMilestones.current.add(50);
+        supabase.rpc('log_video_retention', { p_post_id: post.id, p_milestone: 50 }).then(() => {});
+      }
+      if (percentage >= 75 && !trackedMilestones.current.has(75)) {
+        trackedMilestones.current.add(75);
+        supabase.rpc('log_video_retention', { p_post_id: post.id, p_milestone: 75 }).then(() => {});
+      }
+      if (status.didJustFinish && !trackedMilestones.current.has(100)) {
+        trackedMilestones.current.add(100);
+        supabase.rpc('log_video_retention', { p_post_id: post.id, p_milestone: 100 }).then(() => {});
+      }
+    }
+  }
 
   useEffect(() => {
     setPost(initialPost)
@@ -378,6 +410,7 @@ export function PostItem({ post: initialPost, compact = false }: { post: PostTyp
           useNativeControls={false}
           isLooping
           shouldPlay
+          onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
         />
       )}
 
@@ -436,6 +469,12 @@ export function PostItem({ post: initialPost, compact = false }: { post: PostTyp
             color={post.is_bookmarked ? '#3b82f6' : colors.textDim}
           />
         </TouchableOpacity>
+
+        {user?.id === post.creator_id && (
+          <TouchableOpacity style={styles.actionBtn} onPress={() => router.push({ pathname: '/post-analytics', params: { postId: post.id } })} activeOpacity={0.7}>
+            <Ionicons name="bar-chart-outline" size={22} color={colors.textDim} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.divider} />

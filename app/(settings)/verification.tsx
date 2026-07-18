@@ -174,20 +174,20 @@ export default function VerificationScreen() {
 }
 
 const getStyles = (colors: any) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+  container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: 20, paddingBottom: 60 },
   header: { alignItems: 'center', marginBottom: 24, marginTop: 20 },
-  title: { fontSize: 22, fontWeight: '800', color: '#fff', marginTop: 12, marginBottom: 8, textAlign: 'center' },
+  title: { fontSize: 22, fontWeight: '800', color: colors.text, marginTop: 12, marginBottom: 8, textAlign: 'center' },
   subtitle: { fontSize: 14, color: colors.textDim, textAlign: 'center', lineHeight: 20, paddingHorizontal: 10 },
-  formCard: { backgroundColor: '#111', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#222' },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#fff', marginBottom: 16 },
+  formCard: { backgroundColor: colors.card, borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: colors.border },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 16 },
   label: { fontSize: 14, fontWeight: '600', color: colors.textDim, marginBottom: 8 },
-  input: { backgroundColor: '#000', borderRadius: 12, padding: 14, color: '#fff', fontSize: 15, borderWidth: 1, borderColor: '#333', marginBottom: 16 },
+  input: { backgroundColor: colors.background, borderRadius: 12, padding: 14, color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border, marginBottom: 16 },
   textArea: { height: 100 },
-  uploadBtn: { backgroundColor: '#000', borderRadius: 12, borderWidth: 1, borderColor: '#333', overflow: 'hidden', marginBottom: 16, borderStyle: 'dashed' },
+  uploadBtn: { backgroundColor: colors.background, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: 16, borderStyle: 'dashed' },
   uploadPlaceholder: { height: 120, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  uploadText: { color: '#a1a1aa', fontSize: 14, marginTop: 8, fontWeight: '500' },
+  uploadText: { color: colors.textDim, fontSize: 14, marginTop: 8, fontWeight: '500' },
   documentPreview: { width: '100%', height: 200, resizeMode: 'cover' },
-  submitBtn: { backgroundColor: '#3b82f6', borderRadius: 16, height: 56, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  submitBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' }
+  submitBtn: { backgroundColor: colors.primary, borderRadius: 16, height: 56, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  submitBtnText: { color: '#ffffff', fontSize: 18, fontWeight: '700' }
 });
