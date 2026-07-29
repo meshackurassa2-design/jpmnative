@@ -141,17 +141,23 @@ export default function SignupScreen() {
       }
 
       if (newUser) {
-        await supabase.from('profiles').update({ 
+        try {
+          await supabase.from('profiles').upsert({ 
+            id: newUser.id,
+            username: cleanUsername,
             avatar_url,
             first_name: firstName.trim(), last_name: lastName.trim(),
             birthday: birthDate.toISOString().split('T')[0], gender,
             full_name: `${firstName.trim()} ${lastName.trim()}`
-          }).eq('id', newUser.id)
+          })
+        } catch (profileError) {
+          console.warn('Profile creation handled by trigger or failed:', profileError)
+        }
       }
       if (Platform.OS === 'web') {
         router.replace('/(tabs)')
       } else {
-        router.replace('/onboarding')
+        router.replace('/(tabs)')
       }
     } catch (e: any) {
       Alert.alert('Signup Failed', e.message)

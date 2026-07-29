@@ -192,19 +192,20 @@ export default function RootLayout() {
       if (!isExpoGo) {
         try {
           const mobileAds = require('react-native-google-mobile-ads').default;
-          if (mobileAds) {
-            mobileAds().initialize().then((adapterStatuses: any) => {
-              console.log('AdMob initialized successfully:', adapterStatuses);
-            }).catch((e: any) => console.log('AdMob init error:', e));
-          }
+          mobileAds()
+            .initialize()
+            .then((adapterStatuses: any) => {
+              console.log('AdMob initialized', adapterStatuses);
+            });
         } catch (e) {
-          console.log('Google Mobile Ads native module not available');
+          console.log("Google Mobile Ads native module not available", e);
         }
       } else {
         console.log('Running in Expo Go - skipping AdMob initialization');
       }
     }
   }, []);
+
 
   return (
     <ThemeProvider>

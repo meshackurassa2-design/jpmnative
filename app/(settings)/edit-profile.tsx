@@ -87,7 +87,8 @@ export default function () {
 
     const { error } = await supabase
       .from('profiles')
-      .update({
+      .upsert({
+        id: user.id,
         full_name: fullName.trim(),
         username: cleanUsername,
         bio: bio.trim(),
@@ -97,7 +98,6 @@ export default function () {
         website: website.trim(),
         avatar_url: avatarUrl,
       })
-      .eq('id', user.id)
 
     setSaving(false)
 
@@ -207,7 +207,7 @@ export default function () {
 
         <View style={styles.sectionCard}>
           <View style={styles.inputRow}>
-            <Text style={styles.label}>Full Name</Text>
+            <Text style={styles.inputLabel}>Full Name</Text>
             <TextInput
               style={styles.input}
               value={fullName}
@@ -217,7 +217,7 @@ export default function () {
             />
           </View>
           <View style={styles.inputRow}>
-            <Text style={styles.label}>Username</Text>
+            <Text style={styles.inputLabel}>Username</Text>
             <TextInput
               style={styles.input}
               value={username}
@@ -228,7 +228,7 @@ export default function () {
             />
           </View>
           <View style={[styles.inputRow, { borderBottomWidth: 0, alignItems: 'flex-start' }]}>
-            <Text style={[styles.label, { paddingTop: 12 }]}>Bio</Text>
+            <Text style={[styles.inputLabel, { paddingTop: 12 }]}>Bio</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={bio}
@@ -244,7 +244,7 @@ export default function () {
         <Text style={styles.sectionTitle}>Social Links</Text>
         <View style={styles.sectionCard}>
           <View style={styles.inputRow}>
-            <Text style={styles.labelSocial}>TikTok</Text>
+            <Text style={styles.inputLabel}>TikTok</Text>
             <TextInput
               style={styles.input}
               value={tiktok}
@@ -256,7 +256,7 @@ export default function () {
             />
           </View>
           <View style={styles.inputRow}>
-            <Text style={styles.labelSocial}>Instagram</Text>
+            <Text style={styles.inputLabel}>Instagram</Text>
             <TextInput
               style={styles.input}
               value={instagram}
@@ -268,7 +268,7 @@ export default function () {
             />
           </View>
           <View style={styles.inputRow}>
-            <Text style={styles.labelSocial}>Facebook</Text>
+            <Text style={styles.inputLabel}>Facebook</Text>
             <TextInput
               style={styles.input}
               value={facebook}
@@ -280,7 +280,7 @@ export default function () {
             />
           </View>
           <View style={[styles.inputRow, { borderBottomWidth: 0 }]}>
-            <Text style={styles.labelSocial}>Website</Text>
+            <Text style={styles.inputLabel}>Website</Text>
             <TextInput
               style={styles.input}
               value={website}

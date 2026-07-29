@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../lib/theme';
+import { useAuth } from '../lib/auth';
 
 const { width, height } = Dimensions.get('window');
 
@@ -76,6 +77,7 @@ const SLIDES = [
 
 export default function Onboarding() {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const isDark = colors.isDark;
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -109,7 +111,11 @@ export default function Onboarding() {
 
   const finishOnboarding = async () => {
     await AsyncStorage.setItem('@has_seen_onboarding_v2', 'true');
-    router.replace('/(auth)/signup');
+    if (user) {
+      router.replace('/(tabs)');
+    } else {
+      router.replace('/(auth)/signup');
+    }
   };
 
   const goToLogin = async () => {
@@ -208,15 +214,19 @@ export default function Onboarding() {
             activeOpacity={0.85}
           >
             <Text style={styles.primaryBtnText}>
-              {currentIndex === SLIDES.length - 1 ? 'Create Free Account →' : 'Next →'}
+              {currentIndex === SLIDES.length - 1 
+                ? (user ? 'Continue to App →' : 'Create Free Account →') 
+                : 'Next →'}
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryBtn} onPress={goToLogin} activeOpacity={0.7}>
-            <Text style={[styles.secondaryBtnText, { color: colors.textDim }]}>
-              I already have an account
-            </Text>
-          </TouchableOpacity>
+          {!user && (
+            <TouchableOpacity style={styles.secondaryBtn} onPress={goToLogin} activeOpacity={0.7}>
+              <Text style={[styles.secondaryBtnText, { color: colors.textDim }]}>
+                I already have an account
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </Animated.View>
     </SafeAreaView>

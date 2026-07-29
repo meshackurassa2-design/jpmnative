@@ -1,6 +1,6 @@
 // app/(settings)/verification.tsx
 import { useTheme } from '../../lib/theme';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +23,27 @@ export default function VerificationScreen() {
   const [documentUri, setDocumentUri] = useState<string | null>(null);
   
   const [submitting, setSubmitting] = useState(false);
+  const [status, setStatus] = useState<'none' | 'pending' | 'approved' | 'rejected' | 'loading'>('loading');
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchStatus = async () => {
+      // Check if already verified in profiles
+      const { data: profile } = await supabase.from('profiles').select('is_verified').eq('id', user.id).single();
+      if (profile?.is_verified) {
+        setStatus('approved');
+        return;
+      }
+      // Check verification_requests
+      const { data: request } = await supabase.from('verification_requests').select('status').eq('user_id', user.id).single();
+      if (request) {
+        setStatus(request.status);
+      } else {
+        setStatus('none');
+      }
+    };
+    fetchStatus();
+  }, [user]);
 
   const pickDocument = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -46,18 +67,18 @@ export default function VerificationScreen() {
     setSubmitting(true);
 
     try {
-      // 1. Upload ID to Supabase Storage (using post_images bucket for simplicity)
+      // 1. Upload ID to Supabase Storage (using memes bucket since post_images is missing)
       const base64 = await FileSystem.readAsStringAsync(documentUri, { encoding: 'base64' });
       const fileExt = documentUri.split('.').pop() || 'jpeg';
       const filePath = `verifications/${user.id}_${Date.now()}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
-        .from('post_images')
+        .from('memes')
         .upload(filePath, decode(base64), { contentType: `image/${fileExt}` });
 
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabase.storage.from('post_images').getPublicUrl(filePath);
+      const { data: publicUrlData } = supabase.storage.from('memes').getPublicUrl(filePath);
       const document_url = publicUrlData.publicUrl;
 
       // 2. Insert Request
@@ -78,7 +99,7 @@ export default function VerificationScreen() {
         }
       } else {
         Alert.alert('Success', 'Your verification request has been submitted successfully!');
-        router.back();
+        setStatus('pending');
       }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'An unexpected error occurred.');
@@ -86,6 +107,43 @@ export default function VerificationScreen() {
       setSubmitting(false);
     }
   };
+  if (status === 'loading') {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+      </View>
+    );
+  }
+
+  if (status === 'approved') {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+        <Ionicons name="checkmark-circle" size={100} color="#10b981" />
+        <Text style={[styles.title, { marginTop: 20 }]}>You are Verified!</Text>
+        <Text style={styles.subtitle}>Your account has been officially verified and you have the blue checkmark.</Text>
+      </View>
+    );
+  }
+
+  if (status === 'pending') {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+        <Ionicons name="time" size={100} color="#f59e0b" />
+        <Text style={[styles.title, { marginTop: 20 }]}>Request Pending</Text>
+        <Text style={styles.subtitle}>Your verification request is currently under review by our team. Please check back later.</Text>
+      </View>
+    );
+  }
+
+  if (status === 'rejected') {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+        <Ionicons name="close-circle" size={100} color="#ef4444" />
+        <Text style={[styles.title, { marginTop: 20 }]}>Request Rejected</Text>
+        <Text style={styles.subtitle}>Unfortunately, your recent verification request was rejected. Ensure your account meets all guidelines before applying again.</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>

@@ -3,7 +3,7 @@ import { useTheme } from '../../lib/theme';
 import React, { useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform
+  ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Switch
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { createClient } from '../../lib/supabase'
@@ -28,6 +28,31 @@ export default function () {
   const [deletePw, setDeletePw] = useState('')
   const [showDeletePw, setShowDeletePw] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
+
+  const [allowDmsFromFollowers, setAllowDmsFromFollowers] = useState(true)
+
+  React.useEffect(() => {
+    if (!user) return
+    supabase.from('profiles').select('settings').eq('id', user.id).single()
+      .then(({ data }) => {
+        if (data?.settings) {
+          setAllowDmsFromFollowers(data.settings.allow_direct_messages_from_followers ?? true)
+        }
+      })
+  }, [user])
+
+  const toggleDms = async (val: boolean) => {
+    if (!user) return
+    setAllowDmsFromFollowers(val)
+    
+    // Fetch current settings first to merge
+    const { data } = await supabase.from('profiles').select('settings').eq('id', user.id).single()
+    const currentSettings = data?.settings || {}
+    
+    await supabase.from('profiles').update({
+      settings: { ...currentSettings, allow_direct_messages_from_followers: val }
+    }).eq('id', user.id)
+  }
 
   const handleDeleteAccount = async () => {
     if (!deletePw) {
@@ -176,6 +201,27 @@ export default function () {
               : <Text style={styles.btnText}>Update Password</Text>
             }
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Privacy Settings</Text>
+          <Text style={styles.cardDesc}>Control who can send you direct messages.</Text>
+          
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
+            <View style={{ flex: 1, paddingRight: 16 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: 4 }}>
+                Direct Messages from Followers
+              </Text>
+              <Text style={{ fontSize: 13, color: colors.textDim, lineHeight: 18 }}>
+                If enabled, people who follow you can text you directly. If disabled, they must send a Message Request first.
+              </Text>
+            </View>
+            <Switch
+              value={allowDmsFromFollowers}
+              onValueChange={toggleDms}
+              trackColor={{ false: '#3f3f46', true: '#2563eb' }}
+            />
+          </View>
         </View>
 
         <View style={[styles.card, { borderColor: 'rgba(239, 68, 68, 0.3)', borderWidth: 1 }]}>

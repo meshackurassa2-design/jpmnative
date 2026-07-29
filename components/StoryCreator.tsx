@@ -40,76 +40,27 @@ export function StoryCreator({ onClose, onCreated }: Props) {
   const supabase = createClient()
   const insets = useSafeAreaInsets()
 
-  const [mode, setMode] = useState<'text' | 'image'>('text')
   const [text, setText] = useState('')
   const [bgIndex, setBgIndex] = useState(0)
-  const [imageUri, setImageUri] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
 
   const currentGradient = BG_GRADIENTS[bgIndex]
-
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.85,
-    })
-    if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri)
-      setMode('image')
-    }
-  }
 
   const cycleBg = () => setBgIndex(i => (i + 1) % BG_GRADIENTS.length)
 
   const handleSubmit = async () => {
     if (!user || uploading) return
-    if (mode === 'text' && !text.trim()) {
+    if (!text.trim()) {
       Alert.alert('Add some text first!')
-      return
-    }
-    if (mode === 'image' && !imageUri) {
-      Alert.alert('Pick an image first!')
       return
     }
 
     setUploading(true)
-    let imageUrl: string | null = null
-
-    if (imageUri && mode === 'image') {
-      try {
-        const ext = imageUri.split('.').pop() || 'jpg'
-        const path = `stories/${user.id}/${Date.now()}.${ext}`
-        
-        // Reliably read local file via fetch blob in React Native
-        const res = await fetch(imageUri)
-        const blob = await res.blob()
-        const { data, error } = await supabase.storage.from('memes').upload(path, blob, {
-          contentType: `image/${ext}`,
-          upsert: true,
-        })
-        
-        if (error) {
-          Alert.alert('Upload failed', error.message)
-          setUploading(false)
-          return
-        }
-        
-        if (data) {
-          const { data: pubData } = supabase.storage.from('memes').getPublicUrl(path)
-          imageUrl = pubData.publicUrl
-        }
-      } catch (e: any) {
-        Alert.alert('Upload failed', e.message || 'Could not upload image. Try again.')
-        setUploading(false)
-        return
-      }
-    }
 
     const { error } = await supabase.from('stories').insert({
       creator_id: user.id,
-      text_content: mode === 'text' ? text.trim() : null,
-      image_url: imageUrl,
+      text_content: text.trim(),
+      image_url: null,
       bg_color: JSON.stringify(currentGradient),
     })
 
@@ -122,7 +73,7 @@ export function StoryCreator({ onClose, onCreated }: Props) {
     }
   }
 
-  const hasContent = (mode === 'text' && text.trim().length > 0) || (mode === 'image' && !!imageUri)
+  const hasContent = text.trim().length > 0
 
   return (
     <Modal visible animationType="slide" statusBarTranslucent onRequestClose={onClose}>
@@ -141,67 +92,37 @@ export function StoryCreator({ onClose, onCreated }: Props) {
               style={StyleSheet.absoluteFillObject}
             />
             
-            {mode === 'image' && imageUri && (
-              <Image source={{ uri: imageUri }} style={styles.bgImage} resizeMode="contain" />
-            )}
-
-
             {/* Text input overlay */}
-            {mode === 'text' && (
-              <View style={styles.textCenter}>
-                <TextInput
-                  style={styles.textInput}
-                  value={text}
-                  onChangeText={setText}
-                  placeholder="Tap to type..."
-                  placeholderTextColor="rgba(255,255,255,0.6)"
-                  multiline
-                  maxLength={160}
-                  textAlign="center"
-                  autoFocus
-                />
-              </View>
-            )}
+            <View style={styles.textCenter}>
+              <TextInput
+                style={styles.textInput}
+                value={text}
+                onChangeText={setText}
+                placeholder="Tap to type..."
+                placeholderTextColor="rgba(255,255,255,0.6)"
+                multiline
+                maxLength={160}
+                textAlign="center"
+                autoFocus
+              />
+            </View>
 
             {/* Top controls */}
             <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
               <TouchableOpacity style={styles.iconBtn} onPress={onClose}>
                 <Ionicons name="close" size={26} color="#fff" />
               </TouchableOpacity>
-              {mode === 'text' && (
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <TouchableOpacity style={styles.iconBtn} onPress={cycleBg}>
-                    <Ionicons name="color-palette" size={22} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              )}
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TouchableOpacity style={styles.iconBtn} onPress={cycleBg}>
+                  <Ionicons name="color-palette" size={22} color="#fff" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Bottom controls */}
             <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
-              {!hasContent && (
-                <View style={styles.modeRow}>
-                  <TouchableOpacity
-                    onPress={() => setMode('text')}
-                    style={[styles.modeBtn, mode === 'text' && styles.modeBtnActive]}
-                  >
-                    <Text style={styles.modeBtnText}>Aa Text</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={pickImage}
-                    style={[styles.modeBtn, mode === 'image' && styles.modeBtnActive]}
-                  >
-                    <Ionicons name="image" size={18} color="#fff" />
-                    <Text style={styles.modeBtnText}> Photo</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
               {hasContent && (
-                <View style={styles.submitRow}>
-                  <TouchableOpacity style={styles.iconBtn} onPress={pickImage}>
-                    <Ionicons name="images" size={22} color="#fff" />
-                  </TouchableOpacity>
+                <View style={[styles.submitRow, { justifyContent: 'flex-end' }]}>
                   <TouchableOpacity
                     style={[styles.submitBtn, uploading && { opacity: 0.6 }]}
                     onPress={() => { Keyboard.dismiss(); handleSubmit() }}

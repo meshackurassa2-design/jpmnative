@@ -168,6 +168,17 @@ export default function () {
   const [isKeyboardVisible, setKeyboardVisible] = useState(false)
 
   const [showGiphy, setShowGiphy] = useState(false)
+  const [channelReady, setChannelReady] = useState(false)
+  const [deletedMsgIds, setDeletedMsgIds] = useState<string[]>([])
+
+  useEffect(() => {
+    // Load deleted messages on mount
+    AsyncStorage.getItem(`@deleted_msgs_${user?.id}`).then(str => {
+      if (str) {
+        try { setDeletedMsgIds(JSON.parse(str)) } catch (e) {}
+      }
+    })
+  }, [user?.id])
   const [showEmoji, setShowEmoji] = useState(false)
   const [recording, setRecording] = useState(false)
   const [recordingDuration, setRecordingDuration] = useState(0)
@@ -282,6 +293,7 @@ export default function () {
     }
     setCheckingRequest(true)
 
+    // 1. Check existing requests
     const { data: reqs } = await supabase
       .from('message_requests')
       .select('*')
@@ -303,17 +315,7 @@ export default function () {
       return
     }
 
-    const { data: followData } = await supabase
-      .from('follows')
-      .select('*')
-      .or(`and(follower_id.eq.${user.id},following_id.eq.${id}),and(follower_id.eq.${id},following_id.eq.${user.id})`)
-
-    if (followData && followData.length > 0) {
-      setRequestStatus('allowed')
-      setCheckingRequest(false)
-      return
-    }
-
+    // 2. Check historical messages (allow if they've chatted before requests were implemented)
     const { count } = await supabase
       .from('messages')
       .select('*', { count: 'exact', head: true })
@@ -325,7 +327,39 @@ export default function () {
       return
     }
 
-    setRequestStatus(null)
+    // 3. Follow logic & receiver's privacy settings
+    const [
+      { data: followData },
+      { data: receiverProfile }
+    ] = await Promise.all([
+      supabase
+        .from('follows')
+        .select('*')
+        .or(`and(follower_id.eq.${user.id},following_id.eq.${id}),and(follower_id.eq.${id},following_id.eq.${user.id})`),
+      supabase
+        .from('profiles')
+        .select('settings')
+        .eq('id', id)
+        .single()
+    ])
+
+    const iFollowThem = followData?.some((f: any) => f.follower_id === user.id && f.following_id === id)
+    const theyFollowMe = followData?.some((f: any) => f.follower_id === id && f.following_id === user.id)
+    
+    // Check if the receiver allows DMs from followers (defaults to true)
+    const allowDmsFromFollowers = receiverProfile?.settings?.allow_direct_messages_from_followers ?? true
+
+    if (theyFollowMe) {
+      // They follow me, so they trust me -> direct message allowed
+      setRequestStatus('allowed')
+    } else if (iFollowThem && allowDmsFromFollowers) {
+      // I follow them, and they allow followers to DM -> direct message allowed
+      setRequestStatus('allowed')
+    } else {
+      // I don't follow them, OR I follow them but they disabled DMs from followers
+      setRequestStatus(null) // Prompt for Message Request
+    }
+
     setCheckingRequest(false)
   }, [user, id])
 
@@ -335,10 +369,19 @@ export default function () {
     if (!user || !id) return
 
     const cacheKey = `@chat_${user.id}_${id}_${isShopChat}`
+    
+    // Fetch deleted messages synchronously with loading messages
+    let deletedIds: string[] = []
+    const deletedStr = await AsyncStorage.getItem(`@deleted_msgs_${user.id}`)
+    if (deletedStr) {
+      try { deletedIds = JSON.parse(deletedStr) } catch(e) {}
+    }
+
     const cached = await AsyncStorage.getItem(cacheKey)
     if (cached) {
       try {
-        setMessages(JSON.parse(cached))
+        const parsed = JSON.parse(cached)
+        setMessages(parsed.filter((m: Message) => !deletedIds.includes(m.id)))
         setLoading(false)
       } catch (e) {}
     }
@@ -368,7 +411,10 @@ export default function () {
       )
       // Merge in locally-cached reactions so they survive re-opens
       const withReactions = await mergeReactionsIntoMessages(decrypted)
-      setMessages(withReactions)
+      
+      // Filter out deleted messages for this user
+      const filtered = withReactions.filter((m: Message) => !deletedIds.includes(m.id))
+      setMessages(filtered)
     }
     setLoading(false)
 
@@ -516,7 +562,7 @@ export default function () {
     } as any)
 
     if (error) {
-      Alert.alert('Error', 'Failed to send message')
+      Alert.alert('Error', error?.message || 'Failed to send message')
       setInput(text)
     } else {
       await handleInitialMessageRequest(text)
@@ -1235,7 +1281,13 @@ export default function () {
                         const msgId = selectedMessageMenu.msg.id
                         setMessages(prev => prev.filter(m => m.id !== msgId))
                         setSelectedMessageMenu(null)
-                        await supabase.from('messages').delete().eq('id', msgId)
+                        
+                        // Save deleted msg locally for "Delete for me"
+                        setDeletedMsgIds(prev => {
+                          const next = [...prev, msgId]
+                          AsyncStorage.setItem(`@deleted_msgs_${user?.id}`, JSON.stringify(next))
+                          return next
+                        })
                       }}
                     >
                       <Ionicons name="trash-outline" size={24} color="#e4e4e7" />

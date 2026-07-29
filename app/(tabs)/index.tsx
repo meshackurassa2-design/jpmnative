@@ -61,6 +61,7 @@ type Post = {
     settings?: any
   }
   isAd?: boolean
+  algorithmic_reason?: string
 }
 
 type Story = {
@@ -290,9 +291,13 @@ function DirectAdCard({ ad, isAdmin, onDelete }: { ad: any, isAdmin?: boolean, o
         {/* Left Column: Avatar */}
         <View style={styles.postLeftColumn}>
           <TouchableOpacity onPress={handlePress} activeOpacity={0.7}>
-            <View style={[styles.avatar, { backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center' }]}>
-              <Text style={{ fontSize: 18 }}>📢</Text>
-            </View>
+            {ad.image_url ? (
+              <Image source={{ uri: getCdnUrl(ad.image_url) }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center' }]}>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: colors.primary }}>{(ad.title || 'S')[0].toUpperCase()}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -330,7 +335,7 @@ function DirectAdCard({ ad, isAdmin, onDelete }: { ad: any, isAdmin?: boolean, o
               </View>
             ) : (
               <View style={{ width: '100%', paddingVertical: 28, backgroundColor: colors.primary + '10', borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="megaphone-outline" size={32} color={colors.primary} style={{ marginBottom: 6 }} />
+                <Ionicons name="diamond-outline" size={32} color={colors.primary} style={{ marginBottom: 6 }} />
                 <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary, textAlign: 'center' }}>{ad.title || 'Special Promotion'}</Text>
               </View>
             )}
@@ -351,72 +356,6 @@ function DirectAdCard({ ad, isAdmin, onDelete }: { ad: any, isAdmin?: boolean, o
   )
 }
 
-// ── Daily Verse Card ─────────────────────────────────────────────────────────
-function DailyVerseCard() {
-  const { colors } = useTheme()
-  const styles = useMemo(() => getStyles(colors), [colors])
-  const supabase = createClient()
-  const [verse, setVerse] = useState<any>(null)
-  const [sourceFilter, setSourceFilter] = useState<'zote' | 'biblia' | 'kurani'>('zote')
-  const [loading, setLoading] = useState(true)
-
-  const fetchVerse = useCallback(async () => {
-    setLoading(true)
-    const p_source = sourceFilter === 'zote' ? null : sourceFilter
-    const { data, error } = await supabase.rpc('get_daily_verse', { p_source })
-    if (!error && data && data.length > 0) {
-      setVerse(data[0])
-    }
-    setLoading(false)
-  }, [sourceFilter])
-
-  useEffect(() => {
-    fetchVerse()
-  }, [fetchVerse])
-
-  if (!verse && !loading) return null;
-
-  return (
-    <View style={styles.verseCard}>
-      <View style={styles.verseHeader}>
-        <View style={{ flexDirection: 'row', gap: 6 }}>
-          {(['zote', 'biblia', 'kurani'] as const).map(f => (
-            <TouchableOpacity 
-              key={f} 
-              onPress={() => setSourceFilter(f)}
-              style={[
-                styles.verseFilterBtn, 
-                sourceFilter === f && styles.verseFilterBtnActive
-              ]}
-            >
-              <Text style={[
-                styles.verseFilterText,
-                sourceFilter === f && styles.verseFilterTextActive
-              ]}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <TouchableOpacity onPress={fetchVerse} disabled={loading} style={styles.verseRefresh}>
-          {loading ? <ActivityIndicator size="small" color="#a1a1aa" /> : <Ionicons name="refresh" size={18} color="#a1a1aa" />}
-        </TouchableOpacity>
-      </View>
-
-      <View style={{ paddingVertical: 12, alignItems: 'center' }}>
-        {verse && (
-          <>
-            <View style={[styles.verseBadge, verse.source === 'kurani' ? { backgroundColor: '#166534', borderColor: '#14532d' } : { backgroundColor: '#3f3f46', borderColor: '#52525b' }]}>
-              <Text style={styles.verseBadgeText}>{verse.source === 'biblia' ? 'Biblia' : 'Kurani'}</Text>
-            </View>
-            <Text style={styles.verseText}>"{verse.text}"</Text>
-            <Text style={styles.verseRef}>— {verse.reference}</Text>
-          </>
-        )}
-      </View>
-    </View>
-  )
-}
 
 // ── Main Screen ──────────────────────────────────────────────────────────────
 export default function HomeScreen() {
@@ -687,14 +626,44 @@ export default function HomeScreen() {
         } catch(e) {}
       }
 
-      const [postsRes, adsRes] = await Promise.all([
+      // 1. Fetch Follows & Affinity
+      const [followRes, affinityRes] = await Promise.all([
+        user ? supabase.from('follows').select('following_id').eq('follower_id', user.id) : Promise.resolve({ data: [] }),
+        user ? supabase.from('likes').select('post_id, posts!inner(creator_id, image_urls, video_url)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(80) : Promise.resolve({ data: [] })
+      ])
+
+      // Build fast lookup sets for follow boost + affinity boost
+      const followingSet = new Set<string>((followRes.data || []).map((f: any) => f.following_id))
+      const affinityCreatorMap = new Map<string, number>()
+      let videoLikes = 0, imageLikes = 0, textLikes = 0;
+      
+      ;(affinityRes.data || []).forEach((row: any) => {
+        const creatorId = row.posts?.creator_id
+        if (creatorId) {
+          affinityCreatorMap.set(creatorId, (affinityCreatorMap.get(creatorId) || 0) + 1)
+        }
+        if (row.posts?.video_url) videoLikes++;
+        else if (row.posts?.image_urls && row.posts.image_urls.length > 0) imageLikes++;
+        else textLikes++;
+      })
+      
+      const totalAffinity = videoLikes + imageLikes + textLikes || 1;
+      const videoPref = videoLikes / totalAffinity;
+      const imagePref = imageLikes / totalAffinity;
+      const textPref = textLikes / totalAffinity;
+
+      // 2. Fetch Candidates (In-Network + Social Graph + Global)
+      const [postsRes, adsRes, friendsLikesRes] = await Promise.all([
         supabase
           .from('posts')
-          .select('*, profiles:creator_id(id, full_name, username, avatar_url, is_verified, settings), likes(count), comments(count)')
+          .select('*, profiles:creator_id(id, full_name, username, avatar_url, is_verified, settings), likes(count), comments(count), reposts(count), bookmarks(count)')
           .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
           .order('created_at', { ascending: false })
-          .range(from, to),
-        !isLoadMore ? supabase.from('direct_ads').select('*').order('created_at', { ascending: false }).limit(10) : Promise.resolve({ data: directAds })
+          .range(from, Math.max(to, from + 60)), // Fetch extra candidates for the ranker
+        !isLoadMore ? supabase.from('direct_ads').select('*').order('created_at', { ascending: false }).limit(10) : Promise.resolve({ data: directAds }),
+        (user && followingSet.size > 0 && !isLoadMore)
+          ? supabase.from('likes').select('post_id, user_id, profiles!inner(username)').in('user_id', Array.from(followingSet)).order('created_at', { ascending: false }).limit(15)
+          : Promise.resolve({ data: [] })
       ])
 
       if (adsRes.data && !isLoadMore) {
@@ -706,16 +675,44 @@ export default function HomeScreen() {
         });
         setDirectAds(activeAndUncappedAds);
       }
-      const { data, error } = postsRes
+      let allCandidates = postsRes.data || []
+      const outOfNetworkMap = new Map<string, string>()
 
-      if (!error && data) {
-        fetchedCount = data.length;
+      if (friendsLikesRes.data && friendsLikesRes.data.length > 0) {
+        const existingIds = new Set(allCandidates.map(p => p.id))
+        const missingIds = friendsLikesRes.data.map((l: any) => l.post_id).filter((id: string) => !existingIds.has(id))
+        
+        friendsLikesRes.data.forEach((l: any) => {
+          outOfNetworkMap.set(l.post_id, `Liked by @${l.profiles?.username}`)
+        })
+
+        if (missingIds.length > 0) {
+          const { data: missingPosts } = await supabase
+            .from('posts')
+            .select('*, profiles:creator_id(id, full_name, username, avatar_url, is_verified, settings), likes(count), comments(count), reposts(count), bookmarks(count)')
+            .in('id', missingIds)
+          if (missingPosts) {
+            allCandidates = [...allCandidates, ...missingPosts]
+          }
+        }
+      }
+
+      // Inject reason
+      allCandidates = allCandidates.map(p => ({
+        ...p,
+        algorithmic_reason: (!followingSet.has(p.creator_id) && p.creator_id !== user?.id) 
+          ? (outOfNetworkMap.get(p.id) || (p.settings?.is_job ? 'Suggested Job' : null)) 
+          : null
+      }))
+
+      if (!postsRes.error && allCandidates.length > 0) {
+        fetchedCount = postsRes.data?.length || 0;
         // Filter out news posts, and auto-expire jobs & food posts quickly (3 hours) so the feed stays fresh
         const hiddenStr = await AsyncStorage.getItem('hidden_posts')
         const hiddenPosts = hiddenStr ? JSON.parse(hiddenStr) : []
         const hideAllSpecial = await AsyncStorage.getItem('hide_food_hire_posts') === 'true'
         
-        const filteredData = data.filter((p: any) => {
+        const filteredData = allCandidates.filter((p: any) => {
           if (hiddenPosts.includes(p.id)) return false;
           if (p.profiles?.settings?.account_type === 'news') return false;
           if (p.settings?.is_betting_code) return false;
@@ -732,29 +729,77 @@ export default function HomeScreen() {
           return true;
         });
 
-        // True Trending Algorithm: Velocity (Engagement / Time) + Recency Boost
+        // ── Upgraded Feed Algorithm v2 ──────────────────────────────
+        // Signals: likes, comments, reposts, bookmarks, velocity, recency,
+        //          follow boost, affinity boost, seen penalty
         const scoredPosts = filteredData.map((p: any) => {
-          const likesCount = p.likes?.[0]?.count || 0;
-          const commentsCount = p.comments?.[0]?.count || 0;
-          // Calculate age in hours (minimum 1 hour to prevent division by zero for brand new posts)
-          const ageHours = Math.max((Date.now() - new Date(p.created_at).getTime()) / 3600000, 1);
-          
-          // Calculate Engagement Velocity
-          const engagementVolume = (likesCount * 1) + (commentsCount * 13);
+          const likesCount    = p.likes?.[0]?.count     || 0;
+          const commentsCount = p.comments?.[0]?.count  || 0;
+          const repostsCount  = p.reposts?.[0]?.count   || 0;
+          const savesCount    = p.bookmarks?.[0]?.count || 0;
+
+          // Age in hours — minimum 0.5h so brand-new posts aren't buried
+          const ageHours = Math.max((Date.now() - new Date(p.created_at).getTime()) / 3600000, 0.5);
+
+          // Raw engagement volume (comments & saves weighted highest — show intent)
+          const engagementVolume =
+            (likesCount    *  1.0) +
+            (commentsCount * 15.0) +
+            (repostsCount  *  8.0) +
+            (savesCount    * 12.0);
+
+          // Velocity = how fast it's gaining engagement
           const velocityScore = engagementVolume / ageHours;
+
+          // Recency boost: up to 60 pts for posts under 24h, decaying linearly
+          const recencyBoost = ageHours < 24 ? (24 - ageHours) * 2.5 : 0;
           
-          // Give up to 50 points for brand new posts, decaying over 24 hours
-          const recencyBoost = ageHours < 24 ? (24 - ageHours) * 2 : 0;
-          // Apply massive penalty for posts the user has already seen
-          const seenPenalty = viewedPostsRef.current.has(p.id) ? -1000 : 0;
-          
-          const score = engagementVolume + (velocityScore * 10) + recencyBoost + seenPenalty;
+          // Super Fresh Boost: Posts under 15 minutes old ALWAYS go to the top
+          const rawAgeMinutes = (Date.now() - new Date(p.created_at).getTime()) / 60000;
+          const superFreshBoost = rawAgeMinutes < 15 ? 10000 : 0;
+
+          // Follow boost: posts from people you follow get a 40pt lift
+          const followBoost = followingSet.has(p.creator_id) ? 40 : 0;
+
+          // Affinity boost: posts from creators you interact with most get up to 60pt
+          const affinityCount = affinityCreatorMap.get(p.creator_id) || 0;
+          const affinityBoost = Math.min(affinityCount * 10, 60);
+
+          // Seen penalty: posts already viewed drop to the bottom, but we add randomness 
+          // so the feed scrambles and feels fresh when pulling-to-refresh without new posts.
+          const seenPenalty = viewedPostsRef.current.has(p.id) ? (-10000 + (Math.random() * 5000)) : 0;
+
+          // Format Affinity Boost (boost based on your personal viewing habits)
+          let formatMultiplier = 1.0;
+          if (p.video_url) formatMultiplier += (videoPref * 0.4);
+          else if (p.image_urls?.length > 0) formatMultiplier += (imagePref * 0.4);
+          else formatMultiplier += (textPref * 0.4);
+
+          const score = (
+            engagementVolume +
+            (velocityScore * 12) +
+            recencyBoost +
+            superFreshBoost +
+            followBoost +
+            affinityBoost +
+            seenPenalty
+          ) * formatMultiplier;
+
           return { ...p, score };
         });
-        
+
         scoredPosts.sort((a, b) => b.score - a.score);
-        const topPosts = scoredPosts;
         
+        let topPosts = isLoadMore ? scoredPosts : scoredPosts.slice(0, 30);
+        
+        // If we filtered out too many unseen posts and don't have enough to fill the feed,
+        // we pull from already seen posts. To make pull-to-refresh feel fresh, we shuffle them!
+        if (!isLoadMore && topPosts.length < 30 && allCandidates.length >= 30) {
+          let seenPosts = allCandidates.filter(p => viewedPostsRef.current.has(p.id));
+          seenPosts = seenPosts.sort(() => Math.random() - 0.5); // Shuffle
+          topPosts = [...topPosts, ...seenPosts].slice(0, 30);
+        }
+
         if (user && topPosts.length > 0) {
           const ids = topPosts.map((p: any) => p.id)
           const [likesRes, bookmarksRes] = await Promise.all([
@@ -829,18 +874,16 @@ export default function HomeScreen() {
   const fetchPostsRef = useRef(fetchPosts);
   useEffect(() => { fetchPostsRef.current = fetchPosts; }, [fetchPosts]);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (Platform.OS === 'web') {
-        fetchPostsRef.current(false)
-        return
-      }
-      const task = InteractionManager.runAfterInteractions(() => {
-        fetchPostsRef.current(false)
-      })
-      return () => task.cancel()
-    }, [])
-  )
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      fetchPostsRef.current(false)
+      return
+    }
+    const task = InteractionManager.runAfterInteractions(() => {
+      fetchPostsRef.current(false)
+    })
+    return () => task.cancel()
+  }, [])
 
   // Real-time Feed Updates
   useEffect(() => {
@@ -865,6 +908,9 @@ export default function HomeScreen() {
         setPosts(prev => prev.map(p => p.id === payload.old.post_id ? { ...p, reposts_count: Math.max(0, (p.reposts_count || 0) - 1) } : p))
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, async (payload) => {
+        // Intentionally ignoring INSERT so the feed doesn't shift down while reading.
+        // Users can pull-to-refresh to see new posts.
+        /*
         const { data: newPost } = await supabase.from('posts').select('*, profiles:creator_id(id, full_name, username, avatar_url, is_verified, settings)').eq('id', payload.new.id).single()
         if (newPost) {
            newPost.likes_count = 0
@@ -872,6 +918,7 @@ export default function HomeScreen() {
            newPost.reposts_count = 0
            setPosts(prev => [newPost, ...prev])
         }
+        */
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts' }, (payload) => {
         setPosts(prev => prev.map(p => p.id === payload.new.id ? { ...p, ...payload.new } : p))
@@ -1002,7 +1049,7 @@ export default function HomeScreen() {
         } else {
           // Not a monetized post, but we are eligible for an ad. Inject a generic feed banner.
           data.push(currentPost);
-          data.push({ id: `admob-banner-${i}`, isAdMobNative: true });
+          data.push({ id: `admob-banner-after-${post.id}`, isAdMobNative: true, slotIndex: i });
           postsSinceLastAd = 0; // Reset counter
         }
       } else {
@@ -1017,14 +1064,10 @@ export default function HomeScreen() {
         data.push({ id: 'suggested-accounts-widget', isSuggestedAccounts: true })
       }
 
-      // Inject Daily Verse Card every 100 posts
-      if ((i + 1) % 100 === 0) {
-        data.push({ id: `daily-verse-card-${i}`, isVerseCard: true })
-      }
     })
 
     return data
-  }, [posts, directAds, loading, hideAllSpecial])
+  }, [posts, loading, hideAllSpecial])
 
   const handleDeleteJob = (id: string) => {
     Alert.alert('Delete Job', 'Are you sure you want to permanently delete this job posting?', [
@@ -1057,13 +1100,20 @@ export default function HomeScreen() {
       )
     }
     if (item.isSuggestedAccounts) return <SuggestedAccounts />
-    if (item.isVerseCard) return <DailyVerseCard />
     if (item.isAdMobNative) {
-      const slotIndex = parseInt(item.id.replace('admob-banner-', ''), 10) || 0
+      const slotIndex = item.slotIndex || 0
       const directAd = directAds.length > 0 ? directAds[slotIndex % directAds.length] : null
       return (
         <NativeAdCard
-          fallback={directAd ? <DirectAdCard ad={directAd} isAdmin={false} onDelete={() => {}} /> : null}
+          adInfo={directAd ? { 
+            title: directAd.title, 
+            description: directAd.description, 
+            avatarUrl: directAd.image_url ? getCdnUrl(directAd.image_url) : undefined,
+            imageUrl: directAd.image_url ? getCdnUrl(directAd.image_url) : undefined,
+            onPress: () => {
+              if (directAd.link_url) Linking.openURL(directAd.link_url);
+            }
+          } : undefined}
         />
       )
     }
@@ -1253,9 +1303,17 @@ const post = item as Post
                    const postHash = post.id.charCodeAt(0) + post.id.charCodeAt(post.id.length - 1)
                    const directAd = directAds.length > 0 ? directAds[postHash % directAds.length] : null
                    return (
-                     <NativeAdCard
-                       fallback={directAd ? <DirectAdCard ad={directAd} isAdmin={false} onDelete={() => {}} /> : null}
-                     />
+                      <NativeAdCard
+                        adInfo={directAd ? { 
+                          title: directAd.title, 
+                          description: directAd.description, 
+                          avatarUrl: directAd.image_url ? getCdnUrl(directAd.image_url) : undefined,
+                          imageUrl: directAd.image_url ? getCdnUrl(directAd.image_url) : undefined,
+                          onPress: () => {
+                            if (directAd.link_url) Linking.openURL(directAd.link_url);
+                          }
+                        } : undefined}
+                      />
                    )
                  })()}
               </View>
@@ -1449,9 +1507,9 @@ const post = item as Post
           ListEmptyComponent={ListEmpty}
           showsVerticalScrollIndicator={false}
           viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs}
-          initialNumToRender={5}
-          windowSize={5}
-          maxToRenderPerBatch={5}
+          initialNumToRender={10}
+          windowSize={21}
+          maxToRenderPerBatch={10}
           removeClippedSubviews={Platform.OS === 'android'}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />
@@ -1496,12 +1554,11 @@ const getStyles = (colors: any) => StyleSheet.create({
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   headerLogo: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5, color: colors.primary },
 
   // ── Stories ──
-  storiesBar: { backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.border },
+  storiesBar: { backgroundColor: colors.background },
   storiesContent: { paddingHorizontal: 12, paddingVertical: 12, gap: 14, flexDirection: 'row' },
   storyItem: { alignItems: 'center', gap: 5, width: 64 },
   storyRing: { width: 62, height: 62, borderRadius: 31, padding: 2.5, justifyContent: 'center', alignItems: 'center' },
@@ -1590,10 +1647,13 @@ const getStyles = (colors: any) => StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.border,
+    // Reserve space before image loads to prevent layout shift
+    minHeight: 40,
+    backgroundColor: colors.border,
   },
   postImage: { 
     width: '100%', 
-    aspectRatio: 1, 
+    aspectRatio: 4/3,
     backgroundColor: colors.border 
   },
   actions: { 
@@ -1654,74 +1714,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   emptyBtn: { marginTop: 8, backgroundColor: colors.text, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 24 },
   emptyBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 
-  verseCard: {
-    marginBottom: 16,
-    backgroundColor: '#18181b',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#27272a',
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  verseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  verseFilterBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: '#27272a',
-  },
-  verseFilterBtnActive: {
-    backgroundColor: '#fff',
-  },
-  verseFilterText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#a1a1aa',
-  },
-  verseFilterTextActive: {
-    color: '#000',
-  },
-  verseRefresh: {
-    padding: 6,
-    backgroundColor: '#27272a',
-    borderRadius: 12,
-  },
-  verseBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  verseBadgeText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  verseText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
-    textAlign: 'center',
-    lineHeight: 26,
-    marginBottom: 12,
-  },
-  verseRef: {
-    color: '#a1a1aa',
-    fontSize: 14,
-    fontWeight: '500',
-  },
+
 
   // ── FAB ──
   fabWrapper: {

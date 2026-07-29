@@ -11,6 +11,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { createClient } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { CoinIcon } from '../../components/CoinIcon'
+import { decode } from 'base64-arraybuffer'
 
 const TANZANIA_CITIES = [
   'Arusha', 'Dar es Salaam', 'Dodoma', 'Geita', 'Iringa', 'Kagera', 'Katavi',
@@ -40,14 +41,20 @@ export default function RegisterProScreen() {
   const [done, setDone] = useState(false)
   const [showCityPicker, setShowCityPicker] = useState(false)
 
+  const [idUri, setIdUri] = useState<string | null>(null)
+  const [idBase64, setIdBase64] = useState<string | null>(null)
+
   const handleUploadId = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
+      base64: true
     });
 
-    if (!result.canceled) {
+    if (!result.canceled && result.assets[0].base64) {
       setHasId(true);
+      setIdUri(result.assets[0].uri);
+      setIdBase64(result.assets[0].base64);
       Alert.alert('Uploaded', 'Identity verification document attached securely.');
     }
   }
@@ -70,7 +77,43 @@ export default function RegisterProScreen() {
       return
     }
 
-    return Alert.alert('Coming Soon', 'Direct payment gateway integration is currently in progress. You will soon be able to register as a Pro.')
+    if (!user) return
+
+    try {
+      setLoading(true)
+
+      let documentUrl = null
+      if (idBase64 && idUri) {
+        const ext = idUri.split('.').pop() || 'jpg'
+        const fileName = `${user.id}/verification_${Date.now()}.${ext}`
+        const { error: uploadErr } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, decode(idBase64), { contentType: `image/${ext}` })
+        
+        if (!uploadErr) {
+          const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName)
+          documentUrl = publicUrlData.publicUrl
+        }
+      }
+
+      const { error } = await supabase.from('verification_requests').insert({
+        user_id: user.id,
+        first_name: fullName.split(' ')[0] || '',
+        last_name: fullName.split(' ').slice(1).join(' ') || '',
+        known_as: title,
+        category: 'professional',
+        document_type: 'id',
+        document_url: documentUrl,
+        status: 'pending'
+      })
+
+      if (error) throw error
+      setDone(true)
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to submit application')
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (done) {
@@ -79,7 +122,7 @@ export default function RegisterProScreen() {
         <Ionicons name="shield-checkmark" size={80} color="#2563eb" />
         <Text style={styles.successTitle}>Application Submitted</Text>
         <Text style={styles.successText}>
-          Your credentials have been submitted and you will appear on the "Hire a Pro" board shortly!
+          Your credentials have been submitted and you will receive your verification badge shortly!
         </Text>
         <TouchableOpacity style={styles.primaryBtn} onPress={() => router.replace('/services')}>
           <Text style={styles.primaryBtnText}>Go to Services Hub</Text>
@@ -90,18 +133,12 @@ export default function RegisterProScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={{ padding: 8, width: 44 }} />
-        <Text style={styles.headerTitle}>Pro Application</Text>
-        <View style={{ width: 44 }} />
-      </View>
-
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.introBox}>
-          <Ionicons name="ribbon" size={32} color="#fbbf24" style={{ marginBottom: 12 }} />
-          <Text style={styles.introTitle}>Become a Verified Pro</Text>
+          <Ionicons name="ribbon" size={40} color="#f59e0b" style={{ alignSelf: 'center', marginBottom: 12 }} />
+          <Text style={styles.introTitle}>Get Verified</Text>
           <Text style={styles.introText}>
-            Join our elite network of freelancers. Verified Pros get priority placement, a blue checkmark, and direct client inquiries.
+            Join our network of trusted users. Verified accounts receive priority placement, a blue checkmark, and increased trust from the community.
           </Text>
         </View>
 
