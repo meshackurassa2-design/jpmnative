@@ -98,7 +98,7 @@ export default function () {
       ))}
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>© {new Date().getFullYear()} JPM. All rights reserved.</Text>
+        <Text style={styles.footerText}>© {new Date().getFullYear()} Dapaz. All rights reserved.</Text>
       </View>
     </ScrollView>
   )

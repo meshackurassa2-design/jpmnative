@@ -149,7 +149,7 @@ export default function LoginScreen() {
             <Ionicons name="sparkles" size={20} color="#3b82f6" />
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.newTourTitle}>New to JPM? Take a Quick Tour</Text>
+            <Text style={styles.newTourTitle}>New to Dapaz? Take a Quick Tour</Text>
             <Text style={styles.newTourSub}>See how to buy, sell, and earn real money</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.text} />

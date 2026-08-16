@@ -1,6 +1,6 @@
 import { useTheme } from '../lib/theme';
 import React, { useEffect, useState, useRef } from 'react'
-import { View, StyleSheet, Animated, Easing } from 'react-native'
+import { View, StyleSheet, Animated, Easing, Image } from 'react-native'
 
 export function SplashScreen() {
   const { colors } = useTheme();
@@ -88,9 +88,10 @@ export function SplashScreen() {
       />
 
       {/* Logo */}
-      <Animated.Text
+      <Animated.Image
+        source={require('../assets/icon.png')}
         style={[
-          styles.logo,
+          styles.logoImage,
           {
             opacity: logoOpacity,
             transform: [
@@ -98,9 +99,7 @@ export function SplashScreen() {
             ],
           },
         ]}
-      >
-        JPM
-      </Animated.Text>
+      />
 
     </Animated.View>
   )
@@ -114,11 +113,10 @@ const getStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     zIndex: 9999,
   },
-  logo: {
-    fontSize: 72,
-    fontWeight: '900',
-    letterSpacing: 6,
-    color: colors.primary,
+  logoImage: {
+    width: 120,
+    height: 120,
+    resizeMode: 'contain',
   },
   glow: {
     position: 'absolute',

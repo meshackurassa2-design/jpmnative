@@ -41,7 +41,7 @@ export function WebLayoutWrapper({ children }: { children: React.ReactNode }) {
       <View style={[styles.leftSidebar, { borderColor: colors.border }]}>
         <ScrollView contentContainerStyle={{ paddingVertical: 20 }}>
           <View style={styles.logoContainer}>
-            <Text style={[styles.logoText, { color: colors.text }]}>JPM</Text>
+            <Text style={[styles.logoText, { color: colors.text }]}>Dapaz</Text>
           </View>
 
           <View style={styles.navContainer}>

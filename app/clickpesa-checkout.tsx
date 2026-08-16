@@ -34,7 +34,7 @@ export default function ClickPesaCheckoutScreen() {
   const amount = parseFloat(amountStr || '5000') 
   
   const descriptionStr = Array.isArray(params.description) ? params.description[0] : params.description
-  const description = descriptionStr || 'JPM Services'
+  const description = descriptionStr || 'Dapaz Services'
 
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)

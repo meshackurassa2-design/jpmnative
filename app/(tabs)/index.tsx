@@ -1487,7 +1487,7 @@ const post = item as Post
       {/* Top Header */}
       {!isDesktop && (
         <View style={styles.header}>
-          <Text style={[styles.headerLogo, { color: colors.text }]}>JPM</Text>
+          <Text style={[styles.headerLogo, { color: colors.text }]}>Dapaz</Text>
           <TouchableOpacity onPress={() => router.push('/notifications')} activeOpacity={0.7}>
             <Ionicons name="notifications-outline" size={26} color={colors.text} />
           </TouchableOpacity>

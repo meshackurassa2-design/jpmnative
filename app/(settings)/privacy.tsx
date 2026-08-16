@@ -7,7 +7,7 @@ import { useTranslation } from '../../lib/i18n';
 const PRIVACY_EN = [
   {
     title: '1. Introduction',
-    body: 'Welcome to JPM ("we," "our," or "us"). We are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, and share information when you use our mobile application, website, and related services (collectively, the "Platform").',
+    body: 'Welcome to Dapaz ("we," "our," or "us"). We are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, and share information when you use our mobile application, website, and related services (collectively, the "Platform").',
   },
   {
     title: '2. Information We Collect',
@@ -66,7 +66,7 @@ const PRIVACY_EN = [
 ]
 
 const PRIVACY_SW = [
-  { title: '1. Utangulizi', body: 'Karibu JPM ("sisi", "yetu"). Tumejitolea kulinda taarifa zako binafsi na haki yako ya faragha. Sera hii ya faragha inaeleza jinsi tunavyokusanya, kutumia na kushiriki taarifa unapotumia programu yetu.' },
+  { title: '1. Utangulizi', body: 'Karibu Dapaz ("sisi", "yetu"). Tumejitolea kulinda taarifa zako binafsi na haki yako ya faragha. Sera hii ya faragha inaeleza jinsi tunavyokusanya, kutumia na kushiriki taarifa unapotumia programu yetu.' },
   { title: '2. Taarifa Tunazokusanya', body: 'Tunakusanya taarifa unazotupa au zinazokusanywa kiotomatiki:', bullets: ['Taarifa za Akaunti: Jina, barua pepe, nenosiri, picha ya wasifu.', 'Data ya Soko: Ikiwa unanunua au kuuza, tunakusanya historia ya miamala.', 'Ujumbe na Mawasiliano: Ujumbe wa chati, machapisho, na hakiki.', 'Data ya Kifaa: Namba ya kifaa, anwani ya IP.', 'Data ya Eneo: Eneo lako kwa ujumla.'] },
   { title: '3. Jinsi Tunavyotumia Taarifa', body: 'Tunatumia taarifa tulizokusanya kwa:', bullets: ['Kutoa na kuboresha huduma za soko na chati.', 'Kushughulikia miamala na kutoa zawadi za matangazo.', 'Kutuma ujumbe wa kiutawala na usalama.', 'Kubinafsisha uzoefu wako.'] },
   { title: '4. Ushirikishwaji wa Data', body: 'Hatuuzi data yako binafsi. Tunaweza kushiriki taarifa zako kwa mambo haya:', bullets: ['Na Watumiaji Wengine: Unaponunua bidhaa, taarifa muhimu zinashirikiwa na muuzaji.', 'Na Watoa Huduma: Wahusika wa tatu wanaotusaidia kufanya kazi.', 'Kwa Sababu za Kisheria: Ikiwa inahitajika na sheria.'], subSection: { title: 'Matangazo (AdMob/AdSense)', body: 'Tunaweza kutumia washirika wa matangazo. Washirika hawa wanaweza kutumia namba za vifaa kutoa matangazo kulingana na mapendeleo yako.' } },
@@ -76,7 +76,7 @@ const PRIVACY_SW = [
 ]
 
 const PRIVACY_SUK = [
-  { title: '1. Kwanda', body: 'Wamja JPM. Tuli tayari kulinda mhola yako. Sera iyi ieleza nhamba tukupata, kutumia na kupa banhu mhola yako.' },
+  { title: '1. Kwanda', body: 'Wamja Dapaz. Tuli tayari kulinda mhola yako. Sera iyi ieleza nhamba tukupata, kutumia na kupa banhu mhola yako.' },
   { title: '2. Mhola Tukupata', body: 'Tukupata mhola utupa:', bullets: ['Mhola ja Akaunti: Zina, barua pepe.', 'Mhola ja Soko: Uko guza, tukupata historia ya shiguzilwe.', 'Mhola ja Chati: Mhola utuma.', 'Mhola ja Simu: Namba ya simu.', 'Mhola ja Kaya: Kaya yako.'] },
   { title: '3. Nhamba Tukutumia Mhola', body: 'Tukutumia mhola kwa:', bullets: ['Kupa huduma za soko na chati.', 'Kushughulikia shiguzilwe.', 'Kutuma mhola za usalama.'] },
   { title: '4. Kupa Banhu Mhola', body: 'Hatuuzi mhola yako. Tukupa mhola yako kwa:', bullets: ['Banhu Bangi: Uko guza, mhola yashila kwa mguza.', 'Batupa Huduma: Banhu batukusaidia.', 'Sheria: Kwa sababu za sheria.'], subSection: { title: 'Matangazo', body: 'Tukutumia banhu ba matangazo.' } },
@@ -86,7 +86,7 @@ const PRIVACY_SUK = [
 ]
 
 const PRIVACY_CHA = [
-  { title: '1. Kwanda', body: 'Wamcha JPM. Tunalinda kindu kyako. Sera iyi ieleza tunapata, kutumia na kuwapa wandu.' },
+  { title: '1. Kwanda', body: 'Wamcha Dapaz. Tunalinda kindu kyako. Sera iyi ieleza tunapata, kutumia na kuwapa wandu.' },
   { title: '2. Mhola Tunapata', body: 'Tunapata mhola utupa:', bullets: ['Akaunti: Zina, email.', 'Soko: Ukauza, tunapata kindu kyauzwa.', 'Chati: Meseji utuma.', 'Simu: Namba ya simu.', 'Kaya: Kaya yako.'] },
   { title: '3. Kyotumiya Mhola', body: 'Tunatumia mhola kwa:', bullets: ['Kupa huduma za soko.', 'Miamala.', 'Kutuma mhola za usalama.'] },
   { title: '4. Kuwapa Mhola', body: 'Hatuuzi mhola yako. Tunapa mhola kwa:', bullets: ['Wandu Wengi: Ukauza, muuza apata mhola.', 'Huduma: Wandu watukusaidia.', 'Sheria: Kwa sheria.'], subSection: { title: 'Matangazo', body: 'Tunatumia wandu wa matangazo.' } },
@@ -130,7 +130,7 @@ export default function () {
       ))}
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>© {new Date().getFullYear()} JPM. All rights reserved.</Text>
+        <Text style={styles.footerText}>© {new Date().getFullYear()} Dapaz. All rights reserved.</Text>
       </View>
     </ScrollView>
   )
