@@ -36,7 +36,7 @@ export default function () {
       {/* App branding */}
       <View style={styles.brandCard}>
         <Image source={require('../../assets/icon_real.png')} style={styles.brandLogoImage} resizeMode="contain" />
-        <Text style={styles.brandName}>JPM</Text>
+        <Text style={styles.brandName}>Dapaz</Text>
         <Text style={styles.brandVersion}>Version {APP_VERSION}</Text>
       </View>
 

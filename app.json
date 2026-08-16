@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "JPM",
-    "slug": "jpm-socialmarket",
+    "name": "Dapaz",
+    "slug": "dapaz-socialmarket",
     "version": "6.0.6",
     "newArchEnabled": true,
     "orientation": "portrait",
@@ -19,7 +19,7 @@
       "backgroundColor": "#000000"
     },
     "userInterfaceStyle": "automatic",
-    "scheme": "jpm",
+    "scheme": "dapaz",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.jpm.app",
