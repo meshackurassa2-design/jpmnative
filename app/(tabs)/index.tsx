@@ -546,21 +546,12 @@ export default function HomeScreen() {
       .eq('id', user.id).single()
       .then(({ data }) => setMyProfile(data))
       
-    // Load cache
-    AsyncStorage.getItem('home_feed_cache').then(cached => {
-      if (cached) {
-        try {
-          setPosts(JSON.parse(cached))
-          setLoading(false)
-        } catch (e) {}
-      }
-    })
   }, [user])
 
   const postsRef = useRef(posts);
   useEffect(() => { postsRef.current = posts; }, [posts]);
 
-  const fetchPosts = useCallback(async (isLoadMore = false, overrideTab?: Tab, overridePage?: number, isManualRefresh = false) => {
+  const fetchPosts = useCallback(async (isLoadMore = false, overrideTab?: Tab, overridePage?: number) => {
     const currentTab = overrideTab || activeTab;
     const currentPage = overridePage !== undefined ? overridePage : page;
 
@@ -569,27 +560,10 @@ export default function HomeScreen() {
     const nextPage = isLoadMore ? currentPage + 1 : 0;
     const from = nextPage * 30;
     const to = from + 29;
-    
-    let isSilentBackgroundFetch = false;
 
     if (!isLoadMore) {
       if (postsRef.current.length === 0) {
-        if (currentTab === 'for_you') {
-          const cached = await AsyncStorage.getItem('home_feed_cache')
-          if (cached && !isManualRefresh) {
-            try {
-              setPosts(JSON.parse(cached))
-              setLoading(false)
-              isSilentBackgroundFetch = true;
-            } catch (e) {
-              setLoading(true)
-            }
-          } else {
-            setLoading(true)
-          }
-        } else {
-          setLoading(true)
-        }
+        setLoading(true)
       }
     } else {
       setLoadingMore(true);
@@ -614,9 +588,7 @@ export default function HomeScreen() {
           return Array.from(new Map(newPosts.map(p => [p.id, p])).values());
         });
       } else {
-        if (!isSilentBackgroundFetch) {
-          setPosts(postsToResolve);
-        }
+        setPosts(postsToResolve);
       }
       return postsToResolve;
     }
@@ -964,13 +936,13 @@ export default function HomeScreen() {
     }).start()
     
     // Explicitly call fetchPosts with the new tab and page
-    fetchPostsRef.current(false, tab, 0, true)
+    fetchPostsRef.current(false, tab, 0)
   }
 
   const onRefresh = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
     setRefreshing(true)
-    fetchPosts(false, undefined, undefined, true)
+    fetchPosts(false)
   }, [fetchPosts])
 
 
