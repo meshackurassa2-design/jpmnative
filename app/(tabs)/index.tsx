@@ -34,7 +34,17 @@ import * as StoreReview from 'expo-store-review'
 import * as Clipboard from 'expo-clipboard'
 import { useTranslation } from '../../lib/i18n'
 
-type Tab = 'for_you' | 'following' | 'betting_codes'
+type Tab = 'for_you' | 'following' | 'betting_codes' | string
+
+export const AVAILABLE_TOPICS = [
+  'Soccer',
+  'Stocks & Economy',
+  'Politics',
+  'Sports',
+  'Business & Finance',
+  'Science',
+  'Technology'
+]
 
 type StoryGroup = { profile: any; stories: any[]; hasUnseen: boolean }
 
@@ -380,6 +390,8 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('for_you')
   const [myProfile, setMyProfile] = useState<any>(null)
   const [hideAllSpecial, setHideAllSpecial] = useState(false)
+  const [pinnedTopics, setPinnedTopics] = useState<string[]>([])
+  const [showTimelinesModal, setShowTimelinesModal] = useState(false)
   const underlineAnim = useRef(new Animated.Value(0)).current
   const fabAnim = useRef(new Animated.Value(1)).current
   const fadeAnim = useRef(new Animated.Value(Platform.OS === 'web' ? 1 : 0)).current
@@ -473,7 +485,18 @@ export default function HomeScreen() {
     AsyncStorage.getItem('hide_food_hire_posts').then(val => {
       if (val === 'true') setHideAllSpecial(true)
     })
+    AsyncStorage.getItem('pinned_topics').then(val => {
+      if (val) setPinnedTopics(JSON.parse(val))
+    })
   }, [])
+
+  const togglePinTopic = (topic: string) => {
+    setPinnedTopics(prev => {
+      const next = prev.includes(topic) ? prev.filter(t => t !== topic) : [...prev, topic]
+      AsyncStorage.setItem('pinned_topics', JSON.stringify(next))
+      return next
+    })
+  }
 
   const lastScrollY = useRef(0)
   
@@ -631,12 +654,18 @@ export default function HomeScreen() {
       const imagePref = imageLikes / totalAffinity;
       const textPref = textLikes / totalAffinity;
 
+      let postsQuery = supabase
+        .from('posts')
+        .select('*, profiles:creator_id(id, full_name, username, avatar_url, is_verified, settings), likes(count), comments(count), reposts(count), bookmarks(count)')
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+
+      if (currentTab !== 'for_you' && currentTab !== 'following' && currentTab !== 'betting_codes') {
+        postsQuery = postsQuery.eq('settings->>category', currentTab)
+      }
+
       // 2. Fetch Candidates (In-Network + Social Graph + Global)
       const [postsRes, adsRes, friendsLikesRes] = await Promise.all([
-        supabase
-          .from('posts')
-          .select('*, profiles:creator_id(id, full_name, username, avatar_url, is_verified, settings), likes(count), comments(count), reposts(count), bookmarks(count)')
-          .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+        postsQuery
           .order('created_at', { ascending: false })
           .range(from, Math.max(to, from + 60)), // Fetch extra candidates for the ranker
         !isLoadMore ? supabase.from('direct_ads').select('*').order('created_at', { ascending: false }).limit(10) : Promise.resolve({ data: directAds }),
@@ -1442,7 +1471,7 @@ const post = item as Post
              )}
           </TouchableOpacity>
           
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1, marginHorizontal: 16 }} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 24, paddingHorizontal: 8 }}>
             <TouchableOpacity onPress={() => switchTab('for_you', 0)} style={{ position: 'relative', paddingVertical: 12 }}>
               <Text style={{ fontSize: 16, fontWeight: activeTab === 'for_you' ? '700' : '600', color: activeTab === 'for_you' ? colors.text : colors.textDim }}>For you</Text>
               {activeTab === 'for_you' && <View style={{ position: 'absolute', bottom: 0, left: -6, right: -6, height: 4, backgroundColor: colors.primary, borderRadius: 2 }} />}
@@ -1452,9 +1481,16 @@ const post = item as Post
               <Text style={{ fontSize: 16, fontWeight: activeTab === 'following' ? '700' : '600', color: activeTab === 'following' ? colors.text : colors.textDim }}>Following</Text>
               {activeTab === 'following' && <View style={{ position: 'absolute', bottom: 0, left: -6, right: -6, height: 4, backgroundColor: colors.primary, borderRadius: 2 }} />}
             </TouchableOpacity>
-          </View>
+
+            {pinnedTopics.map((topic, idx) => (
+              <TouchableOpacity key={topic} onPress={() => switchTab(topic, idx + 2)} style={{ position: 'relative', paddingVertical: 12 }}>
+                <Text style={{ fontSize: 16, fontWeight: activeTab === topic ? '700' : '600', color: activeTab === topic ? colors.text : colors.textDim }}>{topic}</Text>
+                {activeTab === topic && <View style={{ position: 'absolute', bottom: 0, left: -6, right: -6, height: 4, backgroundColor: colors.primary, borderRadius: 2 }} />}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
           
-          <TouchableOpacity onPress={() => Alert.alert('Coming Soon', 'Custom Feeds feature is coming soon!')} activeOpacity={0.7} style={{ padding: 4 }}>
+          <TouchableOpacity onPress={() => setShowTimelinesModal(true)} activeOpacity={0.7} style={{ padding: 4 }}>
             <Ionicons name="add" size={26} color={colors.text} />
           </TouchableOpacity>
         </View>
@@ -1511,6 +1547,79 @@ const post = item as Post
           </TouchableOpacity>
         </Animated.View>
       )}
+      {/* Timelines Modal */}
+      <Modal visible={showTimelinesModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowTimelinesModal(false)}>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+            <View style={{ width: 32 }} />
+            <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>Timelines</Text>
+            <TouchableOpacity onPress={() => setShowTimelinesModal(false)} style={{ padding: 4 }}>
+              <Ionicons name="close" size={24} color={colors.textDim} />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView contentContainerStyle={{ padding: 16 }}>
+            <View style={{ backgroundColor: colors.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+              <Ionicons name="search" size={18} color={colors.textDim} style={{ marginRight: 8 }} />
+              <Text style={{ color: colors.textDim }}>Search</Text>
+            </View>
+
+            <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 12 }}>Pinned</Text>
+            {pinnedTopics.length === 0 ? (
+              <Text style={{ color: colors.textDim, fontSize: 14, fontWeight: '600', textAlign: 'center', marginBottom: 24 }}>No topics are currently pinned</Text>
+            ) : (
+              <View style={{ marginBottom: 24 }}>
+                {pinnedTopics.map(topic => (
+                  <View key={`pinned-${topic}`} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center' }}>
+                        <Ionicons name="pricetag-outline" size={20} color={colors.textDim} />
+                      </View>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>{topic}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => togglePinTopic(topic)} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#ef4444', justifyContent: 'center', alignItems: 'center' }}>
+                      <Ionicons name="remove" size={18} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>Topics</Text>
+              <Ionicons name="chevron-down" size={20} color={colors.textDim} />
+            </View>
+
+            <View>
+              {AVAILABLE_TOPICS.map(topic => {
+                const isPinned = pinnedTopics.includes(topic);
+                return (
+                  <View key={`topic-${topic}`} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center' }}>
+                        <Ionicons name={
+                          topic === 'Soccer' ? 'football-outline' :
+                          topic === 'Sports' ? 'tennisball-outline' :
+                          topic === 'Politics' ? 'podium-outline' :
+                          topic === 'Business & Finance' ? 'briefcase-outline' :
+                          topic === 'Science' ? 'flask-outline' :
+                          topic === 'Technology' ? 'hardware-chip-outline' :
+                          'analytics-outline'
+                        } size={20} color={colors.textDim} />
+                      </View>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>{topic}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => togglePinTopic(topic)} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: isPinned ? colors.border : '#10b981', justifyContent: 'center', alignItems: 'center' }}>
+                      <Ionicons name={isPinned ? 'checkmark' : 'add'} size={18} color={isPinned ? colors.textDim : '#fff'} />
+                    </TouchableOpacity>
+                  </View>
+                )
+              })}
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   )
 }

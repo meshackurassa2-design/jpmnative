@@ -228,6 +228,7 @@ export default function CreatePostScreen() {
   }, [loading]);
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [isNewsPost, setIsNewsPost] = useState(false)
   const [isBusiness, setIsBusiness] = useState(false)
   const [profileAvatar, setProfileAvatar] = useState<string | null>(
     user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null,
@@ -461,7 +462,7 @@ export default function CreatePostScreen() {
             thread_index: idx,
             ghost_mode: isGhost,
             is_deal: isDeal,
-            category: selectedCategory,
+            category: isNewsPost ? 'News' : selectedCategory,
             is_betting_code: isBettingCode,
             betting_platform: isBettingCode ? bettingPlatform : undefined,
             betting_code: isBettingCode ? bettingCode : undefined,
@@ -788,6 +789,14 @@ export default function CreatePostScreen() {
                 <Text style={styles.settingDesc}>{tLocal('ghost_desc')}</Text>
               </View>
               <Switch value={isGhost} onValueChange={setIsGhost} trackColor={{ true: '#f59e0b' }} />
+            </View>
+
+            <View style={styles.settingRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.settingLabel}>Post as News 📰</Text>
+                <Text style={styles.settingDesc}>Categorize this post as news to appear in the News feed</Text>
+              </View>
+              <Switch value={isNewsPost} onValueChange={setIsNewsPost} trackColor={{ true: '#ef4444' }} />
             </View>
 
             <View style={styles.settingRow}>
