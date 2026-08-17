@@ -127,9 +127,11 @@ const AvatarImage = React.memo(({ uri, ghost, styles }: { uri: string | null; gh
 
   return (
     <View style={[styles.avatarBase, ghost ? styles.avatarGhost : null]}>
-      {/* Purple placeholder always underneath — never flickers */}
+      {/* Gray person placeholder always underneath */}
       {!loaded && !errored && (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: '#6366f1', borderRadius: 20 }]} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: '#e4e4e7', borderRadius: 20, justifyContent: 'center', alignItems: 'center' }]}>
+          <Ionicons name="person" size={24} color="#a1a1aa" />
+        </View>
       )}
       {showImage && (
         <Image
@@ -170,6 +172,7 @@ export default function CreatePostScreen() {
   const [thread, setThread] = useState<PostItem[]>([{
     id: Date.now().toString(), content: '', images: [], remoteUrls: [], video: null, isHidden: false
   }])
+  const [focusedIndex, setFocusedIndex] = useState(0)
   const [loading, setLoading] = useState(false)
   const [showGiphy, setShowGiphy] = useState<{ postIndex: number } | null>(null)
   const [showOptions, setShowOptions] = useState(false)
@@ -555,18 +558,18 @@ export default function CreatePostScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* ── Fixed header ── */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12), borderBottomWidth: 0 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Ionicons name="close" size={24} color={colors.text} />
+          <Text style={{ fontSize: 17, color: colors.text, fontWeight: '400' }}>Cancel</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Post</Text>
+        <View style={{ flex: 1 }} />
         <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
           <TouchableOpacity
-            style={[styles.postBtn, isEmpty && styles.postBtnDisabled]}
+            style={[{ borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#1d9bf0' }, isEmpty && { opacity: 0.5 }]}
             onPress={handlePost}
-            disabled={loading}
+            disabled={loading || isEmpty}
           >
-            <Text style={[styles.postBtnText, isEmpty && styles.postBtnTextDisabled]}>{tLocal('post')}</Text>
+            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>{tLocal('post')}</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -607,20 +610,20 @@ export default function CreatePostScreen() {
 
               {/* Right column: input + media + toolbar */}
               <View style={styles.postRight}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.fullName}>{user?.user_metadata?.username || 'user'}</Text>
-                    {isGhost && <View style={styles.ghostBadge}><Text style={styles.ghostBadgeText}>👻 Ghost</Text></View>}
+                {/* Close button + Ghost badge if thread */}
+                {(thread.length > 1 || isGhost) && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                    {isGhost ? <View style={styles.ghostBadge}><Text style={styles.ghostBadgeText}>👻 Ghost</Text></View> : <View />}
+                    {thread.length > 1 && (
+                      <TouchableOpacity
+                        onPress={() => setThread(prev => prev.filter((_, i) => i !== index))}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="close" size={20} color={colors.textDim} />
+                      </TouchableOpacity>
+                    )}
                   </View>
-                  {thread.length > 1 && (
-                    <TouchableOpacity
-                      onPress={() => setThread(prev => prev.filter((_, i) => i !== index))}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons name="close-circle-outline" size={20} color={colors.textDim} />
-                    </TouchableOpacity>
-                  )}
-                </View>
+                )}
 
                 {index === 0 && (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
@@ -639,6 +642,7 @@ export default function CreatePostScreen() {
                 {/* Text input */}
                 <TextInput
                   ref={index === 0 ? inputRef : undefined}
+                  onFocus={() => setFocusedIndex(index)}
                   style={styles.input}
                   placeholder={index === 0 ? tLocal('whats_happening') : tLocal('say_more')}
                   placeholderTextColor={colors.textDim}
@@ -688,32 +692,6 @@ export default function CreatePostScreen() {
                   </View>
                 )}
 
-                {/* Toolbar */}
-                <View style={styles.toolbar}>
-                  <TouchableOpacity style={styles.toolBtn} onPress={() => pickMedia(index, 'Images')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Ionicons name="image-outline" size={22} color={colors.primary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.toolBtn} onPress={() => pickMedia(index, 'Videos')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Ionicons name="videocam-outline" size={22} color={colors.primary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.toolBtn} onPress={() => setShowGiphy({ postIndex: index })} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <View style={styles.gifIcon}><Text style={styles.gifText}>GIF</Text></View>
-                  </TouchableOpacity>
-                  <View style={{ flex: 1 }} />
-                  {index === thread.length - 1 && (
-                    <TouchableOpacity
-                      style={styles.addThreadBtn}
-                      onPress={() => setThread(prev => [
-                        ...prev,
-                        { id: Date.now().toString(), content: '', images: [], remoteUrls: [], video: null, isHidden: false },
-                      ])}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons name="add-circle-outline" size={18} color={colors.textDim} style={{ marginRight: 4 }} />
-                      <Text style={styles.addThreadText}>{tLocal('add_to_thread')}</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
               </View>
             </View>
           ))}
@@ -752,28 +730,70 @@ export default function CreatePostScreen() {
             setEditingPhoto(null)
           }}
         />
-      </KeyboardAvoidingView>
 
-        {/* Bottom bar: Options + character count */}
-        <View style={[styles.bottomBarWrapper, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <View style={styles.bottomBar}>
-            <TouchableOpacity style={styles.bottomOptionsBtn} onPress={() => setShowOptions(true)}>
-              <Ionicons name="settings-outline" size={18} color={colors.textDim} style={{ marginRight: 6 }} />
-              <Text style={styles.bottomOptionsText}>{tLocal('options')}</Text>
+        {/* Global Keyboard Toolbar */}
+        <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingHorizontal: 16, paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12), backgroundColor: colors.background }}>
+          {/* Everyone can reply */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, marginBottom: 12 }}>
+            <Ionicons name="earth" size={16} color="#1d9bf0" />
+            <Text style={{ color: '#1d9bf0', fontWeight: '600', marginLeft: 6, fontSize: 13 }}>Everyone can reply</Text>
+            <View style={{ flex: 1 }} />
+            <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginRight: 16 }}>
+              <Ionicons name="arrow-undo-outline" size={20} color={colors.textDim} />
             </TouchableOpacity>
-            <View style={styles.charCountWrap}>
-              <Text style={[
-                styles.charCount,
-                thread[0]?.content?.length > 240 && { color: '#ef4444' }
-              ]}>
-                {thread.reduce((sum, p) => sum + (p.content?.length || 0), 0)}
-              </Text>
-            </View>
+            <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="arrow-redo-outline" size={20} color={colors.textDim} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Action Icons */}
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity style={{ padding: 6, marginRight: 8 }} onPress={() => pickMedia(focusedIndex, 'Images')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="image-outline" size={22} color="#1d9bf0" />
+            </TouchableOpacity>
+            <TouchableOpacity style={{ padding: 6, marginRight: 8 }} onPress={() => pickMedia(focusedIndex, 'Videos')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="videocam-outline" size={22} color="#1d9bf0" />
+            </TouchableOpacity>
+            <TouchableOpacity style={{ padding: 6, marginRight: 8 }} onPress={() => setShowGiphy({ postIndex: focusedIndex })} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <View style={{ borderWidth: 1.5, borderColor: '#1d9bf0', borderRadius: 4, paddingHorizontal: 2, height: 18, justifyContent: 'center' }}><Text style={{ color: '#1d9bf0', fontSize: 9, fontWeight: '800' }}>GIF</Text></View>
+            </TouchableOpacity>
+            <TouchableOpacity style={{ padding: 6, marginRight: 8 }} onPress={() => setShowOptions(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="options-outline" size={22} color="#1d9bf0" />
+            </TouchableOpacity>
+
+            <View style={{ flex: 1 }} />
+            
+            {/* Char count circle */}
+            {(() => {
+              const charCount = thread[focusedIndex]?.content.length || 0;
+              const maxChars = 280;
+              const progress = Math.min(charCount / maxChars, 1);
+              const color = charCount > maxChars ? '#ef4444' : charCount > maxChars - 20 ? '#eab308' : '#1d9bf0';
+              return (
+                <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, justifyContent: 'center', alignItems: 'center', marginRight: 12, overflow: 'hidden' }}>
+                  <View style={{ position: 'absolute', bottom: 0, width: '100%', height: `${progress * 100}%`, backgroundColor: color }} />
+                </View>
+              )
+            })()}
+
+            <View style={{ width: 1, height: 24, backgroundColor: colors.border, marginRight: 12 }} />
+
+            <TouchableOpacity
+              onPress={() => setThread(prev => [
+                ...prev,
+                { id: Date.now().toString(), content: '', images: [], remoteUrls: [], video: null, isHidden: false },
+              ])}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="add-circle" size={28} color="#1d9bf0" />
+            </TouchableOpacity>
           </View>
           {hasDraft && (
             <Text style={styles.draftSavedText}>✓ Draft auto-saved</Text>
           )}
         </View>
+
+      </KeyboardAvoidingView>
 
       {/* Post settings modal */}
       <Modal visible={showOptions} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowOptions(false)}>

@@ -22,6 +22,7 @@ export default function () {
   const supabase = createClient()
   const [profile, setProfile] = useState<any>(null)
   const [monthlyViews, setMonthlyViews] = useState(0)
+  const [followers, setFollowers] = useState(0)
   const [totalPosts, setTotalPosts] = useState(0)
   const [loading, setLoading] = useState(true)
   const [showWithdrawModal, setShowWithdrawModal] = useState(false)
@@ -37,11 +38,15 @@ export default function () {
       const { data: profRes } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setProfile(profRes)
 
-      // Fetch real 30-day view count
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      // Fetch real 60-day view count
+      const startDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
       const { data: postsData } = await supabase.from('posts').select('view_count').eq('creator_id', user.id).gte('created_at', startDate)
       const views = postsData?.reduce((acc, curr) => acc + (curr.view_count || 0), 0) || 0
       setMonthlyViews(views)
+
+      // Fetch followers
+      const { count: followerCount } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id)
+      setFollowers(followerCount || 0)
 
       // Fetch real active posts count
       const { count } = await supabase.from('posts').select('*', { count: 'exact', head: true }).eq('creator_id', user.id)
@@ -80,6 +85,7 @@ export default function () {
   const appStatus = profile?.settings?.creator_application_status
   const isApproved = appStatus === 'approved'
   const isPending = appStatus === 'pending'
+  const isEligible = followers >= 10000 && monthlyViews >= 2000000
 
   const handleWithdrawal = async () => {
     if (!paymentDetails.trim() || !receiverName.trim()) {
@@ -132,7 +138,7 @@ export default function () {
           <View style={[styles.gridCell, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Ionicons name="eye-outline" size={22} color={colors.textDim} style={{ marginBottom: 12 }} />
             <Text style={styles.gridValue}>{monthlyViews.toLocaleString()}</Text>
-            <Text style={styles.gridLabel}>30-Day Views</Text>
+            <Text style={styles.gridLabel}>60-Day Views</Text>
           </View>
           
           <View style={[styles.gridCell, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -300,10 +306,20 @@ export default function () {
           <Text style={{ fontSize: 16, color: colors.text, fontWeight: '600', marginBottom: 12, lineHeight: 24 }}>
             Join the waitlist for our Creator Monetization Program. Our team manually reviews accounts and admits creators in batches.
           </Text>
+          
+          <Text style={{ fontSize: 14, color: colors.textDim, marginBottom: 8, fontWeight: '600' }}>Requirements to join:</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+            <Ionicons name={followers >= 10000 ? "checkmark-circle" : "close-circle"} size={18} color={followers >= 10000 ? "#10b981" : "#ef4444"} />
+            <Text style={{ fontSize: 14, color: colors.text, marginLeft: 8 }}>10,000 Followers (You have {followers.toLocaleString()})</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+            <Ionicons name={monthlyViews >= 2000000 ? "checkmark-circle" : "close-circle"} size={18} color={monthlyViews >= 2000000 ? "#10b981" : "#ef4444"} />
+            <Text style={{ fontSize: 14, color: colors.text, marginLeft: 8 }}>2M Views in 60 days (You have {monthlyViews.toLocaleString()})</Text>
+          </View>
         </View>
 
         {/* Apply Button */}
-        {!isPending && (
+        {!isPending && isEligible && (
           <TouchableOpacity 
             activeOpacity={0.8}
             onPress={async () => {
@@ -331,6 +347,12 @@ export default function () {
               </Text>
             </LinearGradient>
           </TouchableOpacity>
+        )}
+
+        {!isEligible && (
+          <View style={{ marginTop: 12, padding: 12, backgroundColor: colors.isDark ? '#3f3f46' : '#f4f4f5', borderRadius: 8 }}>
+            <Text style={{ color: colors.textDim, fontSize: 13, textAlign: 'center' }}>You must meet all requirements to join the waitlist.</Text>
+          </View>
         )}
 
       </View>

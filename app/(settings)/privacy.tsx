@@ -15,7 +15,7 @@ const PRIVACY_EN = [
     bullets: [
       'Account Information: Name, email address, password, profile picture, and demographic information.',
       'Marketplace Data: If you buy or sell items, we collect transaction history, shipping addresses, phone numbers, and shop details. We do not store raw credit card numbers; payment processing is securely handled by third-party providers.',
-      'Content & Communications: Messages sent through our chat, posts, reviews, and feedback.',
+      'Content & Communications: Messages sent through our chat are end-to-end encrypted; Dapaz staff and third parties cannot read or access them. We also collect posts, reviews, and feedback.',
       'Device & Usage Data: Device identifiers (including Push Notification tokens via Firebase), IP address, operating system, and app interaction data.',
       'Ad-Reward Activity: We track ad-watching milestones (such as timestamps and counts) to accurately issue digital coin rewards to your wallet.',
       'Location Data: General location data (e.g., city/area) to help you find local shops and products.',
