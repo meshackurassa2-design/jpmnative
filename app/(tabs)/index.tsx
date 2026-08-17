@@ -1321,9 +1321,6 @@ const post = item as Post
   const listHeader = (
     <>
       {/* Empty space since tabs are in the pinned header now */}
-    </>
-  );
-
       {loading && (
         <View style={{ paddingHorizontal: 0 }}>
           {[1, 2, 3].map(i => (
