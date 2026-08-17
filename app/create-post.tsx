@@ -229,6 +229,20 @@ export default function CreatePostScreen() {
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isNewsPost, setIsNewsPost] = useState(false)
+  const AVAILABLE_TOPICS = ['Soccer', 'Stocks & Economy', 'Politics', 'Sports', 'Business & Finance', 'Science', 'Technology', 'Entertainment']
+
+  const detectCategory = (text: string) => {
+    const lower = text.toLowerCase();
+    if (lower.includes('soccer') || lower.includes('football') || lower.includes('messi') || lower.includes('ronaldo') || lower.includes('premier league')) return 'Soccer';
+    if (lower.includes('stock') || lower.includes('economy') || lower.includes('market')) return 'Stocks & Economy';
+    if (lower.includes('politics') || lower.includes('president') || lower.includes('government') || lower.includes('election') || lower.includes('parliament')) return 'Politics';
+    if (lower.includes('sports') || lower.includes('basketball') || lower.includes('nba') || lower.includes('tennis') || lower.includes('athlete')) return 'Sports';
+    if (lower.includes('business') || lower.includes('startup') || lower.includes('company') || lower.includes('finance') || lower.includes('money')) return 'Business & Finance';
+    if (lower.includes('science') || lower.includes('space') || lower.includes('nasa') || lower.includes('research') || lower.includes('physics')) return 'Science';
+    if (lower.includes('technology') || lower.includes('tech') || lower.includes('apple') || lower.includes('software') || lower.includes('ai ') || lower.includes('coding') || lower.includes('app')) return 'Technology';
+    if (lower.includes('entertainment') || lower.includes('movie') || lower.includes('music') || lower.includes('celebrity') || lower.includes('actor') || lower.includes('song')) return 'Entertainment';
+    return null;
+  }
   const [isBusiness, setIsBusiness] = useState(false)
   const [profileAvatar, setProfileAvatar] = useState<string | null>(
     user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null,
@@ -462,7 +476,7 @@ export default function CreatePostScreen() {
             thread_index: idx,
             ghost_mode: isGhost,
             is_deal: isDeal,
-            category: isNewsPost ? 'News' : selectedCategory,
+            category: isNewsPost ? 'News' : (selectedCategory || detectCategory(post.content)),
             is_betting_code: isBettingCode,
             betting_platform: isBettingCode ? bettingPlatform : undefined,
             betting_code: isBettingCode ? bettingCode : undefined,
@@ -836,6 +850,33 @@ export default function CreatePostScreen() {
               </View>
               <Switch value={reviewReplies} onValueChange={setReviewReplies} trackColor={{ true: '#2563eb' }} />
             </View>
+
+            <View style={[styles.settingRow, { flexDirection: 'column', alignItems: 'flex-start', borderBottomWidth: 0 }]}>
+              <Text style={[styles.settingLabel, { marginBottom: 8 }]}>Categorize Post (Optional)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {AVAILABLE_TOPICS.map(topic => (
+                  <TouchableOpacity
+                    key={topic}
+                    onPress={() => setSelectedCategory(topic === selectedCategory ? null : topic)}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      borderRadius: 20,
+                      backgroundColor: selectedCategory === topic ? colors.primary : colors.border,
+                      marginRight: 8,
+                    }}
+                  >
+                    <Text style={{
+                      color: selectedCategory === topic ? '#fff' : colors.text,
+                      fontWeight: '600'
+                    }}>
+                      {topic}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
 
             <View style={[styles.settingRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
               <Text style={styles.settingLabel}>{tLocal('invite_collab')}</Text>

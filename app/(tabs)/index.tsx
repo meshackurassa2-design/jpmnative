@@ -1462,8 +1462,8 @@ const post = item as Post
       {!isDesktop && (
         <View style={[styles.header, { justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => router.push('/user-profile')} activeOpacity={0.7}>
-             {myProfile?.avatar_url ? (
-               <Image source={{ uri: getCdnUrl(myProfile.avatar_url) }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+            {user?.user_metadata?.avatar_url || myProfile?.avatar_url ? (
+               <Image source={{ uri: getCdnUrl(user?.user_metadata?.avatar_url || myProfile?.avatar_url) }} style={{ width: 32, height: 32, borderRadius: 16 }} />
              ) : (
                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center' }}>
                  <Ionicons name="person" size={16} color={colors.textDim} />
@@ -1471,7 +1471,7 @@ const post = item as Post
              )}
           </TouchableOpacity>
           
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1, marginHorizontal: 16 }} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 24, paddingHorizontal: 8 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1, marginHorizontal: 16 }} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 40, paddingHorizontal: 16 }}>
             <TouchableOpacity onPress={() => switchTab('for_you', 0)} style={{ position: 'relative', paddingVertical: 12 }}>
               <Text style={{ fontSize: 16, fontWeight: activeTab === 'for_you' ? '700' : '600', color: activeTab === 'for_you' ? colors.text : colors.textDim }}>For you</Text>
               {activeTab === 'for_you' && <View style={{ position: 'absolute', bottom: 0, left: -6, right: -6, height: 4, backgroundColor: colors.primary, borderRadius: 2 }} />}

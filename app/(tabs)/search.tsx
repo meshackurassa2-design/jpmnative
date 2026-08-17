@@ -223,7 +223,7 @@ export default function () {
             </TouchableOpacity>
           )}
         </View>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/(settings)')}>
           <Ionicons name="settings-outline" size={24} color={colors.text} style={{ marginLeft: 12 }} />
         </TouchableOpacity>
       </View>

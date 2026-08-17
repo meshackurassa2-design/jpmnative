@@ -16,7 +16,6 @@ const PRIVACY_EN = [
       'Account Information: Name, email address, password, profile picture, and demographic information.',
       'Marketplace Data: If you buy or sell items, we collect transaction history, shipping addresses, phone numbers, and shop details. We do not store raw credit card numbers; payment processing is securely handled by third-party providers.',
       'Content & Communications: Messages sent through our chat, posts, reviews, and feedback.',
-      'AI Image Generation: Text prompts you submit to generate AI images are processed temporarily to provide the service. We do not use your generated images or prompts for our own training models.',
       'Device & Usage Data: Device identifiers (including Push Notification tokens via Firebase), IP address, operating system, and app interaction data.',
       'Ad-Reward Activity: We track ad-watching milestones (such as timestamps and counts) to accurately issue digital coin rewards to your wallet.',
       'Location Data: General location data (e.g., city/area) to help you find local shops and products.',
@@ -26,7 +25,7 @@ const PRIVACY_EN = [
     title: '3. How We Use Information',
     body: 'We use the information we collect to:',
     bullets: [
-      'Provide, operate, and maintain our social, AI generation, and marketplace features.',
+      'Provide, operate, and maintain our social and marketplace features.',
       'Process transactions, ad rewards, and facilitate communication between buyers and sellers.',
       'Send you administrative messages, push notifications, and security alerts.',
       'Personalize your experience and recommend relevant content and products.',
@@ -55,8 +54,8 @@ const PRIVACY_EN = [
     ],
   },
   {
-    title: '6. Age Requirement',
-    body: 'Our Platform is intended for users who are 13 years of age or older (or 18+ for marketplace selling). We do not knowingly collect personal information from children under 13. If we discover a minor under 13 has provided us with personal information, we will delete it immediately.',
+    title: '6. Kid Safety & Age Requirement',
+    body: 'We are strongly committed to kid safety. Our Platform is intended for users who are 13 years of age or older (or 18+ for marketplace selling). We do not knowingly collect personal information from children under 13. If we discover a minor under 13 has provided us with personal information, we will delete it immediately and terminate the associated account.',
   },
   {
     title: '7. Contact Us',
