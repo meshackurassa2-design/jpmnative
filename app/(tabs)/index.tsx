@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   RefreshControl, ActivityIndicator, Alert,
-  ScrollView, Animated, Dimensions, Platform, InteractionManager, useWindowDimensions, DeviceEventEmitter, Linking, Share
+  ScrollView, Animated, Dimensions, Platform, InteractionManager, useWindowDimensions, DeviceEventEmitter, Linking, Share, Modal
 } from 'react-native'
 import { Image } from 'expo-image'
 
