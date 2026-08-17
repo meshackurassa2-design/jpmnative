@@ -39,6 +39,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="jpm"/>
+        <data android:scheme="dapaz"/>
       </intent-filter>
     </activity>
   </application>

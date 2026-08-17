@@ -32,13 +32,32 @@ export default function TrendingDetailScreen() {
       
     if (mainPost) setTopicPost(mainPost);
 
-    const { data: relatedPosts } = await supabase
+    // Build the query
+    let query = supabase
       .from('posts')
       .select('id, content, image_urls, video_url, created_at, creator_id, parent_id, settings, profiles:creator_id(id, full_name, username, avatar_url, is_verified), likes(count), comments(count)')
-      .order('created_at', { ascending: false })
-      .limit(15);
+      .limit(30);
 
-    if (relatedPosts) setPosts(relatedPosts);
+    // If category is provided and is not 'For You' or 'Trending', filter by it
+    if (category && category !== 'For You' && category !== 'Trending') {
+       query = query.contains('settings', { category });
+    }
+
+    const { data: relatedPosts } = await query;
+
+    if (relatedPosts) {
+      if (activeTab === 'Latest') {
+        relatedPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      } else {
+        // Top: sort by engagement (likes + comments)
+        relatedPosts.sort((a, b) => {
+          const scoreA = (a.likes?.[0]?.count || 0) + (a.comments?.[0]?.count || 0);
+          const scoreB = (b.likes?.[0]?.count || 0) + (b.comments?.[0]?.count || 0);
+          return scoreB - scoreA;
+        });
+      }
+      setPosts(relatedPosts);
+    }
     setLoading(false);
   };
 
@@ -49,10 +68,20 @@ export default function TrendingDetailScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => {
+            import('react-native').then(({ Alert }) => {
+              Alert.alert('Report', 'Thank you for your report. We will review this topic.');
+            });
+          }}>
             <Ionicons name="flag-outline" size={22} color={colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => {
+            import('react-native').then(({ Share }) => {
+              Share.share({
+                message: `Check out the latest on "${topicPost?.content?.substring(0, 50) || 'this trending topic'}" on Dapaz!`,
+              });
+            });
+          }}>
             <Ionicons name="share-outline" size={22} color={colors.text} />
           </TouchableOpacity>
         </View>

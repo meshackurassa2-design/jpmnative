@@ -36,8 +36,13 @@ export default function () {
 
   useEffect(() => {
     fetchExplore()
-    fetchTrending()
   }, [])
+
+  useEffect(() => {
+    if (activeTab !== 'For You') {
+      fetchTrending(activeTab)
+    }
+  }, [activeTab])
 
   const fetchExplore = async () => {
     setExploreLoading(true)
@@ -68,14 +73,22 @@ export default function () {
     setExploreLoading(false)
   }
 
-  const fetchTrending = async () => {
+  const fetchTrending = async (tab: string) => {
     setNewsLoading(true)
-    const { data, error } = await supabase
+    let query = supabase
       .from('posts')
       .select('id, content, image_urls, video_url, created_at, creator_id, parent_id, settings, profiles:creator_id(id, full_name, username, avatar_url, is_verified), likes(count), comments(count)')
-      .or('image_urls.not.is.null')
-      .order('created_at', { ascending: false })
       .limit(30)
+      
+    if (tab !== 'Trending') {
+      // Filter by the specific category tab (e.g. News, Sports, Entertainment)
+      query = query.contains('settings', { category: tab })
+    } else {
+      // 'Trending' tab shows mixed popular content
+      query = query.or('image_urls.not.is.null')
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false })
     
     if (error) console.error('Trending fetch error:', error)
     if (data) setTrendingPosts(data)
