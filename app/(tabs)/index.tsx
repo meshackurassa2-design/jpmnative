@@ -1227,47 +1227,59 @@ const post = item as Post
           )}
 
           {/* Actions */}
-          <View style={styles.actions}>
-            <TouchableOpacity style={styles.actionBtn} onPress={() => toggleLike(post)} activeOpacity={0.7}>
-              <Ionicons
-                name={post.is_liked ? 'heart' : 'heart-outline'}
-                size={18}
-                color={post.is_liked ? '#ef4444' : '#71717a'}
-              />
-              {(post.likes_count || 0) > 0 && (
-                <Text style={[styles.actionCount, post.is_liked && { color: '#ef4444' }]}>
-                  {post.likes_count}
-                </Text>
-              )}
-            </TouchableOpacity>
+          <View style={[styles.actions, { justifyContent: 'space-between', marginTop: 12 }]}>
+            <View style={{ flexDirection: 'row', gap: 24, alignItems: 'center' }}>
+              <TouchableOpacity style={styles.actionBtn} onPress={() => router.push(`/post/${post.id}`)} activeOpacity={0.7}>
+                <Ionicons name="chatbubble-outline" size={18} color="#71717a" />
+                {(post.comments_count || 0) > 0 && (
+                  <Text style={styles.actionCount}>{post.comments_count}</Text>
+                )}
+              </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={() => router.push(`/post/${post.id}`)} activeOpacity={0.7}>
-              <Ionicons name="chatbubble-outline" size={18} color="#71717a" />
-              {(post.comments_count || 0) > 0 && (
-                <Text style={styles.actionCount}>{post.comments_count}</Text>
-              )}
-            </TouchableOpacity>
+              <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => toggleRepost(post)}>
+                <Ionicons
+                  name={post.is_reposted ? 'sync' : 'sync-outline'}
+                  size={18}
+                  color={post.is_reposted ? '#16a34a' : '#71717a'}
+                />
+                {(post.reposts_count || 0) > 0 && (
+                  <Text style={[styles.actionCount, post.is_reposted && { color: '#16a34a' }]}>
+                    {post.reposts_count}
+                  </Text>
+                )}
+              </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => toggleRepost(post)}>
-              <Ionicons
-                name={post.is_reposted ? 'sync' : 'sync-outline'}
-                size={18}
-                color={post.is_reposted ? '#16a34a' : '#71717a'}
-              />
-              {(post.reposts_count || 0) > 0 && (
-                <Text style={[styles.actionCount, post.is_reposted && { color: '#16a34a' }]}>
-                  {post.reposts_count}
-                </Text>
-              )}
-            </TouchableOpacity>
+              <TouchableOpacity style={styles.actionBtn} onPress={() => toggleLike(post)} activeOpacity={0.7}>
+                <Ionicons
+                  name={post.is_liked ? 'heart' : 'heart-outline'}
+                  size={18}
+                  color={post.is_liked ? '#ef4444' : '#71717a'}
+                />
+                {(post.likes_count || 0) > 0 && (
+                  <Text style={[styles.actionCount, post.is_liked && { color: '#ef4444' }]}>
+                    {post.likes_count}
+                  </Text>
+                )}
+              </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={() => toggleBookmark(post)} activeOpacity={0.7}>
-              <Ionicons
-                name={post.is_bookmarked ? 'bookmark' : 'bookmark-outline'}
-                size={18}
-                color={post.is_bookmarked ? '#2563eb' : '#71717a'}
-              />
-            </TouchableOpacity>
+              <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7}>
+                <Ionicons name="stats-chart" size={16} color="#71717a" />
+                <Text style={styles.actionCount}>{Math.floor(Math.random() * 500 + 50)}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+              <TouchableOpacity style={styles.actionBtn} onPress={() => toggleBookmark(post)} activeOpacity={0.7}>
+                <Ionicons
+                  name={post.is_bookmarked ? 'bookmark' : 'bookmark-outline'}
+                  size={18}
+                  color={post.is_bookmarked ? '#2563eb' : '#71717a'}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7}>
+                <Ionicons name="share-social-outline" size={18} color="#71717a" />
+              </TouchableOpacity>
+            </View>
           </View>
             
           {/* --- FACEBOOK-STYLE IN-STREAM AD --- */}
@@ -1308,57 +1320,9 @@ const post = item as Post
 
   const listHeader = (
     <>
-      {/* Stories / Highlights */}
-      <StoriesBar
-        user={user}
-        myProfile={myProfile}
-        onOpenViewer={(groups, index) => setStoryViewer({ groups, index })}
-        onOpenCreator={() => setShowStoryCreator(true)}
-      />
-
-      {/* Tab bar */}
-      <View style={styles.tabBar}>
-        {[
-          { key: 'for_you', label: t('for_you') },
-          { key: 'following', label: t('following') },
-          { key: 'betting_codes', label: 'Sports Codes' }
-        ].map((tab, i) => (
-          <TouchableOpacity
-            key={tab.key}
-            style={styles.tabItem}
-            activeOpacity={1}
-            onPress={() => switchTab(tab.key as Tab, i)}
-          >
-            <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
-              {tab.label}
-            </Text>
-            {activeTab === tab.key && <View style={styles.tabUnderline} />}
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* What's on your mind */}
-      {user && (
-        <TouchableOpacity
-          style={styles.postPrompt}
-          activeOpacity={0.8}
-          onPress={() => router.push('/create-post')}
-        >
-          <View style={{ position: 'relative' }}>
-            {myProfile?.avatar_url ? (
-              <Image source={{ uri: getCdnUrl(myProfile.avatar_url) }} style={styles.promptAvatar} />
-            ) : (
-              <View style={[styles.promptAvatar, styles.avatarFallback]}>
-                <Text style={styles.avatarText}>{myProfile?.full_name?.[0] || user.email?.[0]?.toUpperCase() || 'U'}</Text>
-              </View>
-            )}
-            <VibeBadge vibe={myProfile?.settings?.vibe} size={14} style={{ position: 'absolute', bottom: 0, right: -2 }} />
-          </View>
-          <View style={styles.promptInput}>
-            <Text style={styles.promptText}>What's on your mind?</Text>
-          </View>
-        </TouchableOpacity>
-      )}
+      {/* Empty space since tabs are in the pinned header now */}
+    </>
+  );
 
       {loading && (
         <View style={{ paddingHorizontal: 0 }}>
@@ -1465,10 +1429,31 @@ const post = item as Post
 
       {/* Top Header */}
       {!isDesktop && (
-        <View style={styles.header}>
-          <Text style={[styles.headerLogo, { color: colors.text }]}>Dapaz</Text>
-          <TouchableOpacity onPress={() => router.push('/notifications')} activeOpacity={0.7}>
-            <Ionicons name="notifications-outline" size={26} color={colors.text} />
+        <View style={[styles.header, { justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.push('/user-profile')} activeOpacity={0.7}>
+             {myProfile?.avatar_url ? (
+               <Image source={{ uri: getCdnUrl(myProfile.avatar_url) }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+             ) : (
+               <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center' }}>
+                 <Ionicons name="person" size={16} color={colors.textDim} />
+               </View>
+             )}
+          </TouchableOpacity>
+          
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}>
+            <TouchableOpacity onPress={() => switchTab('for_you', 0)} style={{ position: 'relative', paddingVertical: 12 }}>
+              <Text style={{ fontSize: 16, fontWeight: activeTab === 'for_you' ? '700' : '600', color: activeTab === 'for_you' ? colors.text : colors.textDim }}>For you</Text>
+              {activeTab === 'for_you' && <View style={{ position: 'absolute', bottom: 0, left: -6, right: -6, height: 4, backgroundColor: colors.primary, borderRadius: 2 }} />}
+            </TouchableOpacity>
+            
+            <TouchableOpacity onPress={() => switchTab('following', 1)} style={{ position: 'relative', paddingVertical: 12 }}>
+              <Text style={{ fontSize: 16, fontWeight: activeTab === 'following' ? '700' : '600', color: activeTab === 'following' ? colors.text : colors.textDim }}>Following</Text>
+              {activeTab === 'following' && <View style={{ position: 'absolute', bottom: 0, left: -6, right: -6, height: 4, backgroundColor: colors.primary, borderRadius: 2 }} />}
+            </TouchableOpacity>
+          </View>
+          
+          <TouchableOpacity onPress={() => Alert.alert('Coming Soon', 'Custom Feeds feature is coming soon!')} activeOpacity={0.7} style={{ padding: 4 }}>
+            <Ionicons name="add" size={26} color={colors.text} />
           </TouchableOpacity>
         </View>
       )}
@@ -1635,14 +1620,8 @@ const getStyles = (colors: any) => StyleSheet.create({
     aspectRatio: 4/3,
     backgroundColor: colors.border 
   },
-  actions: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    paddingBottom: 8,
-    paddingRight: 20
-  },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, maxWidth: 400 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   actionCount: { fontSize: 13, color: colors.textDim, fontWeight: '500' },
   divider: { 
     position: 'absolute',

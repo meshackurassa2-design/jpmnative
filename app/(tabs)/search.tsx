@@ -28,17 +28,15 @@ export default function () {
   const [loading, setLoading] = useState(false)
   
   const [exploreLoading, setExploreLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'Explore' | 'News' | 'Jobs'>('Explore')
-  const [newsPosts, setNewsPosts] = useState<any[]>([])
+  const [activeTab, setActiveTab] = useState('For You')
+  const [trendingPosts, setTrendingPosts] = useState<any[]>([])
   const [newsLoading, setNewsLoading] = useState(false)
-  const [jobsPosts, setJobsPosts] = useState<any[]>([])
-  const [jobsLoading, setJobsLoading] = useState(false)
+  const tabs = ['For You', 'Trending', 'News', 'Sports', 'Entertainment']
   const supabase = createClient()
 
   useEffect(() => {
     fetchExplore()
-    fetchNews()
-    fetchJobs()
+    fetchTrending()
   }, [])
 
   const fetchExplore = async () => {
@@ -70,33 +68,18 @@ export default function () {
     setExploreLoading(false)
   }
 
-  const fetchNews = async () => {
+  const fetchTrending = async () => {
     setNewsLoading(true)
     const { data, error } = await supabase
       .from('posts')
-      .select('id, content, image_urls, video_url, created_at, creator_id, parent_id, settings, is_ghost, profiles:creator_id!inner(id, full_name, username, avatar_url, is_verified, settings), likes(count), comments(count)')
-      .eq('profiles.settings->>account_type', 'news')
+      .select('id, content, image_urls, video_url, created_at, creator_id, parent_id, settings, profiles:creator_id(id, full_name, username, avatar_url, is_verified), likes(count), comments(count)')
+      .or('image_urls.not.is.null')
       .order('created_at', { ascending: false })
       .limit(30)
     
-    if (error) console.error('News fetch error:', error)
-    if (data) setNewsPosts(data)
+    if (error) console.error('Trending fetch error:', error)
+    if (data) setTrendingPosts(data)
     setNewsLoading(false)
-  }
-
-  const fetchJobs = async () => {
-    setJobsLoading(true)
-    const { data, error } = await supabase
-      .from('posts')
-      .select('id, content, image_urls, video_url, created_at, creator_id, parent_id, settings, profiles:creator_id(id, full_name, username, avatar_url)')
-      .contains('settings', { is_job: true })
-      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-      .order('created_at', { ascending: false })
-      .limit(30)
-    
-    if (error) console.error('Jobs fetch error:', error)
-    if (data) setJobsPosts(data)
-    setJobsLoading(false)
   }
 
   const search = useCallback(async (q: string) => {
@@ -136,6 +119,32 @@ export default function () {
     
     setLoading(false)
   }, [])
+
+  const renderTrendingItem = ({ item, index }: { item: any, index: number }) => {
+    const postCount = (item.comments?.[0]?.count || 0) * 10 + 152 + (index * 15);
+    const timeAgoStr = index < 3 ? "Trending now" : "15 hours ago";
+
+    return (
+      <TouchableOpacity
+        style={styles.trendingItem}
+        onPress={() => router.push(`/trending/${item.id}?category=${activeTab}`)}
+      >
+        <Text style={styles.trendingTitle} numberOfLines={3}>{item.content?.substring(0, 100) || 'Exciting updates in ' + activeTab}</Text>
+        <View style={styles.trendingItemFooter}>
+          <View style={styles.avatarCluster}>
+             {item.profiles?.avatar_url ? (
+               <Image source={{uri: getCdnUrl(item.profiles.avatar_url)}} style={styles.clusterAvatar} />
+             ) : (
+               <View style={[styles.clusterAvatar, { backgroundColor: '#3b82f6' }]} />
+             )}
+             <View style={[styles.clusterAvatar, { backgroundColor: '#eab308', marginLeft: -8 }]} />
+             <View style={[styles.clusterAvatar, { backgroundColor: '#ef4444', marginLeft: -8 }]} />
+          </View>
+          <Text style={styles.trendingMeta}>{timeAgoStr} • {activeTab === 'For You' ? 'News' : activeTab} • {postCount} posts</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }
 
   const renderExploreItem = ({ item }: { item: any }) => {
     const hasImage = item.image_urls && item.image_urls.length > 0;
@@ -197,44 +206,45 @@ export default function () {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Discover</Text>
+        <View style={styles.searchBox}>
+          <Ionicons name="search" size={18} color={colors.textDim} style={{ marginRight: 8 }} />
+          <TextInput
+            style={styles.input}
+            placeholder="Search"
+            placeholderTextColor={colors.textDim}
+            value={query}
+            onChangeText={search}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => { setQuery(''); setResults([]) }}>
+              <Ionicons name="close-circle" size={18} color={colors.textDim} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <TouchableOpacity>
+          <Ionicons name="settings-outline" size={24} color={colors.text} style={{ marginLeft: 12 }} />
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.tabsRow}>
-        <TouchableOpacity style={[styles.tab, activeTab === 'Explore' && styles.tabActive, { flexDirection: 'row', gap: 6, justifyContent: 'center' }]} onPress={() => setActiveTab('Explore')}>
-          <Ionicons name="compass-outline" size={16} color={activeTab === 'Explore' ? '#ffffff' : (colors.isDark ? '#93c5fd' : '#3b82f6')} />
-          <Text style={[styles.tabText, activeTab === 'Explore' && styles.tabTextActive]}>Explore</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, activeTab === 'News' && styles.tabActive, { flexDirection: 'row', gap: 6, justifyContent: 'center' }]} onPress={() => setActiveTab('News')}>
-          <Ionicons name="newspaper-outline" size={16} color={activeTab === 'News' ? '#ffffff' : (colors.isDark ? '#93c5fd' : '#3b82f6')} />
-          <Text style={[styles.tabText, activeTab === 'News' && styles.tabTextActive]}>News</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, activeTab === 'Jobs' && styles.tabActive, { flexDirection: 'row', gap: 6, justifyContent: 'center' }]} onPress={() => setActiveTab('Jobs')}>
-          <Ionicons name="briefcase-outline" size={16} color={activeTab === 'Jobs' ? '#ffffff' : (colors.isDark ? '#93c5fd' : '#3b82f6')} />
-          <Text style={[styles.tabText, activeTab === 'Jobs' && styles.tabTextActive]}>Jobs</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.searchBox}>
-        <Ionicons name="search" size={18} color={colors.isDark ? '#93c5fd' : '#3b82f6'} style={{ marginRight: 8 }} />
-        <TextInput
-          style={styles.input}
-          placeholder="Search people or #hashtags..."
-          placeholderTextColor={colors.isDark ? '#60a5fa' : '#93c5fd'}
-          value={query}
-          onChangeText={search}
-          autoCapitalize="none"
-          returnKeyType="search"
-        />
-        {query.length > 0 && (
-          <TouchableOpacity onPress={() => { setQuery(''); setResults([]) }}>
-            <Ionicons name="close-circle" size={18} color={colors.isDark ? '#93c5fd' : '#3b82f6'} />
-          </TouchableOpacity>
-        )}
+      <View style={styles.tabsWrapper}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+          {tabs.map(tab => (
+            <TouchableOpacity 
+              key={tab}
+              style={styles.tab} 
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+              {activeTab === tab && <View style={styles.tabUnderline} />}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       {query.length === 0 ? (
-        activeTab === 'Explore' ? (
+        activeTab === 'For You' ? (
           // Explore Grid
           exploreLoading ? (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -251,45 +261,23 @@ export default function () {
               contentContainerStyle={{ paddingBottom: 100 }}
             />
           )
-        ) : activeTab === 'News' ? (
-          // News Feed
+        ) : (
+          // Trending Feed
           newsLoading ? (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
               <ActivityIndicator size="large" color={colors.text} />
             </View>
           ) : (
             <FlatList
-              key="news-feed"
-              data={newsPosts}
+              key="trending-feed"
+              data={trendingPosts}
               keyExtractor={item => item.id}
-              renderItem={({ item }) => <PostItem post={item} />}
+              renderItem={renderTrendingItem}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 100 }}
               ListEmptyComponent={
                 <View style={styles.empty}>
                   <Ionicons name="newspaper-outline" size={48} color={colors.border} style={{ marginBottom: 12 }} />
-                  <Text style={styles.emptyText}>Nothing here</Text>
-                </View>
-              }
-            />
-          )
-        ) : (
-          // Jobs Feed
-          jobsLoading ? (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <ActivityIndicator size="large" color={colors.text} />
-            </View>
-          ) : (
-            <FlatList
-              key="jobs-feed"
-              data={jobsPosts}
-              keyExtractor={item => item.id}
-              renderItem={({ item }) => <JobCard post={item} />}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 100 }}
-              ListEmptyComponent={
-                <View style={styles.empty}>
-                  <Ionicons name="briefcase-outline" size={48} color={colors.border} style={{ marginBottom: 12 }} />
                   <Text style={styles.emptyText}>Nothing here</Text>
                 </View>
               }
@@ -354,25 +342,37 @@ export default function () {
 
 const getStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
-  title: { fontSize: 28, fontWeight: '900', color: colors.text },
-  tabsRow: { 
-    flexDirection: 'row', 
-    marginHorizontal: 16, marginBottom: 12,
-    backgroundColor: colors.isDark ? '#1e3a8a30' : '#eff6ff',
-    borderRadius: 20,
-    padding: 4,
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8 },
+  tabsWrapper: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 16 },
-  tabActive: { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 2 },
-  tabText: { fontSize: 14, fontWeight: '600', color: colors.isDark ? '#93c5fd' : '#3b82f6' },
-  tabTextActive: { color: '#ffffff' },
+  tabsScroll: {
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    gap: 24,
+  },
+  tab: { 
+    paddingVertical: 12, 
+    position: 'relative'
+  },
+  tabText: { fontSize: 15, fontWeight: '600', color: colors.textDim },
+  tabTextActive: { color: colors.text, fontWeight: '700' },
+  tabUnderline: {
+    position: 'absolute',
+    bottom: -1,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: colors.primary,
+    borderRadius: 2,
+  },
   searchBox: {
+    flex: 1,
     flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: 16, marginBottom: 12,
-    backgroundColor: colors.isDark ? '#1e3a8a30' : '#eff6ff',
-    borderRadius: 14,
-    paddingHorizontal: 14, paddingVertical: 10,
+    backgroundColor: colors.isDark ? '#16181c' : '#eff3f4',
+    borderRadius: 999,
+    paddingHorizontal: 16, paddingVertical: 8,
   },
   input: { flex: 1, fontSize: 16, color: colors.text },
   row: {
@@ -389,4 +389,37 @@ const getStyles = (colors: any) => StyleSheet.create({
   empty: { paddingTop: 60, alignItems: 'center' },
   emptyText: { color: colors.textDim, fontSize: 15 },
   emptyIcon: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center' },
+  
+  trendingItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  trendingTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  trendingItemFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  avatarCluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  clusterAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  trendingMeta: {
+    fontSize: 13,
+    color: colors.textDim,
+  },
 })
