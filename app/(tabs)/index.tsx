@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   RefreshControl, ActivityIndicator, Alert,
-  ScrollView, Animated, Dimensions, Platform, InteractionManager, useWindowDimensions, DeviceEventEmitter, Linking
+  ScrollView, Animated, Dimensions, Platform, InteractionManager, useWindowDimensions, DeviceEventEmitter, Linking, Share
 } from 'react-native'
 import { Image } from 'expo-image'
 
@@ -1264,7 +1264,7 @@ const post = item as Post
 
               <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7}>
                 <Ionicons name="stats-chart" size={16} color="#71717a" />
-                <Text style={styles.actionCount}>{Math.floor(Math.random() * 500 + 50)}</Text>
+                <Text style={styles.actionCount}>{post.views_count || post.engaged_views || 0}</Text>
               </TouchableOpacity>
             </View>
 
@@ -1276,7 +1276,12 @@ const post = item as Post
                   color={post.is_bookmarked ? '#2563eb' : '#71717a'}
                 />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7}>
+              <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => {
+                Share.share({
+                  message: `Check out this post on Dapaz: https://dapaz.app/post/${post.id}`,
+                  url: `https://dapaz.app/post/${post.id}`
+                });
+              }}>
                 <Ionicons name="share-social-outline" size={18} color="#71717a" />
               </TouchableOpacity>
             </View>

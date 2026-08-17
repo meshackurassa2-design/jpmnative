@@ -4,7 +4,7 @@ import { useTheme } from '../../lib/theme';
 import React, { useState, useCallback, useEffect } from 'react'
 import {
   View, Text, TextInput, FlatList, TouchableOpacity,
-  StyleSheet, Image, ActivityIndicator, Dimensions, Platform, useWindowDimensions
+  StyleSheet, Image, ActivityIndicator, Dimensions, Platform, useWindowDimensions, ScrollView
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
