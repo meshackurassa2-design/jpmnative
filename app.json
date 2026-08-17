@@ -35,7 +35,7 @@
       "icon": "./assets/icon_real.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon_real.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#000000"
       }
     },
     "web": {
